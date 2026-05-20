@@ -261,6 +261,186 @@ created_at, updated_at, version
 
 ---
 
-## Pending Decisions (Phase F onwards)
+## Phase F — Lesson schemas + authoring workflow
 
-See `progress.md` for live status. The currently in-flight sub-decision when this log was last updated was **Phase F: authoring workflow** — last AskUserQuestion paused for clarification.
+### F.0 Lesson schemas (deferred)
+
+**Decision:** Lesson schemas follow the same "sketch + iterate during authoring" approach as item schemas. Not flagged as a separate grilling sub-decision.
+
+### F.1 Skeleton author
+
+**Decision:** AI proposes the chapter skeleton (ordered items + lesson types per chapter); user reviews pacing and proportionality, not item-by-item order.
+
+Mechanism: AI ingests Tanos's N5 grammar order + JMdict frequency rank + prerequisite graph + Genki/Bunpro structural reference (taxonomy only, not text). Outputs a chapter-by-chapter list of items and lesson types. User reviews chapter density and thematic coherence.
+
+**Why:** Item order for N5 is mostly canonical convention — Tanos and Genki agree on most of it. User can judge pacing as a learner-stand-in without expertise. Hiring a curriculum designer ($2-5K + weeks) is deferrable; AI baseline is good enough to start. User hand-authoring is blocked by non-expertise.
+
+**Rejected:** Deterministic taxonomy-only (rigid, no density balancing); hire curriculum designer (slow, defer); user hand-authored (blocked).
+
+### F.2 Lesson drafter
+
+**Decision:** AI single-pass draft from structured input.
+
+For each lesson, AI receives: item refs (item data from relational DB) + vector DB query results for themed examples + lesson type template + recent corrections-log entries (few-shot). Outputs Teach content + Check question pool + Practice templates.
+
+**Why:** Item data is already structured (JMdict-sourced); AI shapes rather than invents. Single-pass is sufficient quality; multi-pass triples token cost for marginal gain. Human writers add coordination overhead and aren't faster for templated output.
+
+**Rejected:** AI multi-pass (premature optimization); outsourced human writers (slow, coordination cost); mixed AI-for-non-grammar + human-for-grammar (workflow complexity for limited benefit — grammar is bridged by contractor review at v2, not different drafter).
+
+### F.3 Pre-review quality gate
+
+**Decision:** Structural validation + AI critic pass.
+
+- **Structural validation** (deterministic, free): field-presence, ref-validity, lesson-type adherence, audio file existence. Always runs.
+- **AI critic** (~$0.05/lesson, ~$25 for Foundation): second LLM pass against the 9-point checklist before user sees draft. Catches lesson-type drift, example mismatch, policy violations.
+
+**Why:** Structural validation is essentially free; no reason to skip. AI critic catches ~30-50% of issues a second human pass would find, with ~5-15% false positive rate — net positive on editorial burden. ~$25 for full Foundation is trivial.
+
+**Rejected:** Structural only (more semantic issues reach user); no gate (dumb errors waste user time); two AI critics (premature redundancy).
+
+### F.4 Editorial review format
+
+**Decision:** Structured 9-point checklist + free-text revision notes.
+
+Each draft shows the checklist: tone, length, flow, example feel, audio, lesson-type adherence, item-ref match, theme-tag accuracy, learner-confusion. Pass/fail per. Free-text per fail. Approve OR send-back-with-notes (which prepend to drafter prompt for regeneration).
+
+**Why:** Structured feedback enables mechanically-extractable corrections-log entries. ~30 sec/lesson. Shared vocabulary with AI critic. Click-through approve-only would empty the corrections log; open prose feedback is slower and unstructured; inline editing UI is premature.
+
+**Rejected:** Click-through approve-only (kills convergence loop); open prose (unstructured, slow); inline editing with diff (high UI cost, defer to v2).
+
+### F.5 Corrections feedback loop
+
+**Decision:** Few-shot prompting from recent corrections, filtered by lesson type.
+
+Each "send back" creates a log entry `{original_draft, your_notes, regenerated_version}`. Drafter prompts for new lessons prepend the N most recent corrections *of the same lesson type* as few-shot examples (N ~5-10, bounded by token budget).
+
+**Why:** Zero infrastructure (flat file + prompt template). Continuous improvement with use. ~1-2K extra tokens per draft prompt; bounded. F-Vocab corrections inform future F-Vocab drafts specifically.
+
+**Refinement deferred to v2:** Filter few-shot by vector similarity to the new draft (semantic relevance), not just recency. Better quality, more infra.
+
+**Rejected:** Rule extraction (premature, brittle); fine-tuning (needs ~1000+ examples, far future); no improvement loop (defeats convergence premise).
+
+### F.6 Publish gate
+
+**Decision:** Deferred to Phase M (MVP scope cut + beta launch).
+
+The publishing-gate decision is bound up with beta launch strategy — closed alpha vs public beta vs commercial launch each warrant different gate logic. Not an authoring-workflow decision; defer until launch sequence is being designed.
+
+### F.7 Editorial review intensity
+
+**Decision:** Adaptive sampling — start at 40% for first 3-4 chapters, drop to 20% once critic-vs-user agreement is consistent.
+
+User reviews: 40% random sample + 100% of AI-critic-flagged drafts initially, dropping to 20% after calibration. Total editorial time across Foundation: **~9-14 hours** at adaptive sampling (vs ~30-50 hours at full review or ~6-12 hours at flat 20%).
+
+**Why:** Front-loads calibration when AI-critic accuracy is unknown; lightens once trust is established. Pure-zero-input was rejected because (a) corrections loop dies without user signal, (b) AI critic is not ground truth (overlapping blind spots with the drafter), (c) product-feel judgment uniquely requires human reviewer. The user's learner-stand-in perspective is actually a *strength* for catching beginner-confusion issues, not a deficit — the late-Foundation content the user doesn't yet know is exactly where authentic beginner reactions matter most.
+
+**Trade-off accepted:** Some unreviewed lessons ship with tone/example-feel issues; beta feedback fills the gap. Linguistic correctness still protected by canonical data sources + contractor grammar review.
+
+**Concrete time estimate:** ~3-4 min/lesson editorial time; ~2-3 hours per chapter (~25 lessons); per-chapter wall clock ~1 week of evening sessions or 1 weekend of focused work.
+
+**Rejected:** Flat 20% (under-calibrates early); flat 40% (over-invests in convergence; diminishing returns past ~75 corrections); full review (~30-50 hrs, slower without proportional quality gain at MVP); zero input (kills convergence loop, breaks brand).
+
+---
+
+## Phase G — Mastery scoring + Spaced repetition
+
+### G.1 Mastery data model
+
+**Decision:** Continuous float 0-1 per item + per-modality breadcrumbs. Display labels derived from score ranges.
+
+Per item per learner:
+- `mastery: float (0-1)` — primary SRS input
+- `modality_history: {recognition: [pass/fail timeline], recall: [...], production: [...]}`
+- "Fully mastered" = score > threshold AND tested in all modalities with success
+- UI labels (Apprentice / Guru / Master / Enlightened / Burned) derived from score ranges; display layer only, not a separate data layer
+
+**Why:** Continuous score is the right primitive for modern SRS algorithms (FSRS operates on probability-of-recall). Per-modality breadcrumbs distinguish recognition vs production cheaply (a learner can read 食べる perfectly while being unable to produce it). Stage labels are display only — same data, friendlier UI.
+
+**Rejected:** True discrete state machine (lossy, no continuous score, incompatible with FSRS); full multi-dimensional sub-scores (more storage/update complexity for marginal benefit; breadcrumbs suffice); single continuous score with no modality tracking (loses critical recognition-vs-production signal).
+
+### G.2 SRS algorithm
+
+**Decision:** FSRS (Free Spaced Repetition Scheduler).
+
+Modern (~2022) ML-trained algorithm; predicts retention probability accurately; operates on continuous scores; reference implementations available in multiple languages (Python/Rust/TS/Go). Default parameters work at MVP; per-learner calibration happens automatically once review history accumulates.
+
+**Why:** ~15-25% better retention predictions than SM-2 (Anki's 1987 classic). Anki itself defaulted to FSRS after years of SM-2 for this reason. Custom is a well-known anti-pattern (worse than FSRS for zero benefit). Leitner box is too coarse for the continuous scores we just chose.
+
+**Rejected:** SM-2 (older, worse); custom (reinventing); Leitner (coarse, defeats G.1's precision); defer (clear best choice exists now).
+
+### G.3 Check-answer → mastery rating
+
+**Decision:** AI judges answer quality → 4-level FSRS rating (Again / Hard / Good / Easy).
+
+The AI evaluating the Check answer (already in the loop) also assigns the rating based on correctness + latency + partial correctness + hedging signals. FSRS uses rating + item history + time since last review to update mastery score.
+
+**Why:** AI is already evaluating; rating assignment is essentially free. Uses FSRS's full 4-level precision. No friction added to learner. User self-rating adds per-question friction over thousands of reviews (real motivation cost) and beginners self-rate poorly. Binary correct/wrong loses 2 of FSRS's 4 ratings. Mechanical time-based mapping is noisier than AI judgment.
+
+**Rejected:** User self-rate Anki-style (friction); binary mapping (lossy); time+correctness mechanical (noise from distractions, mobile lag, reading vs thinking time).
+
+### G.4 Review session item selection
+
+**Decision:** FSRS-due items (predicted retention < 90%), sorted by lowest predicted retention, capped at 10-15 items per session. AI picks per-item modality favoring the learner's weakest one (from breadcrumbs).
+
+**Why:** Use FSRS for what it's built for. Lowest-retention-first targets items closest to being forgotten. Cap 10-15 matches the ~5-10 min session length (same micro-lesson philosophy). Per-modality targeting closes recognition-vs-production gaps using G.1's breadcrumb data.
+
+If <10 items are due, session is short — signal the learner is on track, not a bug.
+
+**Rejected:** FSRS-due + near-due recency-weighted (wastes review time on items not at risk); all-items-in-recent-chapter (misses forgetting curve); random sample (no retention optimization).
+
+---
+
+## Phase H — Per-modality evaluation (partial — H.2-H.5 pending)
+
+### H.1 Speaking evaluation
+
+**Decision:** Azure Speech (STT + Pronunciation Assessment) + AI semantic evaluation.
+
+Pipeline: audio captured in-browser → Azure Speech endpoint → returns transcription text + per-word confidence + per-phoneme accuracy scores + overall pronunciation score → bundle + lesson context → AI for semantic evaluation ("did they actually answer the prompt?") → combined into 4-level FSRS rating per G.3.
+
+**Terms:**
+- **STT** (Speech-to-Text): service that transcribes audio into text.
+- **Phoneme**: smallest distinct unit of sound in a language (Japanese has ~45). Phoneme-level scoring gives feedback like "your /sh/ sound came out as /s/" rather than just "word wrong."
+
+**Why:** Azure has the best Japanese phoneme-level pronunciation scoring among major providers. ~$0.023/min, ~$0.70/year per active learner doing 5 min daily — negligible cost. Mature, well-documented API.
+
+**Known gap:** Azure doesn't evaluate Japanese **pitch accent** (the high/low tonal pattern that distinguishes some words like 橋 hashi-low-high "bridge" vs 箸 hashi-high-low "chopsticks"). Acceptable at N5 where pitch accent isn't a critical beat; flag for v2+ if expanding into intermediate Japanese.
+
+**Rejected:** Whisper + AI heuristic pronunciation (no phoneme data, fuzzy quality signal); specialized pronunciation APIs like SpeechAce (Japanese support less mature than Azure's); STT-only with no pronunciation scoring (misses the entire point of speaking practice).
+
+---
+
+## Cross-cutting design principles
+
+### CC.1 Multi-language future-proofing (cheap insurance)
+
+**Decision:** Apply lightweight forward-compatibility moves now so the architecture can host non-Japanese languages later without major rework. Do NOT engineer multi-language support speculatively.
+
+Concrete moves applied to all prior decisions:
+- **Item IDs are language-prefixed**: `ja:vocab:猫`, `ja:kanji:食`, `ja:grammar:te-form-request`. Trivial cost now; painful to retrofit if added later.
+- **Foundation scope is per-Module configurable**, not a global constant. "Foundation = N5" is a setting on the Foundation Module, not a hardcoded fact.
+- **Grammar taxonomy is per-language configurable reference**, not embedded constants. Future languages plug in their own taxonomy without code change.
+
+What is NOT done now:
+- Multi-language UX selector
+- Per-language content pipelines
+- Cross-language mastery sharing
+- Polyglot brand
+
+**Why:** ~30-50% of design is language-agnostic (architecture, algorithms, workflow); ~50-70% is per-language (content, taxonomy, pronunciation tuning). Forward-compat moves are nearly-free; full multi-language engineering pre-validation is a trap.
+
+**User intent:** Build Sensei for Japanese first; defer polyglot decision (separate brands vs unified platform vs fork) until Sensei is validated.
+
+### CC.2 Multi-platform readiness
+
+**Decision:** Backend remains platform-agnostic. Build for one platform first (web or mobile); expand to others post-validation.
+
+The decisions made so far are all server-side or platform-neutral. Platform-specific concerns (audio capture, IME, offline cache, storage limits) live in client code and don't affect architecture. To be revisited as **Phase L (tech stack)** sub-decision.
+
+**Why:** Single-platform MVP ships faster than three-platform MVP. The architecture doesn't constrain platform choice, so the decision can be deferred without lock-in.
+
+---
+
+## Pending Decisions
+
+See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase H.2 — Writing evaluation**, last AskUserQuestion paused for clarification.

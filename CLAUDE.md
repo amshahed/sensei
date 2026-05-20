@@ -15,7 +15,7 @@ When the user asks to "build" or "run" something, first confirm whether they wan
 
 ## Active Design Work
 
-The user is partway through a structured grilling session (`/grill-me` skill flow) to take Sensei from high-level idea to implementation-ready design. The session has resolved Phases A–E and is currently mid Phase F. Full state lives in `progress.md` and `decisions.md` — read those first when picking up.
+The user is partway through a structured grilling session (`/grill-me` skill flow) to take Sensei from high-level idea to implementation-ready design. The session has resolved Phases A–G plus H.1 (Speaking evaluation) plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Currently mid Phase H (per-modality evaluation), specifically at **H.2 — Writing evaluation**. Full state lives in `progress.md` and `decisions.md` — read those first when picking up.
 
 If continuing the grilling session:
 1. Read `decisions.md` end-to-end. Resolved decisions cascade — later branches depend on earlier choices.

@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phase E of the structured design grilling. Sections that depend on later phases are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phase G plus H.1 (Speaking evaluation) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (H.2-H.5, I-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phase E. Phases F–M are still in design; sections that depend on them are marked TBD.
+This PRD reflects design decisions resolved through Phase G of the structured design grilling, plus H.1 (Speaking) and the cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases H.2–H.5 (writing, listening, reading evaluation) and I–M are still in design; sections that depend on them are marked TBD.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -78,7 +78,7 @@ Every micro-lesson is 3–8 minutes, single concept, and follows a **3-beat stru
 
 2. **Practice (2–5 min, runtime AI, modality-aware).** Interactive practice scoped to lesson type. Learner Q&A and detours live here — AI can take a brief tangent and return to the lesson. Practice is the fluid beat.
 
-3. **Check (30–60 sec, runtime AI).** Quick assessment. Updates per-item mastery scores. Feeds spaced repetition.
+3. **Check (30–60 sec, runtime AI).** Quick assessment. Each answer is graded by AI quality (Again / Hard / Good / Easy → FSRS 4-level rating). Updates per-item mastery scores. Feeds spaced repetition.
 
 ## 3.4 Lesson Taxonomy
 
@@ -121,6 +121,8 @@ Four item types:
 
 Lessons reference items. Items are reused across lessons; mastery is tracked once per item per learner.
 
+Item IDs are **language-prefixed** (`ja:vocab:猫`, `ja:kanji:食`) to support eventual multi-language expansion without retrofit (see §5 Cross-Cutting Principles).
+
 ---
 
 # 4. Data Architecture
@@ -129,10 +131,11 @@ Lessons reference items. Items are reused across lessons; mastery is tracked onc
 
 **Relational DB:**
 - Item metadata (vocab readings/meanings/POS, kanji readings/meanings/radicals, grammar patterns/explanations, kana data)
-- Mastery scores (per learner, per item)
+- Mastery scores (per learner, per item) — continuous 0-1 + per-modality breadcrumbs
 - Learner progress
 - Lesson definitions and item references
 - Module / Chapter / Lesson hierarchy
+- Corrections log (from authoring workflow)
 
 **Vector DB:**
 - Unstructured reference material indexed by embedding
@@ -183,7 +186,7 @@ Strict separation between **legally ingestible** and **personal reference only.*
 ## 4.4 Item Schemas (sketch — iterates during authoring)
 
 Common fields per item:
-- `item_id`, `type`, `jlpt_level`, `frequency_rank`, `prerequisites[]`, `tags[]`, `version`, timestamps
+- `item_id` (language-prefixed: `ja:vocab:猫`), `type`, `jlpt_level`, `frequency_rank`, `prerequisites[]`, `tags[]`, `version`, timestamps
 
 Type-specific fields mirror canonical source data (JMdict fields → Vocab; KANJIDIC2 fields → Kanji; community grammar taxonomies → Grammar).
 
@@ -191,67 +194,175 @@ Full sketch in `decisions.md` §E.4.
 
 ---
 
-# 5. Authoring Workflow
+# 5. Cross-Cutting Principles
 
-**Direction (mid-Phase F grilling — pending user confirmation):**
+## 5.1 Multi-Language Future-Proofing
 
-- AI drafts each lesson's content (Teach beat + Check beat questions + Practice beat templates) from item data + vector DB references.
-- User reviews for **editorial quality** (tone, flow, length, naturalness, audio plays) — NOT linguistic correctness.
-- **Linguistic correctness is delegated to canonical data sources** (JMdict / KANJIDIC2 / Tanos), which are pre-vetted.
-- Grammar lessons specifically deferred to contracted Japanese teacher review at v2 (~50 N5 grammar points, ~$500–2000 budget).
-- Corrections log feeds future AI drafts — AI converges on the user's editorial taste over time without requiring linguistic expertise.
+Sensei v1 ships as a Japanese-only product. The architecture is designed so that adding more languages later requires content work, not deep rework.
 
-**User constraint:** the user is not a Japanese teacher. The workflow must produce linguistically correct content without depending on the user's linguistic expertise.
+**Applied now (cheap insurance):**
+- Item IDs language-prefixed (`ja:vocab:猫`)
+- Foundation scope is a per-Module setting, not a global constant
+- Grammar taxonomy is a configurable per-language reference
 
-Full details: **TBD Phase F** (workflow specifics, authoring UI, contractor onboarding, corrections-log mechanics).
+**Not done now (speculative):**
+- Multi-language UX selector
+- Per-language content pipelines
+- Cross-language mastery sharing
+- Polyglot brand
+
+Roughly **30–50% of design is language-agnostic** (architecture, algorithms, workflow); **50–70% is per-language** (content, taxonomy, pronunciation tuning).
+
+## 5.2 Multi-Platform Readiness
+
+The backend is platform-agnostic by construction. All design decisions made so far are either server-side or platform-neutral. Platform-specific concerns (audio capture, IME, offline cache, storage limits) live in client code.
+
+Recommended path: pick one client platform for MVP (web or mobile); expand to others after validation. Specific platform decision: **TBD Phase L (tech stack)**.
 
 ---
 
-# 6. Evaluation Surfaces
+# 6. Authoring Workflow
+
+The authoring workflow is designed around the constraint that the user is not a Japanese expert. Linguistic correctness is delegated to canonical data sources (JMdict, KANJIDIC2, Tanos) and a future contracted Japanese teacher. The user's role is editorial review: tone, flow, length, naturalness, audio quality, learner-confusion judgment.
+
+## 6.1 End-to-End Pipeline
+
+1. **Skeleton.** AI proposes the chapter skeleton (ordered items + lesson types) from Tanos's N5 grammar order + JMdict frequency rank + prerequisite graph + Genki/Bunpro structural reference. User reviews pacing and proportionality, not item-by-item order.
+
+2. **Drafting.** AI single-pass drafter receives item refs + vector DB example retrieval + lesson type template + recent corrections-log entries (few-shot). Outputs Teach beat + Check beat question pool + Practice beat templates.
+
+3. **Pre-review quality gate.**
+   - Structural validation (deterministic, free): field-presence, ref-validity, lesson-type adherence, audio-file existence.
+   - AI critic (~$0.05/lesson): second LLM pass against the 9-point checklist before user sees the draft.
+
+4. **User editorial review.** Structured 9-point checklist (tone, length, flow, example feel, audio, lesson-type adherence, item-ref match, theme-tag accuracy, learner-confusion). Pass/fail per. Free-text revision notes per fail. Approve OR send-back-with-notes.
+
+5. **Corrections loop.** Each "send back" creates a `{original_draft, notes, regenerated_version}` log entry. Drafter prompts include recent corrections of the same lesson type as few-shot examples. AI converges on user's editorial taste over time.
+
+6. **Publish gate.** Deferred to Phase M (depends on beta-launch strategy).
+
+7. **Grammar contractor review (v2).** Contracted Japanese teacher reviews ~50 N5 grammar lessons at ~$500–2000. Until then, grammar lessons publish with a "draft explanation" indicator.
+
+## 6.2 Editorial Intensity (Adaptive Sampling)
+
+User reviews:
+- **First 3-4 chapters:** 40% random sample + 100% of AI-critic-flagged drafts. Front-loads calibration when critic-vs-user agreement is uncertain.
+- **Subsequent chapters:** 20% sample + 100% critic-flagged. Lighter once critic is calibrated against user taste.
+
+**Time estimates:**
+- Per lesson: ~3–4 min editorial time (with ~20% regeneration cycles)
+- Per chapter (~25 lessons): ~2–3 hours focused work
+- Full Foundation (~15 chapters, ~375 lessons): **~9–14 hours total** at adaptive sampling
+
+## 6.3 Authoring UI (TBD implementation)
+
+Requires:
+- Skeleton review interface (chapter density / coherence sign-off)
+- Draft review surface (checklist + audio playback + send-back-with-notes)
+- Corrections log (automated entry, prompt-retrieval interface)
+- Publish trigger (per F.6 decision)
+
+## 6.4 Where Human Expertise Is Required
+
+| Concern | Source of correctness | User's role |
+|---------|----------------------|-------------|
+| Vocab meanings / readings | JMdict | — |
+| Kanji metadata | KANJIDIC2 | — |
+| Kana | Public reference | — |
+| Grammar explanations | Tanos + AI draft → contractor v2 | None at v1; flag risk |
+| Tone, flow, length | AI critic + user review | Yes |
+| Example feel, learner-confusion | User review (learner-stand-in) | Yes (uniquely valuable here) |
+
+---
+
+# 7. Mastery + Spaced Repetition
+
+## 7.1 Mastery Data Model
+
+Per item per learner:
+- `mastery: float (0-1)` — primary SRS input
+- `modality_history: {recognition: [pass/fail timeline], recall: [...], production: [...]}` — per-modality breadcrumbs
+
+"Fully mastered" = mastery > threshold AND tested in all modalities with success. Partial = mastered in score but only in some modalities.
+
+**Display layer:** UI stage labels (Apprentice / Guru / Master / Enlightened / Burned) are derived from score ranges. Same data, learner-friendly labels.
+
+## 7.2 SRS Algorithm
+
+**FSRS** (Free Spaced Repetition Scheduler). Modern ML-trained algorithm operating on continuous retention probability. Default parameters at MVP; per-learner calibration happens automatically with use.
+
+## 7.3 Check-Answer → Mastery Rating
+
+Every Check answer is graded by the AI (already in the loop) on a 4-level rating:
+- **Easy** — correct, fast, no hesitation
+- **Good** — correct, normal effort
+- **Hard** — correct but slowly, partial, or required a hint
+- **Again** — wrong or skipped
+
+FSRS uses rating + item history + time since last review to update the mastery score.
+
+## 7.4 Review Session Selection
+
+Review meta-lessons select items where FSRS predicts retention < 90% (configurable threshold). Items sorted by lowest predicted retention first (most-at-risk). Session capped at 10–15 items (~5–10 min session). For each item, AI picks the modality to test, favoring the learner's weakest modality from the breadcrumbs.
+
+---
+
+# 8. Evaluation Surfaces
 
 Multiple evaluation contexts; same scoring infrastructure underneath.
 
 **In-curriculum (handled by lesson types):**
-- **Check** — every lesson's beat 3. Single-concept micro-assessment.
-- **Review** (meta-type lesson) — scheduled spaced-repetition session.
+- **Check** — every lesson's beat 3. Single-concept micro-assessment. Per §7.3.
+- **Review** (meta-type lesson) — scheduled spaced-repetition session. Per §7.4.
 - **Assessment** (meta-type lesson) — end-of-chapter gating quiz.
 
 **Out-of-curriculum (separate features, shared infrastructure):**
-- **Practice / Quiz Mode** — learner-initiated, on-demand. Doesn't advance the curriculum.
-- **Placement Quiz** — at intake. Sets curriculum starting position.
-- **Confidence Self-Rating** (PRD v1 §9) — qualitative.
+- **Practice / Quiz Mode** — learner-initiated, on-demand. Doesn't advance the curriculum. **TBD Phase J.**
+- **Placement Quiz** — at intake. Sets curriculum starting position. **TBD Phase I.**
+- **Confidence Self-Rating** (PRD v1 §9) — qualitative. **TBD Phase K.**
 
-Per-modality scoring mechanics (speaking, writing, listening, reading): **TBD Phase H**.
+## 8.1 Speaking Evaluation (Locked)
+
+Pipeline: audio in-browser → **Azure Speech (STT + Pronunciation Assessment)** → transcription + per-word confidence + per-phoneme accuracy + overall pronunciation score → bundle + lesson context → AI semantic evaluation → 4-level FSRS rating.
+
+- **Cost:** ~$0.023/min Azure Speech, ~$0.70/year per active learner at 5 min daily.
+- **Known gap:** Azure doesn't evaluate Japanese pitch accent. Acceptable at N5; flag for v2+ intermediate.
+
+## 8.2 Writing / Listening / Reading Evaluation
+
+**TBD Phase H.2 / H.3 / H.4** — Direction (subject to confirmation):
+- **Writing:** hybrid pipeline — wanakana romaji↔kana normalization + kuromoji tokenization + rule-based exact-match for deterministic exercises + AI semantic judgment for open responses.
+- **Listening / Reading:** AI-judged comprehension scoring with multi-choice + open-response variants.
 
 ---
 
-# 7. Features
+# 9. Features
 
-## 7.1 Inherited from PRD v1 (with v2 deltas)
+## 9.1 Inherited from PRD v1 (with v2 deltas)
 
 Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable.
 
 - **Feature 1 — Kana** — implemented as F-Kana lessons
 - **Feature 2 — Kanji** — F-Kanji lessons
-- **Feature 3 — Grammar** — F-Grammar lessons, with grammar gap mitigation per §5
-- **Feature 4 — Listening** — I-Listening lessons
-- **Feature 5 — Speaking** — I-Speaking lessons (STT provider TBD Phase H)
-- **Feature 6 — Reading** — I-Reading lessons
-- **Feature 7 — Writing** — I-Writing lessons
+- **Feature 3 — Grammar** — F-Grammar lessons, with grammar gap mitigation per §6
+- **Feature 4 — Listening** — I-Listening lessons (evaluation TBD H.3)
+- **Feature 5 — Speaking** — I-Speaking lessons, evaluation via Azure Speech (per §8.1)
+- **Feature 6 — Reading** — I-Reading lessons (evaluation TBD H.4)
+- **Feature 7 — Writing** — I-Writing lessons (evaluation TBD H.2)
 - **Feature 8 — Media Learning** — deferred from MVP first cut. Architecture: **TBD Phase J**.
 - **Scenario-based learning** (v1 §8) — I-Scenario lessons
 
-## 7.2 New in v2
+## 9.2 New in v2
 
 - **Intake Survey + Placement Quiz** — **TBD Phase I**. Sets initial Foundation entry point + records primary goal for eventual Track Module selection.
 - **Track Module Selection (post-Foundation)** — **TBD Phase I**.
 - **Practice / Quiz Mode** — **TBD Phase J**. Standalone evaluation surface, doesn't advance the curriculum.
 - **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
-- **Internal Authoring UI** — for the user-as-editor workflow. **TBD Phase F**.
+- **Internal Authoring UI** — per §6.3.
 
 ---
 
-# 8. Out of MVP Scope
+# 10. Out of MVP Scope
 
 (From v1 §13, with v2 additions.)
 
@@ -261,45 +372,55 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 - Multi-user / classroom features
 - Live human tutors
 - Themed Track Modules requiring licensed media (anime / song lyrics / manga) — at minimum until licensing is sorted
+- Polyglot / non-Japanese language support (architecture is forward-compatible; product is not)
 
 ---
 
-# 9. Technical Architecture
+# 11. Technical Architecture
 
-**TBD Phase L.** Open decisions:
-- Backend language + framework
-- Relational DB provider (likely Postgres)
-- Vector DB provider (Pinecone / Weaviate / pgvector / etc.)
-- AI provider(s) — Anthropic / OpenAI / multi-provider
-- Frontend — web-first vs mobile-first; React / Next / Flutter / native
-- Audio + STT provider
-- Hosting + infrastructure posture
+**Mostly TBD Phase L.** Decisions made so far that touch the stack:
+
+- **Audio + STT:** Azure Speech (STT + Pronunciation Assessment). Per §8.1.
+- **Relational DB:** assumed Postgres (definitive choice TBD L).
+- **Vector DB:** provider TBD L; candidates Pinecone / Weaviate / pgvector.
+- **AI provider:** TBD L; expect multi-provider (Anthropic Claude for drafter/critic likely, OpenAI Whisper as TTS fallback, etc.).
+- **Frontend:** TBD L; web-first vs mobile-first per CC.2.
+- **TTS:** Azure or OpenAI or Google — TBD L.
+- **Hosting + infra posture:** TBD L.
 
 ---
 
-# 10. MVP Scope Cut + Beta Launch
+# 12. MVP Scope Cut + Beta Launch
 
 **TBD Phase M.** Anticipated direction:
 - Beta ships a subset of Foundation (e.g., kana + first ~20 grammar + ~200 vocab ≈ ~100 lessons), not the full ~300–500 lesson Foundation.
 - Beta modalities likely defer Speaking-dialogue and Media Learning.
 - Beta evaluation likely defers Practice/Quiz Mode standalone surface.
 - Beta is invite-only / closed for early feedback before scaling.
+- Publish gate logic (lesson-by-lesson vs chapter-batch vs module-batch) decided here, not in Phase F.
 
 ---
 
-# 11. Success Metrics
+# 13. Success Metrics
 
-(Inherited from v1 §15. Will be augmented with item-mastery-curve metrics, modality-specific accuracy targets, and retention curves once Phases G & H land.)
+(Inherited from v1 §15. Augmented with mastery-curve and modality-specific metrics now that Phase G is locked.)
+
+- Item-mastery acquisition rate (items reaching `mastery > 0.8`)
+- Per-modality breadcrumb completeness (avoid recognition-only mastery)
+- FSRS predicted-retention curves (target 90% retention at scheduled reviews)
+- Speaking pronunciation score distribution (catch learners stalling at low Azure scores)
+- Lesson completion rate (the micro-lesson scale should make this high)
+- Beta editorial-review burden vs target (~9–14 hours total at adaptive sampling)
 
 ---
 
-# 12. Risks (v2 amendments to v1 §16)
+# 14. Risks (v2 amendments to v1 §16)
 
-**R1 — Grammar explanation accuracy (per §5).** AI-drafted grammar explanations are not expert-reviewed at v1/beta. Mitigated by Tanos-taxonomy grounding + beta user feedback + contracted teacher review at v2. **Flagged on the launch checklist.**
+**R1 — Grammar explanation accuracy (per §6).** AI-drafted grammar explanations are not expert-reviewed at v1/beta. Mitigated by Tanos-taxonomy grounding + beta user feedback + contracted teacher review at v2. **Flagged on the launch checklist.**
 
 **R2 — Foundation scale.** ~300–500 lessons is a real authoring effort even with AI drafting. Mitigated by MVP scope cut (beta ships a subset) and AI-drafted/user-edited workflow.
 
-**R3 — Speech recognition accuracy** (inherited from v1).
+**R3 — Speech recognition accuracy** (inherited from v1). Now bounded by Azure Speech behavior; revisit if accuracy issues surface in beta.
 
 **R4 — Content licensing for themed corpora** (anime, song lyrics, manga). Affects post-Foundation Track Modules. **TBD Phase J.**
 
@@ -307,10 +428,14 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 **R6 — Tae Kim NC clause.** Tae Kim's Guide is CC-BY-NC-SA. The NC (non-commercial) clause may be violated by ingesting into a commercially monetized app. Re-evaluate before commercialization; may need to use as reference rather than reproduce inline.
 
+**R7 — Japanese pitch accent not evaluated.** Azure Speech doesn't score pitch accent; learners may develop unnatural prosody. Acceptable at N5; revisit at intermediate Japanese expansion.
+
+**R8 — Adaptive sampling under-catches early issues.** If the AI critic is poorly calibrated initially, the 40%-then-20% sampling may let too many quality issues ship before correction. Mitigation: extend the 40% window if first 3-4 chapters show high disagreement between user review and critic verdicts.
+
 ---
 
-# 13. Next Steps
+# 15. Next Steps
 
-Continue the design grilling through Phases F–M. Update this PRD as decisions resolve.
+Continue the design grilling through Phases H.2–M. Update this PRD as decisions resolve.
 
-Current open phase: **F (lesson schemas + authoring workflow)**, mid-grilling. See `progress.md`.
+Current open phase: **H — Per-modality evaluation**, specifically **H.2 (Writing)** mid-grilling. See `progress.md`.

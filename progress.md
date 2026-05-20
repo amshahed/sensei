@@ -36,44 +36,40 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 - **E.3** Vector DB scope: reference corpora only (Tier 1 = Tatoeba + AI grammar reference + graded news); item data in relational DB
 - **E.4** Item schemas: sketched (common + type-specific), iterate during authoring
 
+### ✅ Phase F — Lesson schemas + authoring workflow
+- **F.0** Lesson schemas: same "sketch + iterate" approach as items
+- **F.1** Skeleton author: AI proposes from Tanos+JMdict+Genki taxonomy; user reviews pacing
+- **F.2** Lesson drafter: AI single-pass from structured input (item data + vector DB + few-shot corrections)
+- **F.3** Pre-review gate: structural validation + AI critic pass
+- **F.4** Editorial review format: 9-point checklist + free-text notes
+- **F.5** Corrections loop: few-shot prompting from recent corrections, filtered by lesson type
+- **F.6** Publish gate: DEFERRED to Phase M
+- **F.7** Review intensity: adaptive (start 40%, drop to 20% after calibration); ~9-14 hrs total user time across Foundation
+
+### ✅ Phase G — Mastery scoring + Spaced repetition
+- **G.1** Mastery model: continuous 0-1 + per-modality breadcrumbs (recognition / recall / production); UI stage labels derived
+- **G.2** SRS algorithm: FSRS
+- **G.3** Check scoring: AI judges quality → 4-level FSRS rating (Again/Hard/Good/Easy)
+- **G.4** Review selection: FSRS-due, sorted by lowest retention, capped 10-15; AI picks weakest modality per item
+
+### ✅ Cross-cutting principles
+- **CC.1** Multi-language future-proofing: language-prefixed item IDs, per-Module Foundation scope, per-language taxonomy refs. No speculative multi-language engineering.
+- **CC.2** Multi-platform readiness: backend platform-agnostic; pick one client for MVP (Phase L decides which).
+
 ---
 
 ## In Progress
 
-### ⏳ Phase F — Lesson schemas + authoring workflow
-
-**Lesson schemas:** tentatively follow the same "sketch + iterate during authoring" approach as items. Not flagged as a separate grilling sub-decision unless the user pushes back.
-
-**Authoring workflow (active sub-decision):** last AskUserQuestion was paused for clarification. Open options under consideration:
-
-- **AI drafts → user edits → ship; grammar contractor in v2 (recommended).** AI generates Teach/Check/Practice content from item data + vector DB. User reviews for tone/flow/audio/item-ref correctness — not linguistic accuracy. Corrections log trains future drafts. Grammar lessons publish with a "draft explanation" indicator until a contracted Japanese teacher reviews them.
-- Pure AI auto-publish (rejected outright, but listed for completeness)
-- Pure human authoring (blocked by user's non-expertise)
-- AI drafts + community review only (skip user editorial review — supplement to Rec, not replacement)
-
-**User's pending angles for clarification (from the pause):**
-- The "skeleton" step is under-specified: who designs the chapter structure (which 8 lessons in what order)? AI-drafted with user reviewing structure, or human-authored?
-- Contractor scope/cost concretization
-- What "user as editorial reviewer" actually catches if user doesn't speak Japanese well — concrete review checklist
-- Corrections log + AI improvement loop mechanics (fine-tune? in-context examples? rule-based?)
-- Workflow shapes not yet considered
+### ⏳ Phase H — Per-modality evaluation
+- **H.1** Speaking evaluation: Azure Speech (STT + Pronunciation Assessment) + AI semantic ✅ LOCKED
+- **H.2** Writing evaluation: ACTIVE — last AskUserQuestion paused for clarification. Recommended: hybrid pipeline (wanakana normalization + kuromoji tokenization + rule-based for exact-match exercises + AI for open exercises). User threads open: exercise type list, what tokenization buys, romaji-input pedagogy, LLM reliability for open-response grading, feedback granularity, cost at scale.
+- **H.3** Listening evaluation: pending
+- **H.4** Reading evaluation: pending
+- **H.5** Modality eval → Check rating integration: pending
 
 ---
 
 ## Pending Phases
-
-### Phase G — Mastery scoring + Spaced repetition
-- Per-item mastery score model (continuous 0-1 vs discrete SRS stages vs per-modality sub-scores)
-- Spaced repetition algorithm (SM-2 / FSRS / custom)
-- How Check beat updates mastery scores
-- How Review meta-lessons select items
-
-### Phase H — Per-modality evaluation
-- Speaking: STT provider, pronunciation scoring approach, dialogue evaluation
-- Writing: correctness checking (Japanese morphology, romaji-to-kana, grammar), feedback granularity
-- Listening: comprehension scoring
-- Reading: comprehension scoring
-- How each modality feeds Check beat → mastery update
 
 ### Phase I — Branching: Track Modules, intake, placement
 - Canonical post-Foundation Track Modules (Travel, Anime, JLPT-N4, Business, etc.)
