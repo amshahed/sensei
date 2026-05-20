@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phase G plus H.1 (Speaking evaluation) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (H.2-H.5, I-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1 (track selection rule) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.2-I.4, J-M) are flagged **TBD** with the responsible phase. I.2 Track Module catalog is provisional pending JLPT-N4 framing resolution.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phase G of the structured design grilling, plus H.1 (Speaking) and the cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases H.2–H.5 (writing, listening, reading evaluation) and I–M are still in design; sections that depend on them are marked TBD.
+This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase I.2 (Track Module catalog) is provisional with JLPT-N4 framing unresolved. Phases I.3-I.4 and J-M are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -66,9 +66,17 @@ After Foundation, real branching by goal kicks in via Track Modules.
 ## 3.2 Two-Phase Learning Journey
 
 - **Foundation Module** (≈ JLPT N5): every learner completes this. ~300–500 micro-lessons covering hiragana, katakana, ~800 vocab, ~100 kanji, ~50 grammar points + Integration lessons across modalities.
-- **Track Modules** (post-Foundation): goal-based branching. Examples: Travel, Anime, Exam-N4, Business. Specific Track Module catalog: **TBD Phase I**.
+- **Track Modules** (post-Foundation): goal-based branching. Selection rule (I.1): single primary track + multi-select secondary interests for example theming. Switching primary or adding parallel tracks is settings-level.
 
 "Foundation Complete" = pass all chapter Assessments in the Foundation Module. That gates Track Module selection.
+
+**Provisional Track Module catalog at MVP (I.2 — JLPT-N4 framing unresolved):**
+- **Travel** — visitor Japanese (tourist functions)
+- **Anime/Manga** — casual Japanese, pop culture, sentence-final particles
+- **Living/Working in Japan** — combined Business + Daily Life (keigo + civic + workplace)
+- **Conversational Japanese** — default; balanced register, everyday topics
+
+JLPT-N4 status: open. Candidate paths under grilling include hybrid (UX-track + architecture-overlay on Conversational), full dedicated track, overlay-only, or post-MVP deferral. See `decisions.md` §I.2 for full open threads.
 
 ## 3.3 Lesson Anatomy
 
@@ -328,11 +336,31 @@ Pipeline: audio in-browser → **Azure Speech (STT + Pronunciation Assessment)**
 - **Cost:** ~$0.023/min Azure Speech, ~$0.70/year per active learner at 5 min daily.
 - **Known gap:** Azure doesn't evaluate Japanese pitch accent. Acceptable at N5; flag for v2+ intermediate.
 
-## 8.2 Writing / Listening / Reading Evaluation
+## 8.2 Writing Evaluation (Locked)
 
-**TBD Phase H.2 / H.3 / H.4** — Direction (subject to confirmation):
-- **Writing:** hybrid pipeline — wanakana romaji↔kana normalization + kuromoji tokenization + rule-based exact-match for deterministic exercises + AI semantic judgment for open responses.
-- **Listening / Reading:** AI-judged comprehension scoring with multi-choice + open-response variants.
+Hybrid pipeline:
+1. **Input normalization** (client-side, wanakana): romaji ↔ kana, full-width/half-width.
+2. **Tokenization** (server-side, kuromoji — Japanese morphological analyzer that splits sentences into words).
+3. **Route by exercise type:**
+   - Exact-match (fill-in-blank, reading typing) → deterministic token comparison
+   - Open response (translation, free writing) → AI semantic judgment + granular feedback
+4. Combined → 4-level FSRS rating per §7.3.
+
+## 8.3 Listening / Reading Evaluation (Locked)
+
+Both reuse existing pipelines based on *answer modality*, not input modality:
+- Multi-choice → deterministic match
+- Typed response → §8.2 writing pipeline
+- Spoken response → §8.1 speaking pipeline
+
+Comprehension questions are authored frozen at draft time (not runtime-generated).
+
+## 8.4 Multi-Item Check Rating (Locked)
+
+When a Check question exercises multiple items:
+- **Target item** (the lesson's teaching focus) always gets the full FSRS rating from the answer.
+- **Supporting items** get "exposure" credit (non-rating signal, no mastery change) on success.
+- **On failure**, AI attempts error attribution. Clearly attributable → that item gets `Hard`/`Again`. Not attributable → target item takes default failure rating; supporting items still get exposure.
 
 ---
 
@@ -436,6 +464,6 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases H.2–M. Update this PRD as decisions resolve.
+Continue the design grilling through Phases I.2 (resolve JLPT-N4 framing), I.3 (intake), I.4 (placement), then J–M.
 
-Current open phase: **H — Per-modality evaluation**, specifically **H.2 (Writing)** mid-grilling. See `progress.md`.
+Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.2 (Track Module catalog)** with JLPT-N4 framing unresolved. The provisional 4-track catalog (Travel, Anime/Manga, Living/Working, Conversational) is agreed in principle; how to handle JLPT-N4 (overlay vs first-class track) is the open question. See `decisions.md` §I.2 and `progress.md` for the full list of threads to grill at resumption.

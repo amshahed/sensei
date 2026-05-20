@@ -390,7 +390,7 @@ If <10 items are due, session is short — signal the learner is on track, not a
 
 ---
 
-## Phase H — Per-modality evaluation (partial — H.2-H.5 pending)
+## Phase H — Per-modality evaluation (complete)
 
 ### H.1 Speaking evaluation
 
@@ -407,6 +407,112 @@ Pipeline: audio captured in-browser → Azure Speech endpoint → returns transc
 **Known gap:** Azure doesn't evaluate Japanese **pitch accent** (the high/low tonal pattern that distinguishes some words like 橋 hashi-low-high "bridge" vs 箸 hashi-high-low "chopsticks"). Acceptable at N5 where pitch accent isn't a critical beat; flag for v2+ if expanding into intermediate Japanese.
 
 **Rejected:** Whisper + AI heuristic pronunciation (no phoneme data, fuzzy quality signal); specialized pronunciation APIs like SpeechAce (Japanese support less mature than Azure's); STT-only with no pronunciation scoring (misses the entire point of speaking practice).
+
+### H.2 Writing evaluation
+
+**Decision:** Hybrid pipeline — input normalization + rule-based exact-match for deterministic exercises + AI semantic judgment for open exercises.
+
+Pipeline per writing answer:
+1. **Input normalization** (client-side, **wanakana**): romaji → kana; full-width/half-width unified.
+2. **Tokenization** (server-side, **kuromoji** — Japanese morphological analyzer that splits sentences into morphemes/words since Japanese doesn't use spaces).
+3. **Route by exercise type:**
+   - **Exact-match** (fill-in-blank, reading typing): deterministic token comparison.
+   - **Open response** (translation, free writing): AI judges semantic correctness + form + generates granular feedback.
+4. Combined result → 4-level FSRS rating per G.3.
+
+**Terms:**
+- **wanakana**: JavaScript library for client-side romaji ↔ kana conversion.
+- **kuromoji**: server-side Japanese morphological analyzer.
+- **IME** (Input Method Editor): OS-level software for typing non-Latin scripts. App doesn't depend on it since wanakana handles browser-based romaji input.
+
+**Why:** Deterministic exercises don't need an LLM — exact-match is faster, cheaper, more reliable. Open exercises need AI — multiple valid phrasings exist. Routing happens at exercise type, not inside the LLM.
+
+**Rejected:** Pure AI for everything (expensive, risk of rubber-stamping wrong simple answers); rule-based only (can't grade open responses); AI routes internally (wasted abstraction — exercise type is known at routing time).
+
+### H.3 + H.4 Listening and Reading evaluation
+
+**Decision:** Reuse existing pipelines based on answer modality, not by input modality.
+
+Both Listening and Reading comprehension exercises share architecture; only the *stimulus* differs (audio for Listening, text for Reading). Evaluation depends on the *answer modality*:
+
+- **Multiple choice** → deterministic match (correct option ID matched). No AI needed.
+- **Typed response** → routes into H.2 writing evaluation pipeline.
+- **Spoken response** → routes into H.1 speaking evaluation pipeline.
+
+The comprehension *question* itself is authored as part of the lesson at draft time, frozen. Not runtime-generated.
+
+**Why:** Answer-grading isn't unique to comprehension. Building separate Listening/Reading evaluators duplicates code already in H.1/H.2. Multi-choice handling is trivial.
+
+**Rejected:** Per-modality bespoke evaluators (duplication for no gain); AI-only end-to-end (couples comprehension to grading, hard to debug, runtime-generated questions unstable); comprehension scored separately from answer correctness (distinction without measurement).
+
+### H.5 Multi-item Check rating
+
+**Decision:** Target item gets full FSRS rating; supporting items get "exposure" credit. AI attempts error attribution on failure; if clear, attributable item gets Hard/Again, otherwise target item takes the default failure rating.
+
+Mechanism:
+- Every lesson has a designated **target item** (the item being taught).
+- Check answer correct → target item gets `Good`/`Easy` (based on quality signals); supporting items get **exposure** (non-rating signal incrementing exposure counter, no mastery change).
+- Check answer incorrect → AI tries to attribute the error. Clearly attributable ("wrong conjugation") → that item gets `Hard`/`Again`. Not attributable → target item takes default failure rating; supporting items still get exposure.
+
+**Why:** Target item should always get full signal — it's what the lesson teaches. Supporting items are already (mostly) mastered; reuse provides exposure without risking mastery drops from mixed failures. AI attribution is a stretch goal — default to target-item-takes-the-fall when ambiguous.
+
+**Rejected:** Uniform rating across all items (one failure tanks unrelated mastery); full AI attribution every time (unreliable for ambiguous failures, premature); target-only with no supporting tracking (wastes exposure signal).
+
+---
+
+## Phase I — Branching: Track Modules + intake + placement (partial — I.2 mid-grilling, I.3 + I.4 pending)
+
+### I.1 Track Module selection rule
+
+**Decision:** Single primary track + secondary interests as "flavor."
+
+- Learner picks ONE primary Track Module post-Foundation. That track defines the lesson path.
+- Learner can also tag secondary interests (multi-select). Secondary interests influence example themes and occasional spotlight lessons within the primary path; they don't change the curriculum structure.
+- "Switch primary" is a settings change, available anytime.
+- "Add a new parallel track" is supported once Track A is reasonably progressed.
+
+**Why:** Multi-track combinations explode combinatorically (5 tracks × any-subset = 32 paths). Optimizing one path is hard, parallel is worse. Learners who say "I want everything" usually mean "I haven't decided." Secondary-flavor delivers most personalization value without path complexity.
+
+**Rejected:** Multi-select parallel (combinatorial; dilutes focus); strict sequential (too rigid for adult learners); branched primary with explicit branch points (UX complexity for marginal benefit).
+
+### I.2 Track Module catalog (PARTIAL — JLPT-N4 framing UNRESOLVED)
+
+**Provisional decision (subject to JLPT framing resolution):** 4 primary Track Modules at MVP.
+
+- **Travel** — visitor Japanese (tourist functions: tickets, hotels, restaurants, directions, emergencies). Vocab tourist-functional; grammar emphasizes polite-form requests + basic past/future.
+- **Anime/Manga** — casual Japanese as found in anime/manga. Sentence-final particles (よ/ね/ぞ/ぜ), casual contractions, character speech patterns. Light on keigo.
+- **Living/Working in Japan** — combined Business + Daily Life. Keigo + civic vocab + workplace + everyday-resident contexts (rentals, healthcare, banking, workplace email, customer service). Some register dilution accepted; split into separate Business + Daily Life tracks if post-MVP learner data justifies.
+- **Conversational Japanese** — default recommendation. Natural everyday conversation (family, work, hobbies, food, weather), balanced register, continues into N4 territory without exam-format drilling. Genki II-level pedagogy.
+
+**JLPT-N4 framing — UNRESOLVED, open clarification:**
+
+User expressed second thoughts about JLPT-N4 as overlay vs first-class track from a customer-marketing perspective ("students would feel more comfortable using the app if there is a definitive exam track"). Four candidate paths:
+
+a. **Hybrid (Rec by assistant):** UX presents JLPT-N4 as a first-class track at intake; architecture is Conversational track + JLPT-N4 overlay. Reuses content; customer sees a clear JLPT track; settings-level switching between underlying tracks.
+
+b. **Full first-class track:** JLPT-N4 is its own track with ~100-150 dedicated lessons (some overlap with Conversational but distinct authoring). Cleanest customer story; ~50% more authoring than hybrid.
+
+c. **Just an overlay (no UX track presence):** clean architecture; weak customer story; risks looking like JLPT isn't supported.
+
+d. **Defer JLPT-N4 to post-MVP:** ship without JLPT focus; revisit after launch.
+
+**User-raised threads to resolve at resumption:**
+- Concrete UX walkthrough of how the hybrid feels to a JLPT learner end-to-end
+- "Virtual track" implementation effort detailed concretely
+- Possibility of splitting "Content Track" (Travel/Anime/Conversational/Living-Working) from "Goal/Exam" (JLPT-N5/N4/N3/None) as two independent intake choices
+- Whether JLPT should be cross-cuttable across ALL tracks (not just Conversational)
+- Exact authoring numbers (Foundation ≈ 375 lessons; 4 tracks ≈ 600 lessons; dedicated JLPT adds ~150 → ~1100 total post-MVP)
+- Marketing weight (does JLPT-N4 deserve same visibility as Travel/Anime/Conversational, or is it niche?)
+
+### I.3 Intake survey design (pending)
+
+Direction (subject to grilling): 3-5 guided questions at signup mapping learner answers to a recommended track + secondary interests + overlays. Track preview cards with 2-3 sample lesson titles per track help learners recognize themselves before committing.
+
+Driven by the I.2 customer-facing concern that learners can't reliably pick the right track from labels alone.
+
+### I.4 Placement quiz design (pending)
+
+Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.
 
 ---
 
@@ -443,4 +549,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase H.2 — Writing evaluation**, last AskUserQuestion paused for clarification.
+See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.2 — JLPT-N4 framing within Track Module catalog**. User paused after expressing second thoughts about JLPT-N4 as overlay vs first-class track; assistant offered four candidate paths (hybrid UX-track + architecture-overlay, full first-class track, overlay-only, deferred to post-MVP) with hybrid recommended. User flagged multiple threads to grill at resumption (see I.2 entry).

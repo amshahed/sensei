@@ -56,16 +56,27 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 - **CC.1** Multi-language future-proofing: language-prefixed item IDs, per-Module Foundation scope, per-language taxonomy refs. No speculative multi-language engineering.
 - **CC.2** Multi-platform readiness: backend platform-agnostic; pick one client for MVP (Phase L decides which).
 
+### ✅ Phase H — Per-modality evaluation
+- **H.1** Speaking eval: Azure Speech (STT + Pronunciation Assessment) + AI semantic
+- **H.2** Writing eval: hybrid pipeline (wanakana normalization + kuromoji tokenization + rule-based for exact-match + AI for open response)
+- **H.3 + H.4** Listening/Reading eval: reuse existing pipelines by answer modality (multi-choice = deterministic; typed = H.2 pipeline; spoken = H.1 pipeline)
+- **H.5** Multi-item Check rating: target item gets full rating; supporting items get exposure credit; AI attempts error attribution on failure
+
 ---
 
 ## In Progress
 
-### ⏳ Phase H — Per-modality evaluation
-- **H.1** Speaking evaluation: Azure Speech (STT + Pronunciation Assessment) + AI semantic ✅ LOCKED
-- **H.2** Writing evaluation: ACTIVE — last AskUserQuestion paused for clarification. Recommended: hybrid pipeline (wanakana normalization + kuromoji tokenization + rule-based for exact-match exercises + AI for open exercises). User threads open: exercise type list, what tokenization buys, romaji-input pedagogy, LLM reliability for open-response grading, feedback granularity, cost at scale.
-- **H.3** Listening evaluation: pending
-- **H.4** Reading evaluation: pending
-- **H.5** Modality eval → Check rating integration: pending
+### ⏳ Phase I — Branching: Track Modules + intake + placement
+- **I.1** Track selection rule: single primary + secondary flavor ✅ LOCKED
+- **I.2** Track Module catalog: PARTIAL — 4 primary tracks provisionally agreed (Travel, Anime/Manga, Living/Working in Japan, Conversational Japanese as default). **JLPT-N4 framing UNRESOLVED** — user expressed second thoughts about overlay vs first-class track for customer-marketing reasons. Four candidate paths under consideration (hybrid UX+overlay [recommended], full dedicated track, overlay-only, deferred to post-MVP). User-flagged threads to grill at resumption:
+  - Concrete UX walkthrough of how hybrid feels to a JLPT learner
+  - "Virtual track" implementation effort detailed
+  - Splitting "Content Track" from "Goal/Exam" as two independent intake choices
+  - Whether JLPT should be cross-cuttable across ALL tracks
+  - Exact authoring numbers (Foundation ≈ 375; 4 tracks ≈ 600; dedicated JLPT adds ~150)
+  - Marketing weight: does JLPT-N4 deserve equal visibility as Travel/Anime/Conversational?
+- **I.3** Intake survey: pending. Direction — guided 3-5 questions + track preview cards to solve "learners can't pick from labels alone" UX problem.
+- **I.4** Placement quiz: pending.
 
 ---
 
