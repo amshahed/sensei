@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1 (track selection rule) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.2-I.4, J-M) are flagged **TBD** with the responsible phase. I.2 Track Module catalog is provisional pending JLPT-N4 framing resolution.
+**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1 (track selection rule) plus I.2 (Track Module catalog — Content Track × Goal Overlay framing) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.3-I.4, J-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase I.2 (Track Module catalog) is provisional with JLPT-N4 framing unresolved. Phases I.3-I.4 and J-M are still in design.
+This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus I.2 (Track Module catalog — Content Track × Goal Overlay framing), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases I.3-I.4 and J-M are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -70,13 +70,24 @@ After Foundation, real branching by goal kicks in via Track Modules.
 
 "Foundation Complete" = pass all chapter Assessments in the Foundation Module. That gates Track Module selection.
 
-**Provisional Track Module catalog at MVP (I.2 — JLPT-N4 framing unresolved):**
-- **Travel** — visitor Japanese (tourist functions)
-- **Anime/Manga** — casual Japanese, pop culture, sentence-final particles
-- **Living/Working in Japan** — combined Business + Daily Life (keigo + civic + workplace)
-- **Conversational Japanese** — default; balanced register, everyday topics
+**Track selection is two-dimensional at intake (I.2):**
 
-JLPT-N4 status: open. Candidate paths under grilling include hybrid (UX-track + architecture-overlay on Conversational), full dedicated track, overlay-only, or post-MVP deferral. See `decisions.md` §I.2 for full open threads.
+1. **Content Track** (mandatory single-select) — drives the curriculum spine. Catalog at MVP:
+   - **Travel** — visitor Japanese (tourist functions)
+   - **Anime/Manga** — casual Japanese, pop culture, sentence-final particles
+   - **Living/Working in Japan** — combined Business + Daily Life (keigo + civic + workplace)
+   - **Conversational Japanese** (default) — balanced register, everyday topics
+
+2. **Goal Overlay** (optional single-select) — credential/exam goal that applies orthogonally on top of any Content Track. Catalog at MVP: {None (default), JLPT-N4}. N5 is redundant with Foundation; N3+ deferred pending content depth.
+
+**Goal Overlay mechanic (I.2.b):** Overlay computes the gap between the chosen Content Track's item set and the exam's required item set, injects supplementary lessons to fill the gap (woven into the spine), adds mock-exam Assessments at checkpoints, and exposes an exam-readiness progress meter. **Overlay adds; never subtracts** — Content Track integrity is preserved.
+
+**Compatibility is surfaced transparently at intake.** Combinations have widely different overlap:
+- Conversational + N4 ≈ 90% overlap (overlay barely adds content)
+- Anime + N4 ≈ 60-70% overlap (~30-40 supplementary lessons; ~4 spine : 1 supplementary)
+- Travel + N4 ≈ 30-40% overlap (~70-90 supplementary lessons; experience tilts toward N4 prep)
+
+The system shows the learner the trade-off before commit and offers to adjust. Honest framing > silent bait-and-switch.
 
 ## 3.3 Lesson Anatomy
 
@@ -464,6 +475,6 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases I.2 (resolve JLPT-N4 framing), I.3 (intake), I.4 (placement), then J–M.
+Continue the design grilling through Phases I.3 (intake), I.4 (placement), then J–M.
 
-Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.2 (Track Module catalog)** with JLPT-N4 framing unresolved. The provisional 4-track catalog (Travel, Anime/Manga, Living/Working, Conversational) is agreed in principle; how to handle JLPT-N4 (overlay vs first-class track) is the open question. See `decisions.md` §I.2 and `progress.md` for the full list of threads to grill at resumption.
+Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.3 (Intake survey design)**. With I.2 locked via the two-dimensional Content Track × Goal Overlay framing, the intake survey must (a) elicit Content Track and Goal Overlay selections, (b) surface compatibility for awkward combinations, and (c) feed into the placement quiz (I.4). See `decisions.md` §I.2 for the framing and `progress.md` for live status.

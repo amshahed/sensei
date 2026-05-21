@@ -68,14 +68,12 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 ### ⏳ Phase I — Branching: Track Modules + intake + placement
 - **I.1** Track selection rule: single primary + secondary flavor ✅ LOCKED
-- **I.2** Track Module catalog: PARTIAL — 4 primary tracks provisionally agreed (Travel, Anime/Manga, Living/Working in Japan, Conversational Japanese as default). **JLPT-N4 framing UNRESOLVED** — user expressed second thoughts about overlay vs first-class track for customer-marketing reasons. Four candidate paths under consideration (hybrid UX+overlay [recommended], full dedicated track, overlay-only, deferred to post-MVP). User-flagged threads to grill at resumption:
-  - Concrete UX walkthrough of how hybrid feels to a JLPT learner
-  - "Virtual track" implementation effort detailed
-  - Splitting "Content Track" from "Goal/Exam" as two independent intake choices
-  - Whether JLPT should be cross-cuttable across ALL tracks
-  - Exact authoring numbers (Foundation ≈ 375; 4 tracks ≈ 600; dedicated JLPT adds ~150)
-  - Marketing weight: does JLPT-N4 deserve equal visibility as Travel/Anime/Conversational?
-- **I.3** Intake survey: pending. Direction — guided 3-5 questions + track preview cards to solve "learners can't pick from labels alone" UX problem.
+- **I.2** Track Module catalog ✅ LOCKED via two-dimensional framing:
+  - **I.2.a** Content Track (mandatory) × Goal Overlay (optional) as orthogonal intake dimensions
+  - **I.2.b** Goal Overlay mechanic: gap-fill + mock-exam Assessments + readiness tracker; overlay adds, never subtracts; compatibility surfaced transparently at intake
+  - **I.2.c** Goal Overlay catalog at MVP = {None, JLPT-N4}; N5 redundant with Foundation, N3+ deferred for content depth
+  - Content Tracks at MVP: Travel · Anime/Manga · Living/Working · Conversational (default)
+- **I.3** Intake survey: pending (active grilling target). Direction — two-question core (Content Track + Goal Overlay) with track preview cards + transparent compatibility warning for awkward combinations.
 - **I.4** Placement quiz: pending.
 
 ---

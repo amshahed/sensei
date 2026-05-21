@@ -475,34 +475,84 @@ Mechanism:
 
 **Rejected:** Multi-select parallel (combinatorial; dilutes focus); strict sequential (too rigid for adult learners); branched primary with explicit branch points (UX complexity for marginal benefit).
 
-### I.2 Track Module catalog (PARTIAL — JLPT-N4 framing UNRESOLVED)
+### I.2 Track Module catalog (LOCKED via I.2.a + I.2.b + I.2.c)
 
-**Provisional decision (subject to JLPT framing resolution):** 4 primary Track Modules at MVP.
+**Decision (final):** Track selection splits into **two independent dimensions** — a Content Track (mandatory single-select) and a Goal Overlay (optional single-select). See I.2.a for the structural framing, I.2.b for the gap-filling mechanic, I.2.c for the Goal catalog scope at MVP.
+
+**Content Tracks at MVP (4):**
 
 - **Travel** — visitor Japanese (tourist functions: tickets, hotels, restaurants, directions, emergencies). Vocab tourist-functional; grammar emphasizes polite-form requests + basic past/future.
 - **Anime/Manga** — casual Japanese as found in anime/manga. Sentence-final particles (よ/ね/ぞ/ぜ), casual contractions, character speech patterns. Light on keigo.
 - **Living/Working in Japan** — combined Business + Daily Life. Keigo + civic vocab + workplace + everyday-resident contexts (rentals, healthcare, banking, workplace email, customer service). Some register dilution accepted; split into separate Business + Daily Life tracks if post-MVP learner data justifies.
-- **Conversational Japanese** — default recommendation. Natural everyday conversation (family, work, hobbies, food, weather), balanced register, continues into N4 territory without exam-format drilling. Genki II-level pedagogy.
+- **Conversational Japanese** (default recommendation) — natural everyday conversation (family, work, hobbies, food, weather), balanced register, continues into N4 territory without exam-format drilling. Genki II-level pedagogy.
 
-**JLPT-N4 framing — UNRESOLVED, open clarification:**
+**Goal Overlays at MVP:** {None (default), JLPT-N4}.
 
-User expressed second thoughts about JLPT-N4 as overlay vs first-class track from a customer-marketing perspective ("students would feel more comfortable using the app if there is a definitive exam track"). Four candidate paths:
+### I.2.a Track selection framing — Content Track vs Goal Overlay (two dimensions)
 
-a. **Hybrid (Rec by assistant):** UX presents JLPT-N4 as a first-class track at intake; architecture is Conversational track + JLPT-N4 overlay. Reuses content; customer sees a clear JLPT track; settings-level switching between underlying tracks.
+**Decision:** Track selection at intake is two independent choices: **Content Track** (theme of the curriculum spine, mandatory) + **Goal Overlay** (credential/exam goal, optional).
 
-b. **Full first-class track:** JLPT-N4 is its own track with ~100-150 dedicated lessons (some overlap with Conversational but distinct authoring). Cleanest customer story; ~50% more authoring than hybrid.
+- **Content Track** drives the lesson spine — sequence, themes, item selection.
+- **Goal Overlay** sits orthogonally on top — applies to ANY content track, adds gap-filling supplementary lessons + mock-exam Assessments + progress tracking toward the exam.
+- A learner picks one of each at intake. Goal defaults to "None" so it's truly optional.
 
-c. **Just an overlay (no UX track presence):** clean architecture; weak customer story; risks looking like JLPT isn't supported.
+**Why:** The flat-list framing forced JLPT-N4 to compete in the same slot as Travel/Anime/Conversational — but those are *content/theme* preferences while JLPT is a *credential goal*. They're orthogonal in real learner intent ("I want to watch anime AND pass N4" is a coherent combination). Splitting them:
+- Solves the marketing concern (JLPT gets its own equal-billing intake question, not subordinated to a content track).
+- Matches how learners actually think.
+- Cross-cuttable for free — resolves the "should JLPT apply to all tracks?" thread (yes, by construction).
+- Future-proofs the catalog (adding N3 later = one more option in Goal dimension, not another flat-list entry).
+- Resolves the hybrid-vs-first-class-vs-overlay deadlock by reframing the question: JLPT is *both* first-class (its own intake dimension) *and* an overlay (architecturally), with no contradiction.
 
-d. **Defer JLPT-N4 to post-MVP:** ship without JLPT focus; revisit after launch.
+**Rejected:**
+- Flat single-dimension list with JLPT-N4 as one option among Travel/Anime/etc. — the original framing that produced the deadlock. Treats orthogonal concerns as competing.
+- Hybrid UX-track + architecture-overlay on Conversational only (the earlier assistant-recommended path). Strictly worse than splitting dimensions: tied JLPT to one content track, lost cross-cuttability.
+- Full first-class JLPT-N4 track with ~150 dedicated lessons. ~50% more authoring than overlay-based for no learner benefit when Goal Overlay can target any content track.
+- Defer JLPT-N4 to post-MVP. Marketing-relevant; learners actively search for "JLPT app."
 
-**User-raised threads to resolve at resumption:**
-- Concrete UX walkthrough of how the hybrid feels to a JLPT learner end-to-end
-- "Virtual track" implementation effort detailed concretely
-- Possibility of splitting "Content Track" (Travel/Anime/Conversational/Living-Working) from "Goal/Exam" (JLPT-N5/N4/N3/None) as two independent intake choices
-- Whether JLPT should be cross-cuttable across ALL tracks (not just Conversational)
-- Exact authoring numbers (Foundation ≈ 375 lessons; 4 tracks ≈ 600 lessons; dedicated JLPT adds ~150 → ~1100 total post-MVP)
-- Marketing weight (does JLPT-N4 deserve same visibility as Travel/Anime/Conversational, or is it niche?)
+### I.2.b Goal Overlay mechanic — gap-fill + assessments + tracker
+
+**Decision:** Goal Overlay does three things on top of the chosen Content Track:
+
+1. **Gap computation.** Compares N4-required item set against the items the Content Track will teach → produces a delta.
+2. **Supplementary lesson injection.** Adds lessons covering the delta, woven into natural slots in the spine. Spine items are never *removed* — overlay only adds.
+3. **Mock-exam Assessment lessons + progress meter.** Periodic N4-format Assessments at checkpoints; dashboard shows N4 readiness ("18 of 167 N4 grammar covered").
+
+**The boundary rule:** Overlay adds; never subtracts. Content track integrity is preserved.
+
+**Compatibility is surfaced transparently at intake.** Not all (Content × Goal) combinations have equal overlap:
+- **Conversational + N4:** ~90% overlap. Overlay barely lifts a finger; experience is essentially Conversational with N4 mock exams.
+- **Anime + N4:** ~60-70% overlap. ~30-40 supplementary lessons. Roughly 4 spine lessons : 1 supplementary. Supplementaries are framed honestly when grammar doesn't fit the theme ("this grammar is part of your N4 goal but doesn't come up much in anime").
+- **Travel + N4:** ~30-40% overlap. ~70-90 supplementary lessons. Roughly 1:1 — learner's actual experience tilts toward N4 prep with travel garnishes.
+
+At intake, the system surfaces this honestly: *"Travel + N4 means ~80 supplementary lessons that aren't travel-themed. Path will lean more toward N4 prep than Travel content. Still good with this, or want to adjust?"* The learner either commits or flips Content Track to Conversational.
+
+**Why transparent over silent:**
+- Silent-and-permissive UX feels like bait-and-switch when a Travel+N4 learner gets 50 hours of supplementary keigo drills.
+- Transparent surfaces the trade-off, respects the learner, and naturally nudges incoherent combinations toward Conversational+N4 (the right pairing anyway).
+- Reinforces the anti-fake-personalization brand: "we tell you what you're getting."
+
+**Rejected:**
+- Overlay subtracts (drop content-track items not in N4 syllabus) — destroys content track integrity, breaks the "ぞ/ぜ in Anime" example.
+- Force-fit supplementary lessons into the content theme (e.g., make keigo "feel like anime") — uncanny, dishonest.
+- No compatibility surfacing — bait-and-switch risk; learner surprised by curriculum mix.
+- Defer N4 supplementary lesson authoring to v2 — leaves the Goal Overlay non-functional at MVP; can't ship the dimension.
+
+### I.2.c Goal Overlay catalog scope at MVP
+
+**Decision:** Goal Overlay catalog at MVP = {None, JLPT-N4}.
+
+- **None** is the default; many learners genuinely have no exam goal (anime fans, casual learners, travelers).
+- **JLPT-N4** is the only exam overlay at MVP because:
+  - **N5** would be redundant with Foundation (Foundation ≈ N5 by construction — completing Foundation already means N5-ready). N5 mock exams can ship within Foundation's own Assessment system without needing a separate overlay.
+  - **N3 and above** would require Content Tracks to reach content depth that doesn't exist at MVP. Adding N3 later = one new overlay option, no architectural change.
+  - **JLPT-N1/N2** are far future, gated on content depth and a Japanese-teacher contractor relationship.
+
+**Why N4 specifically:** It's the natural next milestone after Foundation, marketing-relevant ("apps that prep for N4" is an active search), and has a well-defined syllabus (Tanos N4 lists). Cost to add: ~30-90 supplementary lessons authored once, reused across any Content Track.
+
+**Rejected:**
+- N5 + N4 at MVP — N5 redundant; pollutes the dimension.
+- N4 + N3 at MVP — N3 content depth not there yet.
+- No goal overlay at MVP, add post-launch — surrenders the JLPT marketing posture that motivated this whole framing question.
 
 ### I.3 Intake survey design (pending)
 
@@ -549,4 +599,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.2 — JLPT-N4 framing within Track Module catalog**. User paused after expressing second thoughts about JLPT-N4 as overlay vs first-class track; assistant offered four candidate paths (hybrid UX-track + architecture-overlay, full first-class track, overlay-only, deferred to post-MVP) with hybrid recommended. User flagged multiple threads to grill at resumption (see I.2 entry).
+See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.3 — Intake survey design**. I.2 fully locked via the two-dimensional Content Track + Goal Overlay framing.
