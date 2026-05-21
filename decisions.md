@@ -554,11 +554,69 @@ At intake, the system surfaces this honestly: *"Travel + N4 means ~80 supplement
 - N4 + N3 at MVP — N3 content depth not there yet.
 - No goal overlay at MVP, add post-launch — surrenders the JLPT marketing posture that motivated this whole framing question.
 
-### I.3 Intake survey design (pending)
+### I.3 Intake survey design (PARTIAL — I.3.a + I.3.b locked; Foundation-Complete touchpoint design + placement-hand-off pending)
 
-Direction (subject to grilling): 3-5 guided questions at signup mapping learner answers to a recommended track + secondary interests + overlays. Track preview cards with 2-3 sample lesson titles per track help learners recognize themselves before committing.
+### I.3.a Intake timing — two touchpoints
 
-Driven by the I.2 customer-facing concern that learners can't reliably pick the right track from labels alone.
+**Decision:** Intake is split across **two touchpoints**, not collected entirely at signup.
+
+1. **Signup intake** (~25-30 seconds, 3 questions). Captures lightweight signal usable immediately. Does NOT lock Track Module — that choice is deferred until learner has context.
+2. **Foundation-Complete intake** (~2-3 questions, deeper). Real Track Module + Goal Overlay selection happens here, when learner has ~6 months of context. Compatibility warning lives here. Pre-populated from signup interests as soft defaults.
+
+**Why two touchpoints, not all-at-signup:**
+- **Anti-fake-personalization brand alignment.** Heavy Day-1 questionnaire would imply personalization starts Day 1, contradicting "Foundation is shared; real branching after." Lightweight signup is honest about when each kind of personalization kicks in.
+- **Day-1 Track choice is uninformed.** A learner picking "Anime" at signup based on a label is guessing; the same learner picking after 6 months of context is choosing. Better signal = better retention through Track Module phase.
+- **Signup friction kills conversion.** 3 questions is the sweet spot for freemium activation; 5+ measurably drops conversion. Holding deeper questions for Foundation-Complete means asking them when the learner is already invested.
+
+**Trade-off accepted:**
+- Two surfaces to design + engineer instead of one. Mitigated by their distinct natures (signup = generic; Foundation-Complete = informed). Not actually duplicative.
+- Signup-intake personalization is shallow (~20-30% themable examples + light routing). Honest framing accepts this; the brand explicitly says "real personalization is earned."
+
+**Rejected:**
+- All-at-signup with full Track Module + Goal Overlay capture — contradicts brand; high friction; choice uninformed.
+- No intake at signup, Track-only at Foundation-Complete — surrenders Foundation example theming + placement quiz routing + daily-target signal. Worse Day 1 experience.
+- All-at-signup with "you can change later" — bandages over friction but doesn't fix that Day-1 choice is uninformed.
+
+### I.3.b Signup intake — 3 questions, 25-30 seconds
+
+**Decision:** Three questions captured at signup, all light-touch.
+
+**Q1: "What pulled you to learn Japanese?"** (multi-select cards, required)
+- Options: Travel · Anime/Manga · Live/work in Japan · Talk with friends/family · Pass a JLPT exam · Just curious
+- Stored as: `interests: string[]` (+ `jlpt_intent: bool` derived from the JLPT option)
+- Used for:
+  - **Foundation example theming.** ~20-30% of example sentences in Foundation lessons are flexible enough to theme by interest tag. Vector DB queries for example retrieval prefer interest-tagged examples for that learner.
+  - **Foundation-Complete intake defaults.** When real Track Module selection happens, signup interests pre-populate as soft defaults ("you told us at signup you were interested in Anime & JLPT — still feel right?").
+  - **Marketing email tone.** Re-engagement copy leans toward learner's stated interests.
+
+**Q2: "Have you studied any Japanese before?"** (single-select, required)
+- Options: None (total beginner) · Some kana / basic phrases · Fair amount of vocab/grammar · Studied before, refreshing
+- Stored as: `prior_experience: enum`
+- Used for:
+  - **Placement quiz routing (I.4).** Total beginners skip the quiz entirely; "some kana" gets a kana-focused mini-quiz; "fair amount" gets full placement quiz across vocab/grammar/kanji.
+  - **Foundation entry point.** Placement quiz output → learner starts at lesson N rather than always at lesson 1.
+  - **Prevents early-quit moment.** Intermediate-curious learners don't get force-taught hiragana.
+
+**Q3: "How much time per day do you want to commit?"** (single-select, optional with default)
+- Options: 5 min · 10 min (default) · 20 min · 30+ min
+- Stored as: `daily_target_minutes: int`
+- Used for:
+  - **Review session cap.** 5-min cohort capped at 5-7 review items; 30+ cohort gets 15-20.
+  - **Streak goal threshold.** Streaks count against committed target.
+  - **Pacing projections.** Dashboard shows estimated time to Foundation Complete based on target.
+
+**Why these three specifically:**
+- Q1 gives the learner a *sense* of future personalization without locking them in. Honest framing on the survey screen reinforces: "we'll use this to theme some examples; real personalization starts after Foundation."
+- Q2 alone justifies the survey — without it, intermediate learners hit a wall at lesson 1 and quit. Highest-value signal in the survey.
+- Q3 is standard for habit-formation apps. Drives the streak/review/pacing surface area.
+
+**Honest limitation acknowledged:** Signup-intake personalization is *table stakes*, not transformative. ~20-30% themable examples may not feel like much. Acceptable trade — deeper personalization Day 1 requires committing to Track Module, which is precisely what we're avoiding.
+
+**Rejected:**
+- 5+ question signup survey — conversion drop; doesn't justify itself when most extra questions would be Track-Module-shaped.
+- Single-question signup (only Q2) — loses interest signal for Foundation theming + loses pacing signal.
+- Asking Track Module at signup — see I.3.a rejection.
+- Asking JLPT Goal Overlay at signup as a hard commitment — Q1's "Pass a JLPT exam" option captures the *intent* lightweight; the actual N5/N4/None choice is made at Foundation-Complete.
 
 ### I.4 Placement quiz design (pending)
 
@@ -599,4 +657,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.3 — Intake survey design**. I.2 fully locked via the two-dimensional Content Track + Goal Overlay framing.
+See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.3 — Foundation-Complete touchpoint design + placement-quiz hand-off**. I.3.a (two-touchpoint timing) and I.3.b (signup intake — 3 questions) locked.

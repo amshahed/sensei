@@ -73,8 +73,12 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **I.2.b** Goal Overlay mechanic: gap-fill + mock-exam Assessments + readiness tracker; overlay adds, never subtracts; compatibility surfaced transparently at intake
   - **I.2.c** Goal Overlay catalog at MVP = {None, JLPT-N4}; N5 redundant with Foundation, N3+ deferred for content depth
   - Content Tracks at MVP: Travel · Anime/Manga · Living/Working · Conversational (default)
-- **I.3** Intake survey: pending (active grilling target). Direction — two-question core (Content Track + Goal Overlay) with track preview cards + transparent compatibility warning for awkward combinations.
-- **I.4** Placement quiz: pending.
+- **I.3** Intake survey: PARTIAL
+  - **I.3.a** Two-touchpoint timing (signup intake + Foundation-Complete intake) ✅ LOCKED
+  - **I.3.b** Signup intake — 3 questions (interests multi-select / prior experience / daily target) ✅ LOCKED
+  - **I.3.c** Foundation-Complete touchpoint design: pending (active grilling target). Open questions — Q structure, compatibility-warning UX, track preview cards, settings-level switching surfacing.
+  - **I.3.d** Intake → placement hand-off + ordering: pending.
+- **I.4** Placement quiz: pending. Scope partially shaped by I.3.b Q2 (prior_experience routes whether quiz runs at all + which item types).
 
 ---
 

@@ -393,8 +393,11 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 ## 9.2 New in v2
 
-- **Intake Survey + Placement Quiz** — **TBD Phase I**. Sets initial Foundation entry point + records primary goal for eventual Track Module selection.
-- **Track Module Selection (post-Foundation)** — **TBD Phase I**.
+- **Intake Survey** — two-touchpoint design (I.3.a, I.3.b locked):
+  - **Signup intake** (3 questions, ~25-30 sec): interests (multi-select cards), prior experience, daily time target. Captures lightweight signal usable Day 1 — Foundation example theming, placement quiz routing, daily session pacing.
+  - **Foundation-Complete intake** (~2-3 questions): real Content Track + Goal Overlay selection, with compatibility warning for awkward combinations. Pre-populated from signup interests as soft defaults. **TBD I.3.c.**
+- **Placement Quiz** — **TBD Phase I.4**. Routed by signup Q2 (prior experience). Total beginners skip; "some kana" gets focused mini-quiz; "fair amount" gets full quiz.
+- **Track Module Selection (post-Foundation)** — driven by Foundation-Complete intake (I.3.c). Settings-level switching/adding allowed anytime after.
 - **Practice / Quiz Mode** — **TBD Phase J**. Standalone evaluation surface, doesn't advance the curriculum.
 - **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
 - **Internal Authoring UI** — per §6.3.
