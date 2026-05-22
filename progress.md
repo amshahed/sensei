@@ -78,7 +78,16 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **I.3.b** Signup intake — 3 questions (interests multi-select / prior experience / daily target) ✅
   - **I.3.c** Foundation-Complete milestone moment — celebration framing + Q1 Content Track (required, preview cards) + Q2 Goal Overlay (required, inline compatibility warning) + optional "customize more" combined screen (secondary interests + daily target, both skippable) ✅
   - **I.3.d** Intake → placement hand-off — same-session, routed by signup Q2 prior_experience ✅
-- **I.4** Placement quiz: pending (active grilling target). Open — scope (what items it tests), format (multi-choice vs typed vs spoken), length (fixed vs adaptive), what mastery signal it produces, how it interacts with Foundation lesson sequencing.
+- **I.4** Placement quiz: PARTIAL — grilling started, paused mid I.4.a
+  - **I.4.a** Scope + length: IN-FLIGHT. Assistant recommended **fixed-per-tier with early-exit shortcut + Foundation-items-only depth**. Specifics:
+    - `some_kana` tier → ~20-25 kana items, ~2-3 min
+    - `fair_amount` / `refresher` tiers → ~40 items (20 vocab / 10 grammar / 10 kanji), ~6-8 min
+    - Early-exit: if first 10 items perfect, offer "skip rest, mark mastered" button
+    - Depth: Foundation items only (no N4 probing — Track Module unlocks at Foundation Complete regardless)
+    - Open alternative: adaptive within tier (rejected as overkill for MVP; FSRS calibrates over time anyway)
+    - **User paused here — "I'll come back to this later"**
+  - **I.4.b** Format (multi-choice vs typed vs spoken): pending. Likely deferred — recommendation will be multi-choice + short typed for speed; spoken excluded as too high-friction at signup.
+  - **I.4.c** Mastery integration (what does passing items DO to Foundation sequence?): pending. Open — mark items "already mastered" (FSRS state with high retention) vs skip entire lessons vs skip entire chapters when all items mastered.
 
 ---
 

@@ -724,4 +724,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active phase when this log was last updated: **Phase I.4 — Placement quiz design**. I.3 fully locked (I.3.a two-touchpoint timing / I.3.b signup 3 questions / I.3.c Foundation-Complete milestone moment / I.3.d intake → placement hand-off).
+See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.4.a — Placement quiz scope + length**. User paused mid-grilling with assistant's recommendation on the table (fixed length per tier with early-exit shortcut; Foundation-items-only depth) — no decision logged yet. I.3 fully locked (I.3.a two-touchpoint timing / I.3.b signup 3 questions / I.3.c Foundation-Complete milestone moment / I.3.d intake → placement hand-off).
