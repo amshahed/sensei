@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1-I.3 (track selection rule / Track Module catalog with Content Track × Goal Overlay framing / two-touchpoint intake) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.4, J-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phases A–I (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (J-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus I.2 (Track Module catalog — Content Track × Goal Overlay framing), plus I.3 (two-touchpoint intake with signup 3-question survey and Foundation-Complete milestone moment), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase I.4 (placement quiz) and J-M are still in design.
+This PRD reflects design decisions resolved through Phases A–I (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase J (standalone surfaces) and J-M are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -116,7 +116,7 @@ Every micro-lesson is 3–8 minutes, single concept, and follows a **3-beat stru
 
 **Meta-types:**
 - Review — scheduled spaced-repetition session over learned items
-- Assessment — end-of-chapter / unit gating quiz
+- Assessment — chapter-scoped quiz, **used bidirectionally** (I.4.d): same items + same bar (≥80% mastery) gate either skipping a chapter on entry (pre-evaluation skip-test) or exiting it on completion (end-of-chapter gating). Partial pass allowed; tested-correct items marked mastered even on fail.
 
 **Note:** Media Learning (PRD v1 Feature 8) is a **tool**, not a lesson type. Learner-driven activity (bring-your-own YouTube clip / song). Handled separately. Details: **TBD Phase J**.
 
@@ -396,7 +396,13 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 - **Intake Survey** — two-touchpoint design (I.3 locked):
   - **Signup intake** (3 questions, ~25-30 sec): interests (multi-select cards), prior experience, daily time target. Drives Foundation example theming, placement quiz routing, and daily session pacing.
   - **Foundation-Complete milestone moment** (~60-90 sec engaged, ~30 sec speed-skippers): celebration framing → Q1 Content Track (required, with preview cards + soft default from signup interests) → Q2 Goal Overlay (required, inline compatibility warning if awkward combo) → optional combined "customize more" screen (secondary interests + daily target adjust, both skippable). Pre-populated soft defaults from signup interests; both optional extras editable in settings anytime.
-- **Placement Quiz** — same-session as signup, routed by signup Q2 prior_experience. Total beginners skip entirely; "some kana" gets focused mini-quiz; "fair amount"/"refresher" gets full quiz. **Format + length + scope TBD Phase I.4.**
+- **Placement Quiz (I.4 locked):**
+  - **Same-session at signup**, routed by signup Q2 prior_experience: `none` → skip; `some_kana` → 20-25 kana multi-choice (~2-3 min); `fair_amount`/`refresher` → 40 items (20 vocab multi-choice + 10 grammar cloze typed + 10 kanji multi-choice; frequency-stratified sampling; ~6-8 min).
+  - **Early-exit shortcut:** if first 10 items are perfect, offer "skip rest, mark mastered" — captures most of adaptive-testing's upside without IRT infrastructure.
+  - **Mastery integration:** directly-tested + correct → FSRS high retention; **prerequisite inference** (items not tested but whose prerequisites were correctly answered) → FSRS moderate retention; not-tested → unscheduled, normal lesson flow. Effective coverage ~16-20% of Foundation items get a mastery signal; FSRS calibrates the rest within ~20-30 review sessions.
+  - **Depth:** Foundation items only. No N4 probing at placement.
+- **Per-chapter pre-evaluation skip-test (I.4.d):** Each chapter offers an optional skip-test on entry, using the **same Assessment infrastructure as end-of-chapter gating** (bidirectional Assessment). Pass (≥80% items at mastery) → chapter skipped, items marked mastered. Partial pass → matching items skipped at lesson level. Fail → no penalty, chapter begins normally. Retryable.
+- **Curriculum Outline (I.4.e):** A minimal-but-complete navigation surface, always-accessible via a "Curriculum" tab. Nested list for Foundation (Module → Chapter → Lesson); graph-shaped for Track Modules + Goal Overlay branches. Per-chapter state indicators (completed / current / skipped-via-placement / locked / available); per-lesson read-only visibility with title + key items + state. Per-chapter actions: skip-test ahead, **relocate position back** (for placement-overshoot recovery), browse content, take Review. Mid-chapter lesson jumping is out of MVP scope (preserves within-chapter prerequisites).
 - **Track Module Selection (post-Foundation)** — driven by Foundation-Complete milestone. Settings-level switching/adding allowed anytime after.
 - **Practice / Quiz Mode** — **TBD Phase J**. Standalone evaluation surface, doesn't advance the curriculum.
 - **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
@@ -478,6 +484,8 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phase I.4 (placement quiz), then J–M.
+Continue the design grilling through Phases J (Standalone surfaces), K (Confidence + soft signals), L (Tech stack), M (MVP scope cut + beta launch).
 
-Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.4 (Placement quiz)**. With I.3 locked (two-touchpoint intake + signup 3-Q + Foundation-Complete milestone moment + same-session placement hand-off), I.4 resolves the placement quiz format, length, scope, and what mastery signal it produces. See `decisions.md` §I.3 for the upstream intake design and `progress.md` for live status.
+Current open phase: **J — Standalone surfaces**, covering Practice/Quiz Mode (standalone item-pool evaluation surface, no curriculum advancement), Progress Dashboard (item-level vs lesson-level views, motivational framing), and Media Learning Feature 8 (bring-your-own YouTube/song processing pipeline, vocab extraction, runtime lesson generation, licensing posture). Curriculum Outline visual + interaction-pattern details will also be refined here alongside the dashboard.
+
+Phase I fully locked: see `decisions.md` §I.1–I.4 for the full intake / placement / per-chapter skip-test / Curriculum Outline design.

@@ -685,6 +685,194 @@ All within the same signup session. Foundation-Complete intake does NOT involve 
 
 **Open for I.4:** the actual quiz format, length, adaptivity, and what mastery signal it produces.
 
+---
+
+## Phase I.4 — Placement quiz design (complete)
+
+### I.4.a Quiz scope + length — fixed per tier with early-exit + Foundation-only depth
+
+**Decision:** Fixed length per signup tier (no within-tier adaptivity), with early-exit shortcut. Depth limited to Foundation items only.
+
+**Per-tier specifics:**
+- `some_kana` → ~20-25 kana items, frequency-sampled across hiragana + katakana. ~2-3 min.
+- `fair_amount` / `refresher` → ~40 items split: 20 vocab (frequency-stratified 5/8/7 across top-100 / 100-300 / 300-800) + 10 grammar (spread across prerequisite graph: particles → conjugations → register markers → patterns) + 10 kanji (weighted toward top-50 N5 kanji). ~6-8 min.
+- **Early-exit shortcut:** if first 10 items are perfect, offer "skip rest, mark mastered" button. Cheap approximation of adaptive testing's main benefit without the implementation cost.
+
+**Scope depth:** Foundation items only (≤ N5). No N4 probing. A post-N5 learner tests out of all Foundation → unlocks Track Module at Foundation Complete regardless; "skip Foundation entirely" power-user path is deferred as niche.
+
+**Why fixed-per-tier (not adaptive):**
+- Adaptive testing (CAT + IRT) needs hundreds of pre-calibrated items + statistical infrastructure. Out of scope for MVP.
+- Placement doesn't need surgical precision — FSRS calibrates mastery over the first ~20-30 review sessions anyway.
+- Predictable duration ("~8 min") is honest signup UX; variable-length adaptive feels bait-and-switch.
+- Early-exit shortcut captures most of adaptive's upside (don't over-test obvious cases) at near-zero implementation cost.
+
+**Rejected:**
+- Adaptive IRT-based testing (B) — overkill for MVP; defer to v2 if data shows fixed-length miscalibrates badly.
+- Hybrid fixed + adaptive extension (C) — worst of both; "couldn't decide" trap.
+- Deeper N4 probing — no N4 content authored at MVP; Track Module unlock doesn't depend on it.
+
+### I.4.b Quiz format — multi-choice + cloze + multi-choice per item type
+
+**Decision:** Format depends on item type, optimized for placement-speed while still producing reliable mastery signal.
+
+**Vocab (20 items):**
+- Format: multi-choice recognition ("What does 食べる mean? [to eat / to drink / to sleep / to walk]")
+- ~5-8 sec per item
+- Why recognition not production: recognition is mastery's floor (you must recognize before you can produce); production tested later in Foundation; placement-speed matters.
+
+**Grammar (10 items):**
+- Format: cloze fill-in-blank with short typed input. Example: "朝ごはんを___から、学校へ行きます (食べる)" → learner types 食べて.
+- Routes through H.2 writing pipeline (wanakana + kuromoji + exact-match).
+- ~15-20 sec per item
+- Why cloze: tests both recognition AND form-selection in context, much harder to guess than multi-choice. Grammar is contextual; isolated multi-choice ("which grammar point is this?") is too easy to guess.
+
+**Kanji (10 items):**
+- Format: multi-choice reading + meaning combined per item ("食 — Reading: [しょく / じゅう / こう / きょう], Meaning: [eat / drink / sleep / walk]")
+- ~10 sec per item
+
+**Kana (20-25 items, `some_kana` tier only):**
+- Format: multi-choice character-to-sound ("Which character makes the sound 'su'? [す / ず / し / さ]")
+- ~3-5 sec per item
+
+**Excluded from placement:** spoken responses (audio capture friction too high at signup before learner is committed); production-style vocab tests (slow); long-form writing.
+
+**Rejected:**
+- Pure multi-choice for grammar — too guessable; doesn't validate form-selection ability.
+- Production vocab tests at placement — slow + frustrating before learner is invested.
+- Spoken responses at placement — audio capture is non-trivial UX on Day 1; high abandonment risk.
+- C-tests / cloze passages — academically sound but visually unfamiliar; consumer apps avoid.
+
+### I.4.c Mastery integration — direct + prerequisite inference + FSRS rollover
+
+**Decision:** Placement quiz output integrates with FSRS mastery state via three tiers.
+
+1. **Directly tested + correct** → item marked mastered, enters FSRS with **high initial retention** (≥ 0.9). Will appear in early review sessions for low-frequency confirmation. Treated as if recently passed at high quality.
+
+2. **Inferred mastered via prerequisite graph** → items NOT directly tested but whose prerequisite items were correctly tested → enter FSRS with **moderate retention** (~0.7-0.8). Will appear in early reviews more aggressively (system needs to confirm the inference). Effective coverage: ~3-4× the directly-tested item count.
+
+3. **Not tested, not inferred** → item is unscheduled (not in FSRS); will be taught in normal lesson flow. If learner actually knows it, the lesson's Check answer will mark it mastered on first pass and FSRS picks it up from there.
+
+**For directly-tested + incorrect:** item explicitly marked NOT mastered (not in FSRS) → scheduled in normal lesson flow. No negative penalty applied since this is initial assessment, not review failure.
+
+**For early-exit shortcut taken (10 perfect → "skip rest"):** all remaining quiz items inferred mastered at moderate retention (~0.7); will surface in early reviews for confirmation.
+
+**Coverage estimate at placement:**
+- 40 directly tested + ~120-150 inferred → ~160-200 of ~1000 Foundation items receive a mastery signal (~16-20%).
+- Remaining ~800 items go through normal lesson flow; FSRS corrects placement underestimates within ~20-30 sessions.
+
+**What this misses (acknowledged):**
+- Clustered knowledge (e.g., learner knows food vocab but not transportation) — frequency-stratified sampling smooths but doesn't eliminate.
+- Production mastery (learner can recognize 食べる but can't produce from "to eat") — placement only tests recognition.
+- Non-Foundation knowledge gaps (learner knows N4 grammar but skipped some N5) — looks weirdly spotty; treated as not-mastered, will rapid-skip during lessons.
+
+**Cost of these misses:** extra lesson grinds learners zip through. Not ideal UX but not catastrophic; FSRS corrects within ~20-30 reviews. Acceptable MVP trade-off vs CAT/IRT implementation cost.
+
+**Rejected:**
+- Skip whole lessons on mastery inference — too aggressive; mastery inference is moderate-confidence and risks gaps.
+- No prerequisite inference (only directly tested) — wastes the prerequisite graph data; placement coverage drops to 4%.
+- Apply mastery to entire chapters from placement — too coarse; over-skips when learner only partially masters chapter items.
+
+### I.4.d Per-chapter pre-evaluation (skip-test)
+
+**Decision:** Chapters offer an optional skip-test on entry, using the same Assessment infrastructure as end-of-chapter gating. Bidirectional Assessment: same items, same bar, used either to skip a chapter or to exit it.
+
+**Flow:**
+
+On reaching a new chapter, the chapter-intro screen offers:
+
+> **Chapter 5: Te-form Requests**
+> 8 lessons · ~45 min total
+>
+> *Already know this?* [Take the 5-min skip test]
+>
+> Or: [Start chapter normally]
+
+If learner takes the skip-test:
+- **Pass (≥80% items at mastery)** → all chapter items marked mastered with FSRS state matching end-of-chapter completion. Chapter skipped. Proceed to next chapter.
+- **Fail** → no penalty, no items marked from the test. Chapter begins normally.
+- **Partial pass** → tested-correct items marked mastered; chapter still begins but lessons covering already-mastered items get auto-collapsed (lesson-level skipping driven by item mastery state).
+
+**Retry policy:** Failed skip-test can be re-attempted later (e.g., after grinding through first few lessons of the chapter, learner can re-attempt to skip remaining lessons). No cooldown.
+
+**Why use existing end-of-chapter Assessment (bidirectional), not a separate skip-quiz:**
+- Symmetric bar — same items both directions, no "skip-test is harder than chapter exit" weirdness.
+- One thing to author per chapter.
+- Already designed into infrastructure (Assessment meta-lesson type, B.3).
+- Item-mastery model handles both naturally (D.1).
+
+**Module-level skip-test:** NOT in MVP. A learner who'd skip a whole module is mostly already caught by signup placement; remaining cases handled by chapter-by-chapter skip-testing (5 chapters × ~5 min skip-tests = ~25 min total). Module-level skip-test would add infrastructure for an edge case.
+
+**Why this is a real addition to the design (not just refinement):**
+- Changes Assessment design (now bidirectional).
+- Adds a major escape valve complementing signup placement.
+- Gets significantly more valuable as curriculum grows (~15 Foundation chapters now; ~50+ post-Tracks).
+
+**Rejected:**
+- Separate skip-quiz distinct from end-of-chapter Assessment — duplicates authoring; risks asymmetric bars.
+- All-or-nothing skip (no partial-pass) — forces learners to grind through chapters when they know 80% of items.
+- Module-level skip-test in MVP — adds infrastructure for edge case already mostly covered by chapter-level.
+- Mandatory skip-test on chapter entry (learner can't opt out) — forces friction on every chapter even when learner clearly hasn't seen the content.
+
+### I.4.e Curriculum Outline (structured navigation surface)
+
+**Decision:** Ship a **minimal-but-complete Curriculum Outline view** at MVP. Hierarchical, navigable, decision-supporting — but functional UI, not gamified game-map.
+
+**Structure:**
+- **Foundation:** nested list (Module → Chapter → Lesson), expandable/collapsible.
+- **Post-Foundation:** graph-shaped (Content Track + Goal Overlay branches), same underlying data structure as Foundation, different node + edge styling.
+- Always-accessible: dedicated "Curriculum" / "Path" tab in main nav.
+- Surfaced at key moments: post-placement (replaces standalone reassurance screen), post-Foundation-Complete, post-chapter.
+
+**Per-chapter (collapsed):**
+- Chapter title + brief description
+- Lesson count + estimated total time
+- State indicator: completed ✓ / current ⏵ / skipped via placement / locked (prereq not met) / available
+
+**Per-chapter (expanded):**
+- Lesson list with title + brief subtitle (e.g., "Lesson 3: Te-form Requests — basic pattern + ください")
+- Small per-lesson badge: item count + key items taught
+- State indicator per lesson: completed / current / not started / skipped via placement
+- Read-only lesson visibility (click shows Teach-beat preview, does NOT navigate to mid-chapter lessons)
+
+**Per-chapter actions:**
+- **Skip-test ahead** (uses I.4.d) — only available for future chapters.
+- **Relocate position here** — for past chapters where learner wants to go back and learn properly. Just moves the current position pointer; forward chapters retain mastery state (still skippable via skip-test or learnable normally).
+- **Browse content** — view chapter overview, lesson previews.
+- **Review** (uses existing Review meta-lessons) — for completed chapters.
+
+**State semantics (5 states):**
+- `completed`: all items at mastery; passed end-of-chapter Assessment.
+- `current`: position pointer is here; learner is actively progressing.
+- `skipped_via_placement`: bypassed during signup placement quiz inference; items marked mastered. Learner can relocate back to fully learn.
+- `locked`: prerequisite chapters not yet completed; viewable in outline but no actions available.
+- `available`: prerequisites met, position pointer hasn't reached yet; skip-test offered.
+
+**Why this scope (not Duolingo-style gamified map):**
+- The user's actual ask was logical visibility + agency, not game-map UX.
+- Functional UI (think IDE file tree, project outline) ships faster + meets all stated needs.
+- Anti-fake-personalization brand: transparency is the win, not gamification.
+- Can be polished later without changing data structure.
+
+**Why ship at MVP (not deferred):**
+- The "post-placement reassurance" need (preventing overshoot disappointment) is satisfied by the outline itself.
+- Chapter skip-test (I.4.d) needs a surface for learners to find skip-testable chapters; the outline is that surface.
+- Modest implementation: hierarchy already in DB, mastery state already tracked, skip-test mechanism locked, relocate is one pointer change. ~1-2 weeks engineering once codebase exists.
+
+**What's OUT of MVP scope:**
+- Gamified visualization (badges per chapter, animations, world-map framing).
+- Drag-and-drop reordering.
+- Per-item granularity in outline (lessons show item counts but don't expand to individual items).
+- Cross-track what-if comparison ("what if I'd picked Anime instead of Travel?").
+- Mid-chapter lesson jumping (preserved for v2 if beta surfaces this as friction).
+
+**Cross-reference:** logged here adjacent to placement decisions that motivated it; visual + interaction-pattern details revisited in **Phase J (Standalone surfaces)** alongside Progress Dashboard.
+
+**Rejected:**
+- Defer Curriculum Outline to v2 (only post-placement reassurance screen at MVP) — loses chapter-skip-test discoverability; loses transparency brand-alignment.
+- Full game-map UI at MVP — over-engineered for actual user need; significant design risk.
+- Outline at chapter granularity only (no lesson visibility) — weaker decision support for skip-test choice; learner can't recognize lesson titles to gauge familiarity.
+- Allow mid-chapter lesson jumping — breaks within-chapter prerequisite assumptions; bypasses skip-test mechanism.
+
 ### I.4 Placement quiz design (pending)
 
 Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.
@@ -724,4 +912,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.4.a — Placement quiz scope + length**. User paused mid-grilling with assistant's recommendation on the table (fixed length per tier with early-exit shortcut; Foundation-items-only depth) — no decision logged yet. I.3 fully locked (I.3.a two-touchpoint timing / I.3.b signup 3 questions / I.3.c Foundation-Complete milestone moment / I.3.d intake → placement hand-off).
+See `progress.md` for live status. Phase I fully locked (I.1 single-primary track / I.2 Content Track × Goal Overlay framing / I.3 two-touchpoint intake / I.4 placement quiz + per-chapter skip-test + Curriculum Outline). Next active phase: **Phase J — Standalone surfaces** (Practice/Quiz Mode, Progress Dashboard, Media Learning).
