@@ -73,12 +73,12 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **I.2.b** Goal Overlay mechanic: gap-fill + mock-exam Assessments + readiness tracker; overlay adds, never subtracts; compatibility surfaced transparently at intake
   - **I.2.c** Goal Overlay catalog at MVP = {None, JLPT-N4}; N5 redundant with Foundation, N3+ deferred for content depth
   - Content Tracks at MVP: Travel · Anime/Manga · Living/Working · Conversational (default)
-- **I.3** Intake survey: PARTIAL
-  - **I.3.a** Two-touchpoint timing (signup intake + Foundation-Complete intake) ✅ LOCKED
-  - **I.3.b** Signup intake — 3 questions (interests multi-select / prior experience / daily target) ✅ LOCKED
-  - **I.3.c** Foundation-Complete touchpoint design: pending (active grilling target). Open questions — Q structure, compatibility-warning UX, track preview cards, settings-level switching surfacing.
-  - **I.3.d** Intake → placement hand-off + ordering: pending.
-- **I.4** Placement quiz: pending. Scope partially shaped by I.3.b Q2 (prior_experience routes whether quiz runs at all + which item types).
+- **I.3** Intake survey ✅ LOCKED
+  - **I.3.a** Two-touchpoint timing (signup intake + Foundation-Complete intake) ✅
+  - **I.3.b** Signup intake — 3 questions (interests multi-select / prior experience / daily target) ✅
+  - **I.3.c** Foundation-Complete milestone moment — celebration framing + Q1 Content Track (required, preview cards) + Q2 Goal Overlay (required, inline compatibility warning) + optional "customize more" combined screen (secondary interests + daily target, both skippable) ✅
+  - **I.3.d** Intake → placement hand-off — same-session, routed by signup Q2 prior_experience ✅
+- **I.4** Placement quiz: pending (active grilling target). Open — scope (what items it tests), format (multi-choice vs typed vs spoken), length (fixed vs adaptive), what mastery signal it produces, how it interacts with Foundation lesson sequencing.
 
 ---
 

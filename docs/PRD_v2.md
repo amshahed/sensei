@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1 (track selection rule) plus I.2 (Track Module catalog — Content Track × Goal Overlay framing) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.3-I.4, J-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phase H plus I.1-I.3 (track selection rule / Track Module catalog with Content Track × Goal Overlay framing / two-touchpoint intake) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (I.4, J-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus I.2 (Track Module catalog — Content Track × Goal Overlay framing), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases I.3-I.4 and J-M are still in design.
+This PRD reflects design decisions resolved through Phase H (all per-modality evaluation locked), plus I.1 (single-primary track selection rule), plus I.2 (Track Module catalog — Content Track × Goal Overlay framing), plus I.3 (two-touchpoint intake with signup 3-question survey and Foundation-Complete milestone moment), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase I.4 (placement quiz) and J-M are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -393,11 +393,11 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 ## 9.2 New in v2
 
-- **Intake Survey** — two-touchpoint design (I.3.a, I.3.b locked):
-  - **Signup intake** (3 questions, ~25-30 sec): interests (multi-select cards), prior experience, daily time target. Captures lightweight signal usable Day 1 — Foundation example theming, placement quiz routing, daily session pacing.
-  - **Foundation-Complete intake** (~2-3 questions): real Content Track + Goal Overlay selection, with compatibility warning for awkward combinations. Pre-populated from signup interests as soft defaults. **TBD I.3.c.**
-- **Placement Quiz** — **TBD Phase I.4**. Routed by signup Q2 (prior experience). Total beginners skip; "some kana" gets focused mini-quiz; "fair amount" gets full quiz.
-- **Track Module Selection (post-Foundation)** — driven by Foundation-Complete intake (I.3.c). Settings-level switching/adding allowed anytime after.
+- **Intake Survey** — two-touchpoint design (I.3 locked):
+  - **Signup intake** (3 questions, ~25-30 sec): interests (multi-select cards), prior experience, daily time target. Drives Foundation example theming, placement quiz routing, and daily session pacing.
+  - **Foundation-Complete milestone moment** (~60-90 sec engaged, ~30 sec speed-skippers): celebration framing → Q1 Content Track (required, with preview cards + soft default from signup interests) → Q2 Goal Overlay (required, inline compatibility warning if awkward combo) → optional combined "customize more" screen (secondary interests + daily target adjust, both skippable). Pre-populated soft defaults from signup interests; both optional extras editable in settings anytime.
+- **Placement Quiz** — same-session as signup, routed by signup Q2 prior_experience. Total beginners skip entirely; "some kana" gets focused mini-quiz; "fair amount"/"refresher" gets full quiz. **Format + length + scope TBD Phase I.4.**
+- **Track Module Selection (post-Foundation)** — driven by Foundation-Complete milestone. Settings-level switching/adding allowed anytime after.
 - **Practice / Quiz Mode** — **TBD Phase J**. Standalone evaluation surface, doesn't advance the curriculum.
 - **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
 - **Internal Authoring UI** — per §6.3.
@@ -478,6 +478,6 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases I.3 (intake), I.4 (placement), then J–M.
+Continue the design grilling through Phase I.4 (placement quiz), then J–M.
 
-Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.3 (Intake survey design)**. With I.2 locked via the two-dimensional Content Track × Goal Overlay framing, the intake survey must (a) elicit Content Track and Goal Overlay selections, (b) surface compatibility for awkward combinations, and (c) feed into the placement quiz (I.4). See `decisions.md` §I.2 for the framing and `progress.md` for live status.
+Current open phase: **I — Branching: Track Modules + intake + placement**, specifically **I.4 (Placement quiz)**. With I.3 locked (two-touchpoint intake + signup 3-Q + Foundation-Complete milestone moment + same-session placement hand-off), I.4 resolves the placement quiz format, length, scope, and what mastery signal it produces. See `decisions.md` §I.3 for the upstream intake design and `progress.md` for live status.

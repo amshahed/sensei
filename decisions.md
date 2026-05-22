@@ -618,6 +618,73 @@ At intake, the system surfaces this honestly: *"Travel + N4 means ~80 supplement
 - Asking Track Module at signup — see I.3.a rejection.
 - Asking JLPT Goal Overlay at signup as a hard commitment — Q1's "Pass a JLPT exam" option captures the *intent* lightweight; the actual N5/N4/None choice is made at Foundation-Complete.
 
+### I.3.c Foundation-Complete touchpoint — richer milestone moment
+
+**Decision:** Foundation-Complete is a **celebration-framed milestone moment**, not a bare 2-Q picker. 2 required questions + 2 optional extras in a combined screen.
+
+**Flow:**
+
+1. **🎉 Celebration framing** (no question, just the moment). Stats summary: "375 lessons, ~100 kanji, ~800 vocab, ~50 grammar points. Time to pick where you're going next." Small badge/animation.
+
+2. **Q1: Content Track** (single-select, required, with preview cards). Each card shows track name, 2-line description, 2-3 sample lesson titles, an example dialogue snippet. A soft default is highlighted based on signup interests ("You told us you liked Anime — Anime track is recommended") but learner can pick any track. Default is pre-selected, not pre-confirmed; explicit Continue required.
+
+3. **Q2: Goal Overlay** (single-select, required). "Do you want to prep for an exam alongside your track?" → None / JLPT-N4. **Compatibility warning fires inline** when the chosen Content Track × Goal Overlay has low item overlap (e.g., Travel + N4): *"Travel + N4 means ~80 supplementary lessons that aren't travel-themed. Path will lean more toward N4 prep. Still good?"* with Adjust/Continue buttons.
+
+4. **Optional "customize more" combined screen** — both extras live side-by-side as skippable mini-cards:
+   - **Secondary interests** (multi-select). *"Want to spotlight some examples from other interests too? We'll occasionally weave them into your primary track. [Pick interests] [Skip — keep my signup interests]"*
+   - **Daily target check-in** (single-select). *"You've been doing 10 min/day in Foundation. Adjust now or keep as is? [Adjust] [Keep 10 min/day]"*
+   - Defaults persist if skipped. Both editable in settings anytime.
+
+5. **Confirm → Track Module unlocked, first lesson cued up.**
+
+**Time targets:** ~60-90 seconds for engaged learners; ~30 seconds for speed-skippers.
+
+**Why richer (not symmetric with the lightweight signup):**
+- **Asymmetric stakes.** Signup minimizes friction to protect conversion. Foundation-Complete is at-already-invested (~50-100 hours in). 60 seconds on a 6-12 month decision is cheap.
+- **Preview cards are load-bearing.** The original I.2 grilling surfaced "learners can't reliably pick from labels alone." This is where preview cards belong — without them, Q1 is a guess.
+- **Narrative beat / loyalty moment.** Six months of Foundation deserves a payoff moment. Bare 2-Q pickers squander the emotional beat that builds loyalty.
+- **Compatibility warning has a natural home.** In a 2-Q picker it'd feel like a friction wall; in a guided milestone moment it feels like helpful guidance.
+
+**Why optional Q3/Q4 (not required):**
+- Both extras have working defaults (signup interests persist; daily target stays at current value). No data loss from skipping.
+- Forcing them adds form-fatigue at a celebration moment.
+- Both editable in settings — skip-now isn't forever-no.
+- Combined "extras tray" screen signals "these are optional" better than two consecutive mandatory-looking screens.
+
+**Why single combined extras screen (Option B over A):**
+- One "skip everything" click vs two when not engaged.
+- Visually signals "extras tray" framing — both presented as optional refinements, not separate full steps.
+- Saves a screen of friction for the median user who'll skip both.
+
+**Risks acknowledged:**
+- Survey-fatigue at the wrong moment. Mitigation: celebration framing has to feel like reward, not chore — heavy text or visible-form-fields would break this.
+- Soft-default pre-population on Q1 could lead to mindless click-through. Mitigation: default is pre-selected but not pre-confirmed; explicit Continue button forces a beat of consideration.
+
+**Rejected:**
+- Bare 2-Q picker (Content Track + Goal Overlay only) — symmetric with signup but mismatches the stakes; loses the milestone moment; squanders the preview-card opportunity.
+- 4 required questions (Q3 + Q4 mandatory) — over-surveys at celebration; doesn't respect that defaults work.
+- Two separate skippable screens for Q3 + Q4 (Option A) — two skip clicks for the speed path; treats each extra as full step rather than optional refinement.
+- Deferring Q3/Q4 to a post-touchpoint settings prompt — loses the engaged learner's chance to set both at the natural milestone moment.
+
+### I.3.d Intake → placement hand-off (implicit from I.3.b)
+
+**Decision (closed without separate grilling):** Placement quiz is signup-session-bound and routed by signup Q2 (prior_experience).
+
+Mechanically:
+- Signup intake (3 Qs) completes → routing based on Q2:
+  - `prior_experience: none` → skip placement quiz entirely; start at Foundation lesson 1.
+  - `prior_experience: some_kana` → run kana-focused mini placement quiz.
+  - `prior_experience: fair_amount` → run full placement quiz across vocab/grammar/kanji.
+  - `prior_experience: refresher` → run full placement quiz (same as fair_amount).
+- Placement quiz output → marks items as already-mastered + sets Foundation entry point (lesson N rather than always lesson 1).
+- Then first Foundation lesson cued.
+
+All within the same signup session. Foundation-Complete intake does NOT involve placement — by definition the learner has mastered all Foundation items at that point.
+
+**Why same-session:** Splitting placement to a "come back later" prompt would let intermediate learners skip it and then quit on lesson-1-hiragana. Same-session ensures they actually run it.
+
+**Open for I.4:** the actual quiz format, length, adaptivity, and what mastery signal it produces.
+
 ### I.4 Placement quiz design (pending)
 
 Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.
@@ -657,4 +724,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Active sub-decision when this log was last updated: **Phase I.3 — Foundation-Complete touchpoint design + placement-quiz hand-off**. I.3.a (two-touchpoint timing) and I.3.b (signup intake — 3 questions) locked.
+See `progress.md` for live status. Active phase when this log was last updated: **Phase I.4 — Placement quiz design**. I.3 fully locked (I.3.a two-touchpoint timing / I.3.b signup 3 questions / I.3.c Foundation-Complete milestone moment / I.3.d intake → placement hand-off).
