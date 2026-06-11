@@ -877,6 +877,75 @@ If learner takes the skip-test:
 
 Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.
 
+> **Superseded** — this stub was resolved under `## Phase I.4 — Placement quiz design (complete)` above (I.4.a–I.4.e). Left in place per append-only convention.
+
+---
+
+## Phase J — Standalone surfaces
+
+### J.1 Practice Mode (complete)
+
+Surfaces the "practice outside the curriculum" job (PRD v1 §9). Resolved as a real, user-directed drill surface — not a review-queue nicety.
+
+#### J.1.a Earns its place as a real surface (option C, not A/B)
+
+**Decision:** Ship a genuine **Practice Mode tab** — its own destination, available regardless of whether FSRS reviews are due — with user-directed scope and **no curriculum advancement** (drilling never advances Foundation/Track progress; it only reinforces).
+
+**Why (not the cheaper options):**
+- **A — cut it:** FSRS reviews + skip-tests + Outline browse cover *some* needs, but leave a real gap: targeted, on-demand drill. Not coverable by existing surfaces.
+- **B — "More practice" button** (extend today's review queue with mid-retention items from full learning history): honest about being a UX nicety, but it's algorithm-picked only — the user can't say "drill my listening." Doesn't serve the strongest use case.
+- **The decisive use case:** the **JLPT-N4 Goal Overlay** learner. Mock exams + readiness tracker (I.2.b) tell them *where* they're weak; nothing lets them *act* on it ("give me 20 listening items right now"). C is exactly that missing targeted-drill loop. With exam learners a meaningful MVP slice, C becomes the floor, not the ceiling.
+
+**Coverage note (no double-build):** mock-test *assessment* for exam learners already exists three ways — per-chapter skip-tests (I.4.d), end-of-chapter Assessments (B.3), Goal Overlay mock exams (I.2.b). Practice Mode deliberately does **not** duplicate those; it owns *drill*, not *assessment*.
+
+#### J.1.b Scope picker — reuse Curriculum Outline + filters + "weakest" shortcut (option A)
+
+**Decision:** User picks **scope** (which items); ordering is **always** algorithm-decided. No user-facing strategy menu.
+- **Scope source:** reuse the **Curriculum Outline** (I.4.e) as the "pick what to drill" surface — pick a Module / Chapter / Track. Plus a cross-cutting **item-type filter** (Kana / Vocab / Kanji / Grammar) and a **"weakest across everything"** shortcut.
+- **Ordering:** always lowest-retention / weakest-modality first (reuse G.4 review-selection logic).
+
+**Why:** the scope picker already exists (Outline) — reuse, don't rebuild. Strategy menus (weakest/random/recent) mostly produce decision paralysis; the right order is almost always "weakest first," which FSRS+G.4 already compute. Don't expose a knob whose best setting we already know.
+
+**Rejected:** B (scope + strategy menu) — paralysis, exposes a knob we'd set ourselves. C-narrow (three fixed presets) — "Exam focus" preset duplicates Goal Overlay territory; presets get rigid.
+
+#### J.1.c FSRS / mastery write-back — full, with double-count guardrail (option A)
+
+**Decision:** Every Practice answer is scored exactly like a review (AI judges → Again/Hard/Good/Easy → FSRS updates retention + reschedules; mastery breadcrumbs move). Practice = "voluntary reviews."
+
+**Guardrail — same-session double-count protection:** within one Practice session an item's FSRS state updates **once** (first attempt counts; repeats in the same session are exposure-only). Prevents the "massing" problem (rapid repeated successes cramming-style wrongly inflating the interval).
+
+**Why:** an answer is an answer — if the user proves (or fails) knowledge in Practice, FSRS should learn it; pretending otherwise makes the schedule dumber. Also cheapest: reuses the exact review scoring path (G.3/G.4).
+
+**Rejected:** B (read-only sandbox) — ignores real evidence, re-surfaces items the user just nailed. C (asymmetric: failures count, successes don't) — feels unfair and hard to explain; the guardrail on A already solves the failure mode C targeted.
+
+#### J.1.d Feedback format — review-style immediate feedback (option A)
+
+**Decision:** Each item → immediate feedback (correct/incorrect + Good/Hard/Easy beat) → next. Same rhythm as a normal review session. No end-of-session score report.
+
+**Consequence:** the surface is **"Practice Mode"**; the PRD v1 **"Quiz"** framing retires. The quiz/test (test-style, batch, score-at-end) job lives in Assessments + mock exams — naming follows function.
+
+**Why:** immediate feedback beats delayed for retention; test-style's value is *assessment*, which is already covered three ways (skip-tests, end-of-chapter Assessments, Goal Overlay mock exams). Building test-style here would duplicate that machinery; the genuinely-uncovered need (targeted drill) wants immediate feedback.
+
+**Rejected:** B (test-style only) — worse for learning, duplicates assessment surfaces. C (both, user toggles) — splits the feature; Quiz half overlaps existing Assessments. Over-scope for MVP.
+
+#### J.1.e Item availability — learned-items-only (option A)
+
+**Decision:** Practice Mode only offers items the user has already been taught (have a mastery/FSRS record). Future items stay **visible** in the Outline (browse / skip-test) but are **not** drillable in Practice.
+
+**Why:** Practice presents a Check with no Teach beat — drilling an unseen item is a cold quiz on material never shown (frustrating, pedagogically backwards, violates Teach-before-Check). Also protects FSRS data: with A every Practice item already has a record to update (consistent with J.1.c); drill-ahead would mint FSRS records via cold-quiz failures, polluting the schedule. The legitimate "I already know this future chapter" need is already served by the per-chapter skip-test (I.4.d).
+
+**Rejected:** B (drill-ahead) — cold-quizzes unseen items; pollutes FSRS with artificial "Again" ratings.
+
+**What's OUT / deferred for J.1:** interaction with daily target / streak (Phase K — soft signals); whether Practice contributes to any "goal met today" signal deferred there.
+
+### J.2 Progress Dashboard (pending)
+
+Pending grilling. Open questions: item-level vs lesson-level views, what motivates without overwhelming, relationship to mastery breadcrumbs + readiness tracker.
+
+### J.3 Media Learning — Feature 8 (pending)
+
+Pending grilling. Open questions: bring-your-own-YouTube/song processing pipeline, vocab/grammar extraction, runtime lesson generation from media, licensing/legal posture for media sources.
+
 ---
 
 ## Cross-cutting design principles
@@ -912,4 +981,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phase I fully locked (I.1 single-primary track / I.2 Content Track × Goal Overlay framing / I.3 two-touchpoint intake / I.4 placement quiz + per-chapter skip-test + Curriculum Outline). Next active phase: **Phase J — Standalone surfaces** (Practice/Quiz Mode, Progress Dashboard, Media Learning).
+See `progress.md` for live status. Phase I fully locked. **Phase J in progress:** J.1 Practice Mode locked (J.1.a–J.1.e); **J.2 Progress Dashboard** and **J.3 Media Learning** still pending grilling.

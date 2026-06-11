@@ -336,7 +336,7 @@ Multiple evaluation contexts; same scoring infrastructure underneath.
 - **Assessment** (meta-type lesson) — end-of-chapter gating quiz.
 
 **Out-of-curriculum (separate features, shared infrastructure):**
-- **Practice / Quiz Mode** — learner-initiated, on-demand. Doesn't advance the curriculum. **TBD Phase J.**
+- **Practice Mode (J.1 locked)** — learner-initiated, on-demand drill. Own tab; available regardless of whether reviews are due. User picks scope (via Curriculum Outline + item-type filter + "weakest" shortcut); ordering always lowest-retention/weakest-modality first. Review-style immediate feedback (no end-of-session score — the "Quiz/test" job lives in Assessments + mock exams). Full FSRS/mastery write-back with same-session double-count guardrail. Learned-items-only; **no curriculum advancement.** Per §9.2.
 - **Placement Quiz** — at intake. Sets curriculum starting position. **TBD Phase I.**
 - **Confidence Self-Rating** (PRD v1 §9) — qualitative. **TBD Phase K.**
 
@@ -404,7 +404,13 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 - **Per-chapter pre-evaluation skip-test (I.4.d):** Each chapter offers an optional skip-test on entry, using the **same Assessment infrastructure as end-of-chapter gating** (bidirectional Assessment). Pass (≥80% items at mastery) → chapter skipped, items marked mastered. Partial pass → matching items skipped at lesson level. Fail → no penalty, chapter begins normally. Retryable.
 - **Curriculum Outline (I.4.e):** A minimal-but-complete navigation surface, always-accessible via a "Curriculum" tab. Nested list for Foundation (Module → Chapter → Lesson); graph-shaped for Track Modules + Goal Overlay branches. Per-chapter state indicators (completed / current / skipped-via-placement / locked / available); per-lesson read-only visibility with title + key items + state. Per-chapter actions: skip-test ahead, **relocate position back** (for placement-overshoot recovery), browse content, take Review. Mid-chapter lesson jumping is out of MVP scope (preserves within-chapter prerequisites).
 - **Track Module Selection (post-Foundation)** — driven by Foundation-Complete milestone. Settings-level switching/adding allowed anytime after.
-- **Practice / Quiz Mode** — **TBD Phase J**. Standalone evaluation surface, doesn't advance the curriculum.
+- **Practice Mode (J.1 locked):** Standalone drill surface — its own tab, available regardless of whether FSRS reviews are due. **No curriculum advancement.**
+  - **Why it exists:** targeted, on-demand drill is the one need FSRS reviews + skip-tests + Outline browse don't cover. Decisive use case = the JLPT-N4 Goal Overlay learner, whose mock exams identify weak areas (e.g. listening) with no way to act on them. Practice Mode is that drill loop. It deliberately does **not** duplicate the mock-test/assessment job (already covered by skip-tests, end-of-chapter Assessments, and Goal Overlay mock exams).
+  - **Scope picker (J.1.b):** reuse the Curriculum Outline (Module/Chapter/Track) + cross-cutting item-type filter (Kana/Vocab/Kanji/Grammar) + a "weakest across everything" shortcut. Ordering is always lowest-retention / weakest-modality first (reuses G.4); no user-facing strategy menu.
+  - **Write-back (J.1.c):** every answer scored exactly like a review (AI → Again/Hard/Good/Easy → FSRS reschedule + mastery breadcrumbs). Guardrail: within one session an item's FSRS state updates once (first attempt counts; repeats are exposure-only) to avoid massing/cramming inflation.
+  - **Feedback format (J.1.d):** review-style immediate feedback per item; no end-of-session score report. (The PRD v1 "Quiz" framing retires — the test job lives in Assessments + mock exams.)
+  - **Availability (J.1.e):** learned-items-only. Future items stay visible/skip-testable in the Outline but are not drillable in Practice (no Teach beat = no cold-quizzing unseen material; also keeps FSRS data clean).
+  - **Deferred to Phase K:** whether Practice contributes to daily-target / streak signals.
 - **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
 - **Internal Authoring UI** — per §6.3.
 

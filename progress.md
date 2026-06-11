@@ -85,16 +85,19 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 ## In Progress
 
-(none — Phase J is the next active phase but grilling has not begun)
+### 🔄 Phase J — Standalone surfaces
+- **J.1** Practice Mode — ✅ **locked**
+  - **J.1.a** Real Practice Mode tab (own destination, available regardless of due reviews), user-directed scope, no curriculum advancement — chosen over cut / "more practice" button; decisive use case = JLPT-N4 learner acting on mock-exam-identified weak areas
+  - **J.1.b** Scope picker reuses Curriculum Outline + item-type filter + "weakest" shortcut; ordering always lowest-retention/weakest-modality first (no strategy menu)
+  - **J.1.c** Full FSRS/mastery write-back (Practice scored like reviews) + same-session double-count guardrail
+  - **J.1.d** Review-style immediate feedback; "Quiz/test" job retired to Assessments + mock exams (surface is "Practice Mode")
+  - **J.1.e** Learned-items-only (future items browse/skip-test in Outline, not drillable)
+- **J.2** Progress Dashboard — ⏳ pending grilling (item-level vs lesson-level views, motivation, relationship to mastery breadcrumbs + readiness tracker)
+- **J.3** Media Learning Feature 8 — ⏳ pending grilling (bring-your-own-YouTube/song: processing pipeline, vocab extraction, runtime lesson generation, licensing/legal posture)
 
 ---
 
 ## Pending Phases
-
-### Phase J — Standalone surfaces
-- Practice/Quiz Mode design (item pool selection, scoring, no curriculum advancement)
-- Progress Dashboard (item-level vs lesson-level views, motivation)
-- Media Learning Feature 8 (bring-your-own-YouTube/song): processing pipeline, vocab extraction, runtime lesson generation from media, licensing/legal posture for media sources
 
 ### Phase K — Confidence + soft signals
 - Confidence self-rating (PRD v1 §9): when collected, how surfaced, whether it influences SRS or stays qualitative
