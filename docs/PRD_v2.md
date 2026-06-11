@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phases A–I (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (J-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phases A–J (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (K-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phases A–I (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phase J (standalone surfaces) and J-M are still in design.
+This PRD reflects design decisions resolved through Phases A–J (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases K–M (soft signals, tech stack, MVP scope cut) are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -118,7 +118,7 @@ Every micro-lesson is 3–8 minutes, single concept, and follows a **3-beat stru
 - Review — scheduled spaced-repetition session over learned items
 - Assessment — chapter-scoped quiz, **used bidirectionally** (I.4.d): same items + same bar (≥80% mastery) gate either skipping a chapter on entry (pre-evaluation skip-test) or exiting it on completion (end-of-chapter gating). Partial pass allowed; tested-correct items marked mastered even on fail.
 
-**Note:** Media Learning (PRD v1 Feature 8) is a **tool**, not a lesson type. Learner-driven activity (bring-your-own YouTube clip / song). Handled separately. Details: **TBD Phase J**.
+**Note:** Media Learning (PRD v1 Feature 8) is a **tool**, not a lesson type. Learner-driven activity (bring-your-own content, user-pasted). Locked under J.3 (§9.2); deferred from MVP first cut.
 
 ## 3.5 Curriculum Hierarchy
 
@@ -388,7 +388,7 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 - **Feature 5 — Speaking** — I-Speaking lessons, evaluation via Azure Speech (per §8.1)
 - **Feature 6 — Reading** — I-Reading lessons (evaluation TBD H.4)
 - **Feature 7 — Writing** — I-Writing lessons (evaluation TBD H.2)
-- **Feature 8 — Media Learning** — deferred from MVP first cut. Architecture: **TBD Phase J**.
+- **Feature 8 — Media Learning** — deferred from MVP first cut; posture locked (J.3). Bring-your-own content (user-pasted lyrics/transcript) → transient process → discard. See §9.2.
 - **Scenario-based learning** (v1 §8) — I-Scenario lessons
 
 ## 9.2 New in v2
@@ -415,6 +415,10 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
   - **Why distinct (J.2.a):** for a non-exam learner there is no surface today that says "you're 80% through Foundation, production is your weak spot" — the Outline is positional, the readiness tracker is exam-only, breadcrumbs are per-item. The dashboard owns aggregate mastery + modality profile + momentum.
   - **Granularity (J.2.b):** two levels deep — aggregate top-line ("X of Y Foundation items mastered, Z%") + breakdown by the four item types (Kana/Vocab/Kanji/Grammar) + modality profile (recognition/recall/production). Each weak spot links to the matching Practice Mode scope. No individual-item list (served indirectly by Practice "weakest" + the Outline; a clean v2 add if beta demands it).
   - **Momentum (J.2.c):** cumulative mastery curve (items mastered by week) + recent-rate callout ("this week +28, last week +19"). Shows *learning output*. **Effort/consistency metrics (minutes, review-adherence, streaks) are Phase K**, not built here. The exam-learner **readiness tracker (I.2.b) stays separate** — dashboard may link/snippet it but doesn't absorb it (readiness is goal-relative + exam-only; the dashboard is universal).
+- **Media Learning — Feature 8 (J.3 locked posture; deferred from MVP first cut):** bring-your-own real Japanese content, decoded into a vocab/grammar breakdown.
+  - **Legal posture (J.3.a):** transient processing, **zero retention** — receive text → extract → generate breakdown → **discard source**, architecturally enforced. Only the generated breakdown persists, composed of references to our own licensed item DB. Consistent with E.2 (no copyrighted corpus built; ephemeral analysis).
+  - **Ingestion (J.3.b):** **user supplies the text themselves** (paste lyrics/transcript or upload own file) — no platform fetching, zero ToS exposure. Hybrid paste-floor + opportunistic fetch noted as a future escalation (inherits ToS risk; only if paste-friction hurts adoption). Consequence: **no in-app audio playback of the source** — it's a text-comprehension tool; the user watches/listens on their own player.
+  - **Output + integration (J.3.c):** read-only annotated breakdown (vocab glossed, grammar flagged, notes) with links to any **existing** items showing the learner's mastery, **plus opt-in** to add those already-existing items to the review queue. **No item minting** from arbitrary media (would rot the editorially-reviewed item DB and violate items-first quality posture); non-item tokens (proper nouns, slang) stay gloss-only and unscheduled.
 - **Internal Authoring UI** — per §6.3.
 
 ---
@@ -493,8 +497,8 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases J (Standalone surfaces), K (Confidence + soft signals), L (Tech stack), M (MVP scope cut + beta launch).
+Continue the design grilling through Phases K (Confidence + soft signals), L (Tech stack), M (MVP scope cut + beta launch).
 
-Current open phase: **J — Standalone surfaces**, covering Practice/Quiz Mode (standalone item-pool evaluation surface, no curriculum advancement), Progress Dashboard (item-level vs lesson-level views, motivational framing), and Media Learning Feature 8 (bring-your-own YouTube/song processing pipeline, vocab extraction, runtime lesson generation, licensing posture). Curriculum Outline visual + interaction-pattern details will also be refined here alongside the dashboard.
+Current open phase: **K — Confidence + soft signals**, covering confidence self-rating (PRD v1 §9 — when collected, how surfaced, whether it influences SRS), streaks, daily targets, and motivational nudges. Note the boundary set in J.2.c: Phase K owns behavioral-consistency/effort metrics (streaks, minutes, adherence); the Progress Dashboard owns learning-output metrics.
 
-Phase I fully locked: see `decisions.md` §I.1–I.4 for the full intake / placement / per-chapter skip-test / Curriculum Outline design.
+Phases I and J fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline) and §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning).

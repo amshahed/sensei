@@ -81,22 +81,27 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **I.4.d** Per-chapter pre-evaluation (skip-test): bidirectional Assessment, optional on chapter entry, partial-pass supported
   - **I.4.e** Curriculum Outline: minimal-but-complete navigation surface, nested list for Foundation + graph for Tracks, lesson-level granularity (read-only), per-chapter actions = skip-test / relocate / browse / review
 
+### ✅ Phase J — Standalone surfaces
+- **J.1** Practice Mode
+  - **J.1.a** Real Practice Mode tab (own destination, available regardless of due reviews), user-directed scope, no curriculum advancement — decisive use case = JLPT-N4 learner acting on mock-exam-identified weak areas
+  - **J.1.b** Scope picker reuses Curriculum Outline + item-type filter + "weakest" shortcut; ordering always lowest-retention/weakest-modality first
+  - **J.1.c** Full FSRS/mastery write-back + same-session double-count guardrail
+  - **J.1.d** Review-style immediate feedback; "Quiz/test" job retired to Assessments + mock exams
+  - **J.1.e** Learned-items-only (future items browse/skip-test in Outline, not drillable)
+- **J.2** Progress Dashboard
+  - **J.2.a** Distinct lean "scoreboard" surface (aggregate mastery / modality / momentum); links to Outline; ships only motivating-or-actionable metrics
+  - **J.2.b** Two levels deep: aggregate + four-item-type breakdown + modality profile; weak spots link to Practice Mode; no individual-item list
+  - **J.2.c** Cumulative mastery curve + recent-rate callout; effort/consistency deferred to K; exam readiness tracker stays separate
+- **J.3** Media Learning (Feature 8) — *deferred from MVP first cut; posture locked*
+  - **J.3.a** Transient processing, zero retention (architecturally enforced); only generated breakdown persists, composed of our licensed items
+  - **J.3.b** User-supplied text only (no platform fetch) — zero ToS exposure; hybrid paste+fetch noted as future; consequence: no in-app source audio (text-comprehension tool)
+  - **J.3.c** Reference breakdown + opt-in scheduling of already-existing items; no item minting from arbitrary media
+
 ---
 
 ## In Progress
 
-### 🔄 Phase J — Standalone surfaces
-- **J.1** Practice Mode — ✅ **locked**
-  - **J.1.a** Real Practice Mode tab (own destination, available regardless of due reviews), user-directed scope, no curriculum advancement — chosen over cut / "more practice" button; decisive use case = JLPT-N4 learner acting on mock-exam-identified weak areas
-  - **J.1.b** Scope picker reuses Curriculum Outline + item-type filter + "weakest" shortcut; ordering always lowest-retention/weakest-modality first (no strategy menu)
-  - **J.1.c** Full FSRS/mastery write-back (Practice scored like reviews) + same-session double-count guardrail
-  - **J.1.d** Review-style immediate feedback; "Quiz/test" job retired to Assessments + mock exams (surface is "Practice Mode")
-  - **J.1.e** Learned-items-only (future items browse/skip-test in Outline, not drillable)
-- **J.2** Progress Dashboard — ✅ **locked**
-  - **J.2.a** Distinct lean "scoreboard" surface (aggregate mastery / modality / momentum); links to Outline for positional detail; ships only motivating-or-actionable metrics
-  - **J.2.b** Two levels deep: aggregate top-line + four-item-type breakdown + modality profile; weak spots link to Practice Mode scopes; no individual-item list
-  - **J.2.c** Cumulative mastery curve + recent-rate callout; effort/consistency deferred to Phase K; exam readiness tracker stays separate (link, not absorb)
-- **J.3** Media Learning Feature 8 — ⏳ pending grilling (bring-your-own-YouTube/song: processing pipeline, vocab extraction, runtime lesson generation, licensing/legal posture)
+(none — Phase J complete; Phase K is next active but grilling has not begun)
 
 ---
 

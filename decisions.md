@@ -976,9 +976,37 @@ A lean "scoreboard" surface answering *how much do I know, and am I improving?* 
 
 **Honest caveat noted:** a cumulative curve only goes up (mastery rarely drops), so it's low-information as analytics — but its job is purely motivational ("you're moving"); the actionable load is carried by the J.2.b modality + item-type breakdown.
 
-### J.3 Media Learning — Feature 8 (pending)
+### J.3 Media Learning — Feature 8 (complete)
 
-Pending grilling. Open questions: bring-your-own-YouTube/song processing pipeline, vocab/grammar extraction, runtime lesson generation from media, licensing/legal posture for media sources.
+The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japanese content they care about (song lyrics, a clip's dialogue) and gets it decoded into a vocab/grammar breakdown. **Deferred from MVP first cut** (PRD §9.1) — this locks the *posture/architecture* the eventual build must honor, not an immediate implementation.
+
+#### J.3.a Legal posture — transient processing, zero retention (option A)
+
+**Decision:** Fetch/receive media text → extract vocab/grammar → generate the breakdown → **discard the source text immediately.** Nothing copyrighted is persisted. The only stored artifact is the generated breakdown, composed of references to **our own licensed item DB**. Discard must be **architecturally enforced** (no sneaky caching, no transcripts retained in logs).
+
+**Why (consistency with E.2):** E.2's intent is "don't build a system whose corpus is other people's copyrighted work." Transient, user-initiated, discard-after-processing doesn't build a corpus — it's ephemeral analysis (like a browser rendering a page). The persisted lesson is *our* items, not the source's text.
+
+**Rejected:** B (cache/store transcripts for speed + improvement) — storing third-party transcripts builds exactly the derivative copyrighted-content database E.2 forbids, just user-sourced; caching convenience isn't worth converting an ephemeral-analysis story into a "we host copyrighted media" story. C (drop bring-your-own, curated CC/public-domain library only) — legally cleanest but guts the value prop (personal relevance — *the* song/clip they love); a weaker, different feature.
+
+#### J.3.b Ingestion path — user-supplied text only (option C; D noted as future)
+
+**Decision:** The user **supplies the text themselves** (paste lyrics/transcript, or upload their own file/recording). We do **not** fetch from any platform. Zero platform-ToS exposure — the user sourced the text under their own personal-use rights; we process-and-discard it.
+
+**Why:** C is the only path fully consistent with J.3.a and the strict licensing posture for a solo founder with no legal team. Programmatic fetch (A — `youtube-transcript-api` and friends) sits in YouTube-ToS grey zone, breaks constantly, and risks C&D — bad foundation. Official-APIs-only (B) is ToS-clean but mostly doesn't work: YouTube's caption API can't reach most auto-captioned videos, and licensed lyric APIs cost money + carry redistribution limits — promises a feature it can't deliver for the common case.
+
+**Future escalation (D, noted not locked):** paste-as-floor + *opportunistic* programmatic fetch as a convenience layer with graceful fallback to paste. The fetch half inherits A's ToS risk, so it's a deliberate later choice taken with eyes open — only if usage data shows paste-friction kills adoption.
+
+**Consequence:** because we never fetch/store the media, Media Learning is a **text-comprehension** tool — the user watches/listens on their own player; there is **no in-app audio playback of the source**. Clean side-effect of the posture, not a separate decision.
+
+#### J.3.c Output + item-system integration — breakdown + opt-in scheduling of known items (option B)
+
+**Decision:** Output = a **read-only annotated breakdown** of the supplied text (vocab glossed, grammar points flagged, notes/translation). Where a token maps to an **existing item** in our DB, link to it with the learner's current mastery; **plus** an opt-in to add those already-existing items to the review queue ("add these 8 words to your reviews"). Tokens that aren't items (proper nouns, rare slang, misparsed) are glossed inline only — **no item minted, nothing scheduled.**
+
+**Why:** the reference breakdown (option A behavior) is most of the value — full decode of content the learner cares about. Adding **opt-in scheduling of items that already exist in our curated DB** makes the strongest learning moment ("I just met 食べる in a song I love") durable, cheaply and safely — FSRS only ever ingests vetted items, never arbitrary media vocab. Early Foundation learners still benefit: unknown words often exist as (unlearned) items, so media can pull-forward vocab.
+
+**Rejected:** A (breakdown only, nothing scheduled) — inert; wastes the reinforce-what-you-just-met moment. C (full 3-beat lesson + mint novel vocab as new items + schedule) — collides with two locked decisions: (1) unvetted auto-minted items rot a DB whose entire quality story (E.1, F-series) rests on canonical sources + editorial review by a user who is **not** a linguist (hard constraint); (2) violates items-first quality posture. Turns a personal comprehension tool into an uncontrolled content pipeline.
+
+**Honest caveat:** value depends on how much of typical media maps to existing items. Non-item tokens stay gloss-only and unscheduled — that's the correct outcome, not a bug.
 
 ---
 
@@ -1015,4 +1043,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phase I fully locked. **Phase J in progress:** J.1 Practice Mode locked (J.1.a–J.1.e); J.2 Progress Dashboard locked (J.2.a–J.2.c); **J.3 Media Learning** still pending grilling.
+See `progress.md` for live status. Phases A–J fully locked (J.1 Practice Mode / J.2 Progress Dashboard / J.3 Media Learning). Next active phase: **Phase K — Confidence + soft signals** (confidence self-rating, streaks, daily targets, motivational nudges).
