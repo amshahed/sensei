@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+web-build/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# expo / react native
+.expo/
+.expo-shared/
+
+# prisma generated client
+apps/api/src/generated/
+
+# test / coverage
+coverage/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# misc
+*.log
+.DS_Store
