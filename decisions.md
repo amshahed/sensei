@@ -1039,9 +1039,50 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 **Honest caveats:** (1) gaming can't be fully eliminated — someone sets a tiny target and does exactly it — but because their floor is "due reviews," even the gamed floor is the precious action. (2) Demoting the streak weakens its raw hook somewhat; deliberate trade — calmer streak is gamed less, hook carried by the honest due-review nudge. Right trade for a motivated-adult audience. (3) Unlimited grace makes the streak meaningless → hence bounded.
 
-### K.3 Streaks/daily-targets/nudges remaining details (pending)
+### K.3 Streaks / daily-targets / nudges — remaining details (complete)
 
-Pending grilling. Open: exact grace-freeze cap mechanic; whether Practice Mode (J.1) counts toward "day done" (deferred from J.1); daily-target adjustment over time; notification frequency/quiet-hours; any non-streak nudges (milestone celebrations beyond Foundation-Complete).
+#### K.3.a Streak-freeze grace — earned, capped (option A)
+
+**Decision:** Bounded grace via **earned freezes** — bank a freeze by over-delivering past your daily target (e.g., ~2× one day); **capped** at a small number stored (~2–3). A used freeze represents real prior work already done.
+
+**Why:** makes grace *funded by genuine learning*, not gifted — using a freeze isn't cheating, you banked it by doing the equivalent work earlier, so the streak still represents continuous real learning. Same reframe as K.2: even "freeze farming" = doing extra learning (benign). The cap keeps it bounded (can't bank a month of coasting).
+
+**Rejected:** B (fixed monthly allowance, freezes gifted regardless of effort) — cheapens the streak. C (auto-protect single miss, no accumulation) — simplest/gentlest and a legitimate MVP cut, but costless auto-protection slightly erodes meaning and gives nothing to earn. A wins on brand fit; C is the pragmatic simplification if needed.
+
+#### K.3.b Does Practice Mode count toward "day done"? — anchor on due reviews (option A)
+
+**Decision:** The **due-review session** (G.4-capped batch, ~10–15 items) anchors "day done." Practice Mode (J.1) counts toward the *target/effort* layer and the no-reviews-due fallback, and helps clear due items if scoped to include them, but **does not substitute** for the review session when reviews are due.
+
+**Why:** K.2's integrity rests on *cheapest streak-preserving action = highest-value learning act = clearing due reviews* (items at optimal spaced-repetition timing). Letting Practice substitute reopens a milder Duolingo hole: streak alive while a backlog of genuinely-due items decays. The bar isn't punishing — the due session is the G.4-capped batch (~few min), so "reviews + your practice" is a small add.
+
+**Rejected:** B (any genuine learning counts; Practice fully substitutes) — defensible lenient/values alternative (don't invalidate real learning), but quietly surrenders the steer-toward-highest-value-action property the streak was designed around. Locked A; noted B can feel paternalistic (20 min of Practice but skipped reviews → "day not done").
+
+#### K.3.c Daily-target adjustment — user-editable + system-suggested (option B)
+
+**Decision:** Target stays **user-editable** in settings; **plus** the system *suggests* recalibration on a sustained mismatch (consistently over- or under-delivering vs target), and the **user confirms**. Never silent. Decrease suggestions (struggling → lower bar) are purely supportive; increase suggestions (ready for more) are positive, user-confirmed growth nudges.
+
+**Why:** protects streak-bar integrity (K.3.a/b) — a stale signup target drifts out of calibration: too-low reopens gaming, too-high punishes honest effort. Detection is modest (actual vs target over a rolling window; mastery-events already stored for J.2). Keeps learner in control.
+
+**Rejected:** A (static, user-editable only) — legitimate MVP cut, but most users never revisit the number so miscalibration persists. C (fully auto-adjusted, no consent) — silently moving (esp. raising) the target is goalpost-moving; off-brand trust violation.
+
+#### K.3.d Notification cadence + quiet hours — decay-driven, capped 2, role-differentiated + smart-suppressed (option B, hardened)
+
+**Decision:** Decay-driven nudges, **hard cap 2/day**, with:
+- **Role-differentiation** (the two pings never repeat): **primary** decay nudge at preferred time ("here's your day / 3 words fading") + optional **evening last-call backstop** ("still time before your day resets"), framed helpful, not guilt.
+- **Smart suppression** — nothing fires once "day done" is complete. A consistent learner therefore experiences **≤1/day** (the evening one self-suppresses); the 2nd only ever reaches someone who hasn't done their day yet, **once**, as a genuine backstop. Evening backstop is **default-on** (so forgetful learners get it) but suppressed-when-done.
+- **User-set preferred time + quiet hours**, **one-tap global off** (no dark-pattern friction), **decay-honest tone** — never streak-loss guilt.
+
+**Why:** the bitterness driver isn't the integer 2 — it's (a) a 2nd ping that *repeats* the first (nag) and (b) guilt tone. Role-differentiation + smart-suppression remove both: the 2nd has a distinct helpful job and never lands on someone already done. Extends K.2's decay-anchored honest-nudge principle.
+
+**Rejected:** A (one fixed daily, no decay logic) — respectful but rote; pings identically whether or not return has value, training people to ignore it. C (configurable multi-touch, several default touchpoints) — the Duolingo road; defaulting to multiple pings courts resentment. **Evolution note:** initial proposal was a flat ≤1/day cap; user pushed back ("is twice so bad?"), resolved to cap-2-but-effectively-≤1-via-suppression.
+
+#### K.3.e Milestone celebrations — curated, capability-anchored (option B)
+
+**Decision:** A **small curated set** of celebration moments, each marking a **real capability gain**, celebrated proportionally (bigger moments, bigger marks). E.g.: all kana mastered, first real conversation completed, first media clip decoded, first chapter done, Foundation-Complete (I.3.c), Track-Complete.
+
+**Design rule (keeps it honest):** anchor celebrations to **capability gains** ("you can now do X"), **not arbitrary counters** ("100 items!" / "7-day streak!") — those are the hollow ones. Consistent with comprehension/capability-first brand. The honest test: *would the learner feel proud of this independent of the app's framing?*
+
+**Rejected:** A (only Foundation/Track-Complete) — too sparse; lets genuine motivating moments (all-kana, first conversation) pass unremarked. C (frequent micro-celebrations: per-lesson confetti, streak-number milestones) — Duolingo trap; cheapens every celebration, trains dopamine-seeking over learning (same pathology as streak-gaming). **Caveat:** "capability gain" needs a definition so the set stays small — an authoring-time curation call, not a system feature.
 
 ---
 
@@ -1078,4 +1119,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phases A–J fully locked. **Phase K in progress:** K.1 confidence self-rating locked + K.2 learning-streak locked; **K.3** (grace-cap mechanic, Practice-counts-toward-day, target adjustment, notification cadence, other nudges) still pending grilling.
+See `progress.md` for live status. Phases A–K fully locked (K.1 confidence self-rating / K.2 learning-streak / K.3 streak-freeze + day-done anchor + target adjustment + notification cadence + milestone celebrations). Next active phase: **Phase L — Tech stack**.

@@ -97,14 +97,21 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **J.3.b** User-supplied text only (no platform fetch) — zero ToS exposure; hybrid paste+fetch noted as future; consequence: no in-app source audio (text-comprehension tool)
   - **J.3.c** Reference breakdown + opt-in scheduling of already-existing items; no item minting from arbitrary media
 
+### ✅ Phase K — Confidence + soft signals
+- **K.1** Confidence self-rating: optional one-tap "I guessed" flag on recognition items; checked+correct downgrades FSRS rating (Hard not Good); downgrade-only; no flag on production items
+- **K.2** Daily-commitment mechanic: "learning streak" (forgiving), not a login streak — (1) meaningful daily requirement = clear due reviews + hit self-set target (fallback = one completed lesson/practice unit); (2) demoted under the J.2 progress hero; (3) decay-anchored honest nudge; (4) bounded grace. Reframe: redirect streak-gaming so the gamed minimum *is* the highest-value learning act → "come for the streak, stay for the learning"
+- **K.3** Soft-signal details:
+  - **K.3.a** Streak-freeze grace: earned (bank by over-delivering) + capped (~2–3); grace funded by real learning, not gifted
+  - **K.3.b** "Day done" anchors on the due-review session (G.4-capped); Practice Mode counts toward target/fallback but doesn't substitute for due reviews
+  - **K.3.c** Daily target: user-editable + system-suggested recalibration on sustained mismatch (user confirms; never silent)
+  - **K.3.d** Notifications: decay-driven, hard cap 2/day, role-differentiated (primary + optional evening backstop), smart-suppressed once day-done (→ effectively ≤1 for consistent learners), quiet hours, one-tap off, no streak-guilt
+  - **K.3.e** Milestone celebrations: small curated set anchored to capability gains (all-kana, first conversation, first decoded media, chapter/Foundation/Track complete); no hollow counters or per-lesson confetti
+
 ---
 
 ## In Progress
 
-### 🔄 Phase K — Confidence + soft signals
-- **K.1** Confidence self-rating — ✅ **locked**: optional one-tap "I guessed" flag on recognition items; checked+correct downgrades FSRS rating (Hard not Good); downgrade-only (conservative); no flag on production items
-- **K.2** Daily-commitment mechanic — ✅ **locked**: "learning streak" (forgiving), not a login streak. Four properties: (1) meaningful daily requirement = clear due reviews + hit self-set target (fallback = one completed lesson/practice unit when no reviews due); (2) demoted prominence under the J.2 progress hero; (3) decay-anchored honest re-engagement nudge (tied to FSRS due items, not streak-loss guilt); (4) bounded grace. Reframe: redirect streak-gaming so the gamed minimum *is* the highest-value learning act → "come for the streak, stay for the learning"
-- **K.3** Remaining soft-signal details — ⏳ pending grilling (grace-freeze cap mechanic; does Practice Mode count toward "day done"; daily-target adjustment over time; notification cadence/quiet-hours; other milestone nudges)
+(none — Phase K complete; Phase L is next active but grilling has not begun)
 
 ---
 

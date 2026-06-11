@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phases A–J (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (K-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phases A–K (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (L-M) are flagged **TBD** with the responsible phase.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phases A–J (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases K–M (soft signals, tech stack, MVP scope cut) are still in design.
+This PRD reflects design decisions resolved through Phases A–K (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases L–M (tech stack, MVP scope cut) are still in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -422,7 +422,12 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 - **Confidence + soft signals (Phase K, in progress):**
   - **Confidence self-rating (K.1 locked):** optional one-tap "I guessed" flag on recognition/multi-choice items → checked + correct downgrades the FSRS rating (Hard not Good). Fixes the multiple-choice guessing false-positive (AI grader can't observe a guess); downgrade-only, so the failure mode is conservative. No flag on production items.
   - **Learning streak (K.2 locked):** a *forgiving* streak redesigned to defeat streak-gaming — explicitly **not** a login streak. (1) "Day done" requires **clearing due FSRS reviews + hitting the self-set daily target** (fallback when no reviews due = one *completed* lesson/practice unit, never a single card) — so the cheapest streak-preserving action is the highest-value learning act. (2) **Demoted prominence** — the hero metric is the J.2 progress view, not the streak counter. (3) **Decay-anchored honest nudge** — notifications tie to items genuinely fading (FSRS due), not streak-loss guilt. (4) **Bounded grace** (capped freezes) so a miss survives but the number still means something. Design principle: you don't defeat streak-gaming (Goodhart), you *redirect* it so optimizing for the streak = optimizing for learning ("come for the streak, stay for the learning").
-  - **Remaining (K.3, TBD):** grace-cap mechanic, whether Practice Mode counts toward "day done," daily-target adjustment, notification cadence/quiet-hours, other milestone nudges.
+  - **Soft-signal details (K.3 locked):**
+    - **K.3.a Grace:** earned, capped streak-freezes — bank one by over-delivering past target (~2–3 max stored). Grace funded by real learning, not gifted.
+    - **K.3.b "Day done" anchor:** the due-review session (G.4-capped batch) is required; Practice Mode counts toward the target/fallback and helps clear due items if scoped that way, but does not substitute for due reviews.
+    - **K.3.c Target adjustment:** user-editable + system-*suggested* recalibration on sustained over/under-delivery (user confirms; never silent).
+    - **K.3.d Notifications:** decay-driven, **hard cap 2/day**, role-differentiated (primary decay nudge + optional evening last-call backstop, never repeating), **smart-suppressed once day-done** (consistent learners see ≤1/day; the 2nd only reaches an at-risk learner, once), user-set time + quiet hours, one-tap global off, decay-honest tone — never streak-guilt.
+    - **K.3.e Milestone celebrations:** small curated set anchored to **capability gains** (all-kana mastered, first conversation, first decoded media, first chapter, Foundation/Track complete) — *not* arbitrary counters or per-lesson confetti.
 - **Internal Authoring UI** — per §6.3.
 
 ---
@@ -501,8 +506,8 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases K (Confidence + soft signals), L (Tech stack), M (MVP scope cut + beta launch).
+Continue the design grilling through Phases L (Tech stack), M (MVP scope cut + beta launch).
 
-Current open phase: **K — Confidence + soft signals**, covering confidence self-rating (PRD v1 §9 — when collected, how surfaced, whether it influences SRS), streaks, daily targets, and motivational nudges. Note the boundary set in J.2.c: Phase K owns behavioral-consistency/effort metrics (streaks, minutes, adherence); the Progress Dashboard owns learning-output metrics.
+Current open phase: **L — Tech stack**, covering backend language + framework, relational DB, vector DB provider, AI provider(s), frontend (web-first vs mobile-first; framework), audio + STT provider, and hosting/infra posture. Constrained by CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness — backend platform-agnostic, one client for MVP).
 
-Phases I and J fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline) and §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning).
+Phases I, J, K fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline), §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning), and §K.1–K.3 (confidence self-rating / learning streak / soft-signal details).
