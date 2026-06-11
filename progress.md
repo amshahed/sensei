@@ -107,24 +107,24 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **K.3.d** Notifications: decay-driven, hard cap 2/day, role-differentiated (primary + optional evening backstop), smart-suppressed once day-done (→ effectively ≤1 for consistent learners), quiet hours, one-tap off, no streak-guilt
   - **K.3.e** Milestone celebrations: small curated set anchored to capability gains (all-kana, first conversation, first decoded media, chapter/Foundation/Track complete); no hollow counters or per-lesson confetti
 
+### ✅ Phase L — Tech stack
+*Founder profile: solo, full-stack (web JS/TS+React, Python, some mobile), mobile-first. Principle: minimize ops + build in strongest language.*
+- **L.1** Mobile client: **React Native + Expo** (managed) — reuses React fluency, one codebase iOS+Android, Expo covers mic + notifications, web-extensible later
+- **L.2** Backend: **TypeScript + NestJS** — language parity with client; we orchestrate AI APIs (not train models) so Python's moat doesn't apply; JP libs (kuromoji/wanakana/ts-fsrs) + jmdict-simplified are JS-native
+- **L.3** Data stores: **Postgres + pgvector, one database** — E.3 reference corpus is small/bounded; one datastore = solo simplification; migration to dedicated vector DB is a cheap exit option
+- **L.4** AI provider: **Anthropic (Claude) primary** behind a thin swappable `LLMClient`; tiered — Opus for offline drafting, Haiku/Sonnet for runtime grading/interactivity. Not full multi-provider routing (build the seam, not the framework)
+- **L.5** Speech: **Azure Neural TTS** consolidating with Azure STT/pronunciation (H.1); authored audio cached at publish, runtime TTS only for dynamic content
+- **L.6** Hosting: **low-ops managed stack** — Railway (NestJS) · Neon (Postgres+pgvector) · Cloudflare R2 (storage) · Clerk (auth) · Expo EAS (mobile distribution); hyperscaler deferred (containerized NestJS stays portable)
+
 ---
 
 ## In Progress
 
-(none — Phase K complete; Phase L is next active but grilling has not begun)
+(none — Phase L complete; Phase M is the next and final active phase, grilling not yet begun)
 
 ---
 
 ## Pending Phases
-
-### Phase L — Tech stack
-- Backend language + framework
-- Relational DB (likely Postgres)
-- Vector DB provider (Pinecone / Weaviate / pgvector / etc.)
-- AI provider(s) — Anthropic / OpenAI / multi-provider
-- Frontend — web-first vs mobile-first; React / Next / Flutter / native
-- Audio + STT provider
-- Hosting + infra posture
 
 ### Phase M — MVP scope cut + Beta launch slice
 - Beta subset of Foundation (e.g., kana + first ~20 grammar + ~200 vocab ≈ 100 lessons)

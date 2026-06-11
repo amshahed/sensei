@@ -1086,6 +1086,60 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 ---
 
+## Phase L — Tech stack
+
+**Founder profile driving these choices:** solo, full-stack capable (web JS/TS + React, Python, some mobile), **mobile-first** for MVP. Governing principle throughout: *minimize ops + build in the founder's strongest language* over chasing marginal capability. Constrained by CC.1 (multi-language future-proofing) + CC.2 (backend platform-agnostic, one client for MVP).
+
+### L.1 Mobile client framework — React Native + Expo (option A)
+
+**Decision:** **React Native + Expo (managed workflow).** One codebase iOS+Android; reuses the founder's React/TS fluency; Expo covers our actual native needs — mic capture (`expo-audio`), push notifications (`expo-notifications`, for K.3.d), OTA updates; web-extensible later via `react-native-web` (CC.2).
+
+**Why:** building in the founder's strongest language (React) beats Flutter's marginal performance/polish edge, which would cost a new language (Dart) for no offsetting benefit at MVP scale. Our hardware needs are light (record→upload audio, standard UI + notifications) — clear of React Native's weak spot (heavy on-device real-time audio/DSP).
+
+**Rejected:** B (Flutter) — Dart, reuses no React knowledge. C (native Swift+Kotlin) — two codebases, untenable solo. **Sub-note:** Expo *managed* (with config plugins / dev clients) over bare RN — removes the solo-hostile native build toolchain.
+
+### L.2 Runtime backend — TypeScript everywhere, NestJS (option B)
+
+**Decision:** **TypeScript backend (NestJS).** Same language as the RN client → shared API types, one mental model, half the dependency surface to maintain solo.
+
+**Why (cuts against the "AI app = Python" reflex):** we *orchestrate AI APIs, we don't train models* — Python's ML/data-science moat doesn't apply. Anthropic + Azure have first-class TS SDKs. Our JP-specific runtime libs are already JS-native: **kuromoji** (tokenizer) + **wanakana** (kana util) from H.2, and **ts-fsrs** (G.2 scheduler). Python's one apparent edge — JMdict/KANJIDIC2 ingestion — is erased by **jmdict-simplified** (dictionaries pre-parsed to clean JSON for JS/TS). Frontend↔backend language parity is a real solo-founder multiplier.
+
+**Rejected:** A (Python/FastAPI) — buys an unused ecosystem, loses frontend parity, re-bridges JS-native JP tooling. C (TS runtime + Python offline scripts) — reasonable escape hatch if a specific Python lib proves indispensable for the offline authoring pipeline; don't start polyglot, collapse to C only on concrete need. **Sub-note:** NestJS (opinionated structure/DI) over bare Express/Fastify for a maintainable solo codebase.
+
+### L.3 Data stores — Postgres + pgvector, one database (option A)
+
+**Decision:** **Postgres** for relational (items/lessons/users/mastery/FSRS state) **+ pgvector** for the E.3 reference-corpus embeddings — **one database** for both.
+
+**Why:** E.3 deliberately scoped vectors to *reference material only* (Tatoeba + grammar reference + graded news) → tens-to-low-hundreds of thousands of vectors, well within pgvector's comfortable range; dedicated vector DBs earn their cost only at millions-to-billions + high QPS. One datastore = one backup/security/monitoring surface (major solo simplification). No lock-in: embeddings migrate to Qdrant/Pinecone via a script if ever outgrown — so "pgvector now" costs nothing later.
+
+**Rejected:** B (dedicated vector DB at MVP) — pays money + ops complexity for unneeded scale. C ≡ A with an explicit exit clause (revisit only if the Tier-1 corpus balloons). **Caveat:** pgvector HNSW-index tuning + RAM for high-dim embeddings need mild attention as the corpus grows; non-issue at our size.
+
+### L.4 AI provider — Anthropic primary, thin abstraction, tiered (option A)
+
+**Decision:** **Anthropic (Claude) as default provider**, called through **one thin internal `LLMClient`** (swappable, per-task model selection). **Model tiering:** **Claude Opus** for offline drafting/authoring (quality-critical, low volume); **Claude Haiku** (or Sonnet where nuance matters, e.g. writing-eval feedback) for runtime grading + interactivity (high volume, latency/cost-sensitive — grading fires every lesson).
+
+**Why:** the capability-sensitive work is *editorial-quality generation* (lesson drafting, natural example sentences — F.4 reviews for tone/naturalness since the founder isn't a linguist), where Claude has a real edge in nuanced instruction-following + long-form writing; founder is already in the Claude ecosystem (Claude Code). Not a moat — OpenAI is fully capable — but a reasonable lean made low-stakes by the abstraction.
+
+**Rejected:** C (full multi-provider routing at MVP) — over-engineering; doubles prompt-tuning surface + adds a second billing/rate-limit/failure surface for a problem (provider risk, cost arbitrage) not yet present. *Build the seam, not the framework.* **Caveat:** single-provider lean means a Claude outage degrades the live app; the abstraction *enables* OpenAI failover but wiring it is post-MVP — at MVP the provider is an accepted dependency (like Azure for speech).
+
+### L.5 Speech stack — Azure Neural TTS, consolidated, cached (option A)
+
+**Decision:** Consolidate **all speech on Azure** — STT + Pronunciation Assessment already locked (H.1), add **Azure Neural TTS** for spoken Japanese. **Authored-audio cache:** generate TTS once at publish time, store in object storage, reuse; runtime TTS only for genuinely dynamic generated content (cost + latency control). Client capture/playback via `expo-audio` (from L.1).
+
+**Why:** one speech vendor = one SDK/bill/credential surface (same logic as L.3's single DB). Azure's Japanese neural voices are clear + natural with SSML pitch/speed control (slow-for-learners); for a *learning* app, clarity > the emotional expressiveness where ElevenLabs leads.
+
+**Rejected:** B (best-of-breed TTS — ElevenLabs/OpenAI/Google split from Azure STT) — marginal naturalness gain not worth a second speech provider. **Caveat:** Azure voices are recognizably TTS on some phrasings — fine for examples/listening; if beta flags it for *immersion* content, spot-swap a premium voice for that subset; human-recorded kana/pronunciation audio is a possible authoring-time add, not an MVP blocker.
+
+### L.6 Hosting + infra — low-ops managed stack (option A)
+
+**Decision:** **Low-ops managed stack.** Sensible-default services locked: **Railway** (NestJS container) · **Neon** (managed Postgres + pgvector, serverless, branching) · **Cloudflare R2** (object storage — cheap, no egress fees) · **Clerk** (managed auth, strong RN support) · **Expo EAS** (mobile build + app-store submit).
+
+**Why:** a real backend (L.2) wants a real-but-managed home — a container PaaS runs NestJS with near-zero infra work, the sweet spot between underpowered BaaS and babysitting Kubernetes. Containerized NestJS stays portable, so starting on a PaaS has no lock-in — migrate to a hyperscaler only when scale demands. **Auth outsourced** (Clerk): high-risk, low-differentiation, easy to get subtly wrong — exactly what to not hand-roll solo.
+
+**Rejected:** B (AWS/GCP hyperscaler at MVP) — premature IAM/VPC/ops complexity for scale not yet needed. C (Supabase/Firebase *as* backend) — would underuse the deliberate NestJS choice (L.2); use managed pieces *under* the backend, not instead of it. **Caveat:** PaaS costs more than raw cloud at high scale + Neon scale-to-zero adds first-request cold-start latency; both non-issues at MVP, both have clean upgrade paths before a hyperscaler is warranted.
+
+---
+
 ## Cross-cutting design principles
 
 ### CC.1 Multi-language future-proofing (cheap insurance)
@@ -1119,4 +1173,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phases A–K fully locked (K.1 confidence self-rating / K.2 learning-streak / K.3 streak-freeze + day-done anchor + target adjustment + notification cadence + milestone celebrations). Next active phase: **Phase L — Tech stack**.
+See `progress.md` for live status. Phases A–L fully locked (L = tech stack: RN+Expo client / TypeScript+NestJS backend / Postgres+pgvector / Anthropic primary / Azure speech / low-ops managed hosting). Next active phase: **Phase M — MVP scope cut + Beta launch slice** (the final phase).

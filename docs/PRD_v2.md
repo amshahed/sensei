@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phases A–K (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals) plus cross-cutting principles CC.1 and CC.2. Sections that depend on later phases (L-M) are flagged **TBD** with the responsible phase.
+**Status:** DRAFT. Reflects design decisions resolved through Phases A–L (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack) plus cross-cutting principles CC.1 and CC.2. Only Phase M (MVP scope cut + beta launch slice) remains, flagged **TBD**.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phases A–K (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Phases L–M (tech stack, MVP scope cut) are still in design.
+This PRD reflects design decisions resolved through Phases A–L (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Only Phase M (MVP scope cut + beta launch) remains in design.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -236,7 +236,7 @@ Roughly **30–50% of design is language-agnostic** (architecture, algorithms, w
 
 The backend is platform-agnostic by construction. All design decisions made so far are either server-side or platform-neutral. Platform-specific concerns (audio capture, IME, offline cache, storage limits) live in client code.
 
-Recommended path: pick one client platform for MVP (web or mobile); expand to others after validation. Specific platform decision: **TBD Phase L (tech stack)**.
+Recommended path: pick one client platform for MVP; expand to others after validation. **Resolved (L.1): mobile-first via React Native + Expo** — one codebase iOS+Android, web-extensible later via `react-native-web`. See §11.
 
 ---
 
@@ -448,15 +448,14 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 11. Technical Architecture
 
-**Mostly TBD Phase L.** Decisions made so far that touch the stack:
+**Phase L locked.** Founder profile driving the stack: solo, full-stack (web JS/TS + React, Python, some mobile), **mobile-first** MVP. Governing principle: *minimize ops + build in the founder's strongest language* over chasing marginal capability. Per CC.1 (multi-language future-proofing) + CC.2 (backend platform-agnostic, one client for MVP).
 
-- **Audio + STT:** Azure Speech (STT + Pronunciation Assessment). Per §8.1.
-- **Relational DB:** assumed Postgres (definitive choice TBD L).
-- **Vector DB:** provider TBD L; candidates Pinecone / Weaviate / pgvector.
-- **AI provider:** TBD L; expect multi-provider (Anthropic Claude for drafter/critic likely, OpenAI Whisper as TTS fallback, etc.).
-- **Frontend:** TBD L; web-first vs mobile-first per CC.2.
-- **TTS:** Azure or OpenAI or Google — TBD L.
-- **Hosting + infra posture:** TBD L.
+- **Mobile client (L.1):** **React Native + Expo** (managed workflow). One codebase iOS+Android; reuses React fluency; Expo covers mic capture (`expo-audio`) + push notifications (`expo-notifications`); web-extensible later via `react-native-web`.
+- **Backend (L.2):** **TypeScript + NestJS**. Language parity with the client (shared API types). We orchestrate AI APIs rather than train models, so Python's ML moat doesn't apply; the JP-specific runtime libs (kuromoji, wanakana, ts-fsrs) and dictionary ingestion (`jmdict-simplified`) are JS-native.
+- **Data stores (L.3):** **Postgres + pgvector — one database** for relational *and* the E.3 reference-corpus embeddings. Corpus is bounded/small; single datastore is a solo-ops win; migration to a dedicated vector DB is a cheap exit option.
+- **AI provider (L.4):** **Anthropic (Claude) primary**, behind a thin swappable `LLMClient` with per-task model tiering — **Opus** for offline drafting/authoring, **Haiku/Sonnet** for runtime grading + interactivity. Not full multi-provider routing at MVP (the abstraction is the seam; failover is post-MVP).
+- **Speech (L.5):** **Azure Speech** for STT + Pronunciation Assessment (§8.1) **+ Azure Neural TTS** for spoken Japanese — all speech consolidated on one vendor. Authored audio is TTS-generated once at publish and cached; runtime TTS only for dynamic content.
+- **Hosting + infra (L.6):** **low-ops managed stack** — Railway (NestJS container) · Neon (managed Postgres + pgvector) · Cloudflare R2 (object storage) · **Clerk** (managed auth) · Expo EAS (mobile build/distribution). Containerized NestJS stays portable; hyperscaler deferred until scale demands it.
 
 ---
 
@@ -506,8 +505,8 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-Continue the design grilling through Phases L (Tech stack), M (MVP scope cut + beta launch).
+One phase remains: **M — MVP scope cut + beta launch slice.**
 
-Current open phase: **L — Tech stack**, covering backend language + framework, relational DB, vector DB provider, AI provider(s), frontend (web-first vs mobile-first; framework), audio + STT provider, and hosting/infra posture. Constrained by CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness — backend platform-agnostic, one client for MVP).
+Current open phase: **M — MVP scope cut + Beta launch**, covering the beta subset of Foundation (e.g., kana + first grammar/vocab ≈ ~100 lessons), which modalities make the beta (likely defer Speaking-dialogue and Media Learning), beta evaluation surfaces, and the launch sequence.
 
-Phases I, J, K fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline), §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning), and §K.1–K.3 (confidence self-rating / learning streak / soft-signal details).
+Phases I–L fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline), §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning), §K.1–K.3 (confidence self-rating / learning streak / soft-signal details), and §L.1–L.6 (tech stack — RN+Expo / TypeScript+NestJS / Postgres+pgvector / Anthropic / Azure speech / low-ops managed hosting).
