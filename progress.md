@@ -101,15 +101,14 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 ## In Progress
 
-(none — Phase J complete; Phase K is next active but grilling has not begun)
+### 🔄 Phase K — Confidence + soft signals
+- **K.1** Confidence self-rating — ✅ **locked**: optional one-tap "I guessed" flag on recognition items; checked+correct downgrades FSRS rating (Hard not Good); downgrade-only (conservative); no flag on production items
+- **K.2** Daily-commitment mechanic — ✅ **locked**: "learning streak" (forgiving), not a login streak. Four properties: (1) meaningful daily requirement = clear due reviews + hit self-set target (fallback = one completed lesson/practice unit when no reviews due); (2) demoted prominence under the J.2 progress hero; (3) decay-anchored honest re-engagement nudge (tied to FSRS due items, not streak-loss guilt); (4) bounded grace. Reframe: redirect streak-gaming so the gamed minimum *is* the highest-value learning act → "come for the streak, stay for the learning"
+- **K.3** Remaining soft-signal details — ⏳ pending grilling (grace-freeze cap mechanic; does Practice Mode count toward "day done"; daily-target adjustment over time; notification cadence/quiet-hours; other milestone nudges)
 
 ---
 
 ## Pending Phases
-
-### Phase K — Confidence + soft signals
-- Confidence self-rating (PRD v1 §9): when collected, how surfaced, whether it influences SRS or stays qualitative
-- Streaks, daily targets, motivational nudges
 
 ### Phase L — Tech stack
 - Backend language + framework

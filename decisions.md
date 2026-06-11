@@ -1010,6 +1010,41 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 ---
 
+## Phase K — Confidence + soft signals
+
+### K.1 Confidence self-rating — lightweight, SRS-feeding "guessed?" flag (option C)
+
+**Decision:** No confidence prompt on every item. Instead, an **optional one-tap "I guessed" flag** on guess-prone (recognition / multi-choice) items. Unchecked → normal scoring. Checked **and correct** → **downgrade the FSRS rating** (treat as Hard, not Good). No flag on production items (speaking/writing — answer quality already reveals confidence).
+
+**Why:** the real problem confidence solves is **multiple-choice guessing** — our recognition formats (I.4.b vocab/kanji/kana multi-choice, J.1) let a learner guess right; FSRS sees "correct" and schedules it far out, but the AI grader (G.3) literally cannot observe "I guessed." The flag converts the scheduler's strongest false-positive into correct signal at near-zero friction (skip it and nothing changes). Because it **only ever downgrades** (never inflates), the failure mode is conservative — worst case schedules a known item slightly too soon, the safe direction to err.
+
+**Rejected:** A (cut entirely, lean on FSRS self-correction — a lucky guess eventually re-tests and fails, pulling it back) — defensible and leaner, but knowingly lets the scheduler trust lucky guesses in guess-heavy formats. B (collect qualitative, don't feed SRS) — the half-measure trap (same logic as J.1): if it doesn't change behavior, "self-awareness" is a thin payoff nobody acts on. Either it influences the system (C) or you cut it (A); don't collect-and-ignore.
+
+**Caveat:** self-reported "I guessed" is noisy (some under-claim, some never tap), but the downgrade-only design keeps the noise conservative.
+
+### K.2 Daily-commitment mechanic — "learning streak" (forgiving), not a login streak (option B, hardened)
+
+**Decision:** Use a streak, but redesigned to defeat streak-gaming. The daily target captured at signup (I.3.b Q3) defines "a day done." Four defining properties:
+
+1. **Meaningful daily requirement (no token shortcut).** "Day done" = **clear your due FSRS reviews** + hit your self-set daily target (a lesson / committed minutes). The due-reviews requirement is the crux — spaced review of decaying items is the highest-retention action in the app, so the *cheapest* streak-preserving action **is** the highest-value learning act. Fallback when zero reviews are due (new / caught-up learner): "day done" = one **completed** lesson or practice unit (a meaningful unit, never a single card — or the token-tap hole reopens).
+2. **Demoted prominence.** The streak is a small, calm supporting indicator; the **hero metric is learning progress** (J.2 mastery curve / "you can now understand X"). Pride/attention attach to learning, not the counter. Streak's only job is the door; the experience inside is about learning.
+3. **Decay-anchored, honest re-engagement nudge.** Notifications tie to FSRS having due items — *"3 words are starting to fade — a quick review keeps them (and your run going)"* — not streak-loss guilt. The nudge fires exactly when returning produces real learning value, so the hook wraps the authentic spaced-repetition reason to return rather than manufacturing one.
+4. **Bounded grace.** Streak-freezes / grace days so a real-life miss is survivable, but **capped** (e.g., a small earned/monthly allowance) so the number still means something. (Exact cap = sub-decision, not locked here.)
+
+**Design principle behind it (the reframe):** you don't *defeat* streak-gaming (Goodhart's Law — any streak becomes an optimization target); you **redirect** it. Duolingo's gamed minimum (a 1-XP token lesson) is worthless, so gaming destroys learning. Here the gamed minimum is "your due reviews," so optimizing for the streak and optimizing for learning point the same direction. Achieves the user's stated goal: **"come for the streak, stay for the learning."**
+
+**User intent (verbatim framing):** wants to avoid Duolingo's failure where "people login and do a quick lesson just to keep the streak rather than logging in to learn" — wants the streak to hook without becoming the goal.
+
+**Rejected:** A (classic consecutive-day streak, zero-reset) — maximal loss-aversion but punishes the committed adult who travels and loses a 60-day chain; clashes with the honest brand. C (rolling "N of last 7 days," no streak) — gentle but never triggers the loss-aversion that makes streaks effective; largely inert as a motivator. D (no commitment mechanic) — leaves real habit-formation value on the table; feature-thin. B-naive (forgiving streak without the anti-gaming properties) — still collapses into a login streak; the four properties are what make B work.
+
+**Honest caveats:** (1) gaming can't be fully eliminated — someone sets a tiny target and does exactly it — but because their floor is "due reviews," even the gamed floor is the precious action. (2) Demoting the streak weakens its raw hook somewhat; deliberate trade — calmer streak is gamed less, hook carried by the honest due-review nudge. Right trade for a motivated-adult audience. (3) Unlimited grace makes the streak meaningless → hence bounded.
+
+### K.3 Streaks/daily-targets/nudges remaining details (pending)
+
+Pending grilling. Open: exact grace-freeze cap mechanic; whether Practice Mode (J.1) counts toward "day done" (deferred from J.1); daily-target adjustment over time; notification frequency/quiet-hours; any non-streak nudges (milestone celebrations beyond Foundation-Complete).
+
+---
+
 ## Cross-cutting design principles
 
 ### CC.1 Multi-language future-proofing (cheap insurance)
@@ -1043,4 +1078,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phases A–J fully locked (J.1 Practice Mode / J.2 Progress Dashboard / J.3 Media Learning). Next active phase: **Phase K — Confidence + soft signals** (confidence self-rating, streaks, daily targets, motivational nudges).
+See `progress.md` for live status. Phases A–J fully locked. **Phase K in progress:** K.1 confidence self-rating locked + K.2 learning-streak locked; **K.3** (grace-cap mechanic, Practice-counts-toward-day, target adjustment, notification cadence, other nudges) still pending grilling.
