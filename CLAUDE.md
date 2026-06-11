@@ -4,23 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository State
 
-This repository is **pre-implementation** but has an active, structured design in progress. No source code yet. Current artifacts:
+This repository is **pre-implementation**, but the structured design is **complete**. No source code yet. Current artifacts:
 
 - `docs/PRD_v1.md` — original product vision (Apr 2026 vintage; preserved as historical, do not edit)
-- `docs/PRD_v2.md` — current PRD draft, reflecting design decisions resolved so far. Work-in-progress; sections corresponding to unresolved phases are flagged TBD.
+- `docs/PRD_v2.md` — current PRD, reflecting the full resolved design (all phases A–M). Serves as the implementation reference; versions up to PRD_v3 if material design shifts emerge during build.
 - `decisions.md` — append-only log of every design decision resolved, with reasoning. Source of truth for *what was decided and why*.
 - `progress.md` — phase-by-phase progress tracker. Source of truth for *what's done, what's open, what's next*.
 
-When the user asks to "build" or "run" something, first confirm whether they want you to scaffold a new project (and which stack), since none currently exists.
+When the user asks to "build" or "run" something, first confirm whether they want you to scaffold a new project, since none currently exists. The stack is decided (see Phase L below) — confirm intent, not the stack.
 
-## Active Design Work
+## Design State — COMPLETE (A–M locked)
 
-The user is partway through a structured grilling session (`/grill-me` skill flow) to take Sensei from high-level idea to implementation-ready design. The session has resolved Phases A–H plus I.1 (single-primary track selection rule) plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Currently mid Phase I (branching: Track Modules + intake + placement), specifically at **I.2 — Track Module catalog**, where the JLPT-N4 framing (overlay vs first-class track) is the open question. The user paused after expressing second thoughts from a customer-marketing perspective. Full state lives in `progress.md` and `decisions.md` — read those first when picking up.
+The `/grill-me` design session that took Sensei from idea to implementation-ready design is **finished**. All phases A–M plus cross-cutting principles CC.1/CC.2 are resolved and recorded in `decisions.md` (full rationale) and `progress.md` (status board). Highlights:
 
-If continuing the grilling session:
-1. Read `decisions.md` end-to-end. Resolved decisions cascade — later branches depend on earlier choices.
-2. Read `progress.md` to see open phases and the specific sub-decision in flight.
-3. Grilling cadence: assistant recommends one option per branch with reasoning, user picks/pushes back/clarifies, then move to the next branch. Don't skip ahead or batch.
+- **A–H:** philosophy (fixed scaffold + AI content), lesson structure (3-beat micro-lessons; Module→Chapter→Lesson), data model (items first-class, mastery on items), item/lesson authoring pipeline, mastery + FSRS spaced repetition, per-modality evaluation.
+- **I:** branching — Content Track × Goal Overlay intake, two-touchpoint intake, placement quiz + per-chapter skip-test + Curriculum Outline.
+- **J:** standalone surfaces — Practice Mode, Progress Dashboard, Media Learning (deferred from MVP).
+- **K:** confidence "I guessed" flag + anti-gaming "learning streak" + soft-signal details.
+- **L (tech stack):** React Native + Expo client · TypeScript + NestJS backend · Postgres + pgvector · Anthropic (Claude) primary behind a thin `LLMClient` · Azure Speech (STT/pronunciation/TTS) · low-ops managed hosting (Railway · Neon · Cloudflare R2 · Clerk · Expo EAS).
+- **M (MVP cut):** ~100-lesson early-Foundation vertical-slice beta · Foundational + L/R/W + guided speaking · full reachable surface · **tracer-bullet-first** build sequence.
+
+**Next step is implementation, not more grilling.** Per M.4, begin with the **tracer bullet**: one complete lesson flowing end-to-end through every system (item DB → lesson player → Check → AI grading → FSRS → review → progress), then scale content authoring in parallel with surface build. Read `decisions.md` + `progress.md` before starting — decisions cascade, and the build must honor every locked choice. If the user reopens a design question, a new decision is appended to `decisions.md` (never rewrite past entries).
 
 ## Hard Constraints to Internalize
 

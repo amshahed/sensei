@@ -1140,6 +1140,46 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 ---
 
+## Phase M — MVP scope cut + Beta launch slice
+
+The final phase: turns the locked design into a buildable first slice. Beta exists to answer two questions — *does the AI-generated content actually teach, and does the retention loop bring learners back?*
+
+### M.1 Beta Foundation slice — ~100-lesson end-to-end vertical (option B)
+
+**Decision:** Beta content = a **~100-lesson end-to-end vertical slice** of *early* Foundation: onboarding/placement → full kana → ~150–200 highest-frequency vocab → first ~15–20 N5 grammar points → light kanji → basic multimodal lessons → a capability milestone ("you can introduce yourself / read simple sentences"). 3–6 weeks of daily material.
+
+**Why:** smallest *true* vertical slice — exercises every differentiated mechanic (all four item types, mastery breadcrumbs, FSRS reviews, multimodal Integration lessons, teach→practice→check, soft-signals) on real content, reaching a real milestone, so it can measure *do they learn + do they return*. Authorable solo in weeks, not months.
+
+**Rejected:** A (kana-only, ~30–50 lessons) — too thin; validates kana pedagogy but never touches the comprehension/communication thesis (the differentiated bet). C (half-Foundation, ~200–250 lessons) — front-loads months of authoring before any external signal; risks discovering lesson-format problems *after* sinking weeks into content. B lets the format be validated on ~100 lessons, fixed, then scaled.
+
+### M.2 Beta modalities — Foundational + L/R/W + guided speaking; defer dialogue/scenario (option B)
+
+**Decision:** Beta includes **F-Kana / F-Vocab / F-Grammar / light F-Kanji + I-Listening / I-Reading / I-Writing / I-Speaking (guided pronunciation only) + Review + Assessment.** Deferred: **open speaking-dialogue, I-Scenario, Media Learning** (J.3 already out of MVP).
+
+**Why (risk cut and pedagogy agree):** "speak early" is the headline differentiator, so cutting speaking entirely (A) would leave the most distinctive claim unvalidated. But full open dialogue + scenario (C) is the heaviest eval to build *and* has nothing to evaluate at lesson ~100 — early learners pronounce words/phrases, they don't hold free conversations. Guided speaking via Azure Pronunciation Assessment (H.1) tests speak-early where it actually lives; dialogue/scenario defer to post-beta when learners have enough language for it to matter.
+
+**Rejected:** A (defer all speaking) — guts the thesis. C (include dialogue + scenario) — overkill for early-Foundation learners; effort spent on content beta users can't reach.
+
+### M.3 Beta feature surface — full reachable surface (option A) *(user override of recommended B)*
+
+**Decision:** Ship the **full reachable surface** in the beta: core lesson loop + FSRS reviews + full placement quiz (I.4) + per-chapter skip-tests (I.4.d) + Curriculum Outline (I.4.e) + Practice Mode (J.1) + Progress Dashboard (J.2) + full streak/soft-signals (K). **Out by construction** (early Foundation never completes): all post-Foundation surfaces — Track Modules, Goal Overlay/JLPT-N4, Foundation-Complete intake (I.3.c).
+
+**Why (user's call; legitimate case):** several deferred-candidate surfaces — Dashboard, Practice Mode, Curriculum Outline, streak — are *retention* mechanics, and "do they come back?" is half the beta thesis. A stripped core under-tests retention; the full surface tests the *real* product experience including whether the surfaces themselves drive return.
+
+**Recommended (B, not taken):** lean core loop + FSRS + minimal progress + streak + notifications + lightweight signup routing; defer Practice/skip-tests/Outline/Dashboard/full-placement as additive surfaces validatable after the core loop proves out. **Accepted tradeoff of A:** materially more to build before first learner signal; risk of polishing surfaces atop a core loop beta might change. Mitigated by M.4 sequencing (core loop validated first via tracer bullet even within a full-surface build).
+
+**Rejected:** C (middle) — same direction as B, less far.
+
+### M.4 Launch sequence — tracer-bullet vertical slice first (option B)
+
+**Decision:** **Tracer-bullet first** — build **one complete lesson flowing end-to-end through every system** (item DB → lesson player → check → AI grading → FSRS → review → progress) before scaling. Once it proves the architecture + lesson format: scale content authoring **in parallel** with building remaining surfaces. **Rollout:** dogfood (founder + a couple trusted learners) → closed beta (handful of handpicked near-beginners, qualitative depth) → iterate on core loop → wider beta.
+
+**Why:** de-risks the architecture on lesson *one* not lesson 100 (this is the direct mitigation of M.3-A's accepted risk — the core loop gets validated first even in a full-surface build); produces a testable artifact in days; lets the long pole (content authoring, F.7 review-intensity calibration) start as soon as the format is proven, parallelizing the two work streams.
+
+**Rejected:** A (platform-complete → content → beta) — integration risk surfaces late; nothing testable until near the end. C (content-first) — backwards; authoring 100 lessons with no player to test them in means format problems can't be caught.
+
+---
+
 ## Cross-cutting design principles
 
 ### CC.1 Multi-language future-proofing (cheap insurance)
@@ -1173,4 +1213,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phases A–L fully locked (L = tech stack: RN+Expo client / TypeScript+NestJS backend / Postgres+pgvector / Anthropic primary / Azure speech / low-ops managed hosting). Next active phase: **Phase M — MVP scope cut + Beta launch slice** (the final phase).
+**Design grilling COMPLETE — all phases A–M locked.** No phases remain open. Final phase M (MVP scope cut + beta launch) resolved: ~100-lesson early-Foundation vertical slice / Foundational + L/R/W + guided speaking / full reachable surface / tracer-bullet-first build sequence. Next step is **implementation**, beginning with the M.4 tracer bullet (one lesson end-to-end through every system). See `progress.md` for the build-phase hand-off.

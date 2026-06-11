@@ -116,21 +116,27 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 - **L.5** Speech: **Azure Neural TTS** consolidating with Azure STT/pronunciation (H.1); authored audio cached at publish, runtime TTS only for dynamic content
 - **L.6** Hosting: **low-ops managed stack** — Railway (NestJS) · Neon (Postgres+pgvector) · Cloudflare R2 (storage) · Clerk (auth) · Expo EAS (mobile distribution); hyperscaler deferred (containerized NestJS stays portable)
 
+### ✅ Phase M — MVP scope cut + Beta launch slice
+- **M.1** Beta content slice: **~100-lesson end-to-end vertical** of early Foundation (onboarding/placement → kana → ~150–200 vocab → first ~15–20 grammar → light kanji → basic multimodal → "introduce yourself" milestone). Smallest true vertical slice; 3–6 weeks of material
+- **M.2** Beta modalities: Foundational + I-Listening/Reading/Writing + **guided** I-Speaking (Azure pronunciation); defer open speaking-dialogue, I-Scenario, Media Learning
+- **M.3** Beta feature surface: **full reachable surface** (core loop + FSRS + placement + skip-tests + Curriculum Outline + Practice Mode + Dashboard + streak/soft-signals). *(User override of recommended lean-core B; rationale: the deferred surfaces are retention mechanics central to the "do they return?" half of the thesis.)* Post-Foundation surfaces out by construction
+- **M.4** Launch sequence: **tracer-bullet first** (one lesson end-to-end through every system) → parallel content-authoring + surface-build → dogfood → closed beta → iterate → wider beta
+
 ---
 
 ## In Progress
 
-(none — Phase L complete; Phase M is the next and final active phase, grilling not yet begun)
+**(none — design grilling COMPLETE. All phases A–M locked.)**
+
+Next step is **implementation**, not more grilling. Per M.4, begin with the **tracer bullet**: build one complete lesson flowing end-to-end through every system (item DB → lesson player → check → AI grading → FSRS → review → progress), then scale content authoring in parallel with surface build.
+
+Per project convention, the repo is still pre-implementation: confirm stack scaffolding intent before generating code.
 
 ---
 
 ## Pending Phases
 
-### Phase M — MVP scope cut + Beta launch slice
-- Beta subset of Foundation (e.g., kana + first ~20 grammar + ~200 vocab ≈ 100 lessons)
-- Beta modalities (likely defer Speaking-dialogue and Media Learning)
-- Beta evaluation surfaces
-- Launch sequence
+**(none — all design phases resolved.)**
 
 ---
 

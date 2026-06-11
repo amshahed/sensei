@@ -3,13 +3,13 @@
 # Product: Sensei — AI-Guided Japanese Fluency App
 **Version:** v2 draft (work in progress)
 **Document Type:** Product Requirements Document
-**Status:** DRAFT. Reflects design decisions resolved through Phases A–L (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack) plus cross-cutting principles CC.1 and CC.2. Only Phase M (MVP scope cut + beta launch slice) remains, flagged **TBD**.
+**Status:** Design COMPLETE — all phases A–M resolved (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack, MVP scope cut + beta launch) plus cross-cutting principles CC.1 and CC.2. No design phases remain open. Next step is **implementation**, beginning with the M.4 tracer bullet. This draft now serves as the implementation reference; it versions up to PRD_v3 if material design shifts emerge during build.
 
 ---
 
 # 0. Document Status
 
-This PRD reflects design decisions resolved through Phases A–L (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). Only Phase M (MVP scope cut + beta launch) remains in design.
+This PRD reflects design decisions resolved through **all phases A–M** (lesson structure, data model, item layer, authoring workflow, mastery + SRS, per-modality evaluation, full branching + intake + placement + Curriculum Outline, standalone surfaces, confidence + soft signals, tech stack, MVP scope cut + beta launch), plus cross-cutting principles CC.1 (multi-language future-proofing) and CC.2 (multi-platform readiness). The design grilling is complete; the project moves to implementation.
 
 **Companion documents:**
 - `decisions.md` — append-only decision log with reasoning for every resolved decision
@@ -461,12 +461,13 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 12. MVP Scope Cut + Beta Launch
 
-**TBD Phase M.** Anticipated direction:
-- Beta ships a subset of Foundation (e.g., kana + first ~20 grammar + ~200 vocab ≈ ~100 lessons), not the full ~300–500 lesson Foundation.
-- Beta modalities likely defer Speaking-dialogue and Media Learning.
-- Beta evaluation likely defers Practice/Quiz Mode standalone surface.
-- Beta is invite-only / closed for early feedback before scaling.
-- Publish gate logic (lesson-by-lesson vs chapter-batch vs module-batch) decided here, not in Phase F.
+**Phase M locked.** The beta exists to answer two questions: *does the AI-generated content actually teach, and does the retention loop bring learners back?*
+
+- **Beta content slice (M.1):** a **~100-lesson end-to-end vertical slice** of *early* Foundation — onboarding/placement → full kana → ~150–200 highest-frequency vocab → first ~15–20 N5 grammar points → light kanji → basic multimodal → a "you can introduce yourself / read simple sentences" capability milestone. The smallest *true* vertical slice (exercises every differentiated mechanic on real content); 3–6 weeks of daily material. Not the full ~300–500 lesson Foundation.
+- **Beta modalities (M.2):** Foundational (kana/vocab/grammar/light-kanji) + I-Listening / I-Reading / I-Writing + **guided I-Speaking** (Azure Pronunciation Assessment). **Deferred:** open speaking-dialogue, I-Scenario, Media Learning — early learners pronounce phrases, they don't hold free conversations, so dialogue/scenario have nothing to evaluate yet.
+- **Beta feature surface (M.3):** the **full reachable surface** ships — core lesson loop + FSRS reviews + placement quiz + per-chapter skip-tests + Curriculum Outline + Practice Mode + Progress Dashboard + full streak/soft-signals. Rationale: the "extra" surfaces (Dashboard, Practice, Outline, streak) are *retention* mechanics central to the "do they return?" half of the thesis, so the beta tests the real product experience. Post-Foundation surfaces (Track Modules, Goal Overlay, Foundation-Complete intake) are out by construction (early Foundation never completes).
+- **Launch sequence (M.4):** **tracer-bullet first** — build one complete lesson flowing end-to-end through every system (item DB → lesson player → check → AI grading → FSRS → review → progress) to validate architecture + lesson format, *then* scale content authoring in parallel with surface build. Rollout: dogfood → closed beta (handpicked near-beginners, qualitative feedback) → iterate on the core loop → wider beta.
+- **Publish gate** (F.6, deferred from Phase F): decided alongside authoring tooling during build — lesson-by-lesson review/publish for the tracer bullet, batching as the F.7 review intensity drops.
 
 ---
 
@@ -505,8 +506,8 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
 
 # 15. Next Steps
 
-One phase remains: **M — MVP scope cut + beta launch slice.**
+**The design grilling is complete — all phases A–M are locked.** The project moves from design to implementation.
 
-Current open phase: **M — MVP scope cut + Beta launch**, covering the beta subset of Foundation (e.g., kana + first grammar/vocab ≈ ~100 lessons), which modalities make the beta (likely defer Speaking-dialogue and Media Learning), beta evaluation surfaces, and the launch sequence.
+**Immediate next step (M.4 tracer bullet):** build one complete lesson flowing end-to-end through every system — item DB → lesson player → Check → AI grading → FSRS → review → progress view — to validate the architecture and lesson format on a single lesson before scaling. Then scale content authoring (F-series pipeline, F.7 review-intensity calibration) in parallel with building out the remaining surfaces, toward the ~100-lesson beta slice (M.1).
 
-Phases I–L fully locked: see `decisions.md` §I.1–I.4 (intake / placement / skip-test / Curriculum Outline), §J.1–J.3 (Practice Mode / Progress Dashboard / Media Learning), §K.1–K.3 (confidence self-rating / learning streak / soft-signal details), and §L.1–L.6 (tech stack — RN+Expo / TypeScript+NestJS / Postgres+pgvector / Anthropic / Azure speech / low-ops managed hosting).
+Full decision rationale for every phase lives in `decisions.md` (A–M); `progress.md` carries the build-phase hand-off. Per project convention, the repo remains pre-implementation — confirm stack scaffolding intent before generating code.
