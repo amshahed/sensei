@@ -92,7 +92,10 @@ Phases run roughly in topological dependency order — each unblocks the next. S
   - **J.1.c** Full FSRS/mastery write-back (Practice scored like reviews) + same-session double-count guardrail
   - **J.1.d** Review-style immediate feedback; "Quiz/test" job retired to Assessments + mock exams (surface is "Practice Mode")
   - **J.1.e** Learned-items-only (future items browse/skip-test in Outline, not drillable)
-- **J.2** Progress Dashboard — ⏳ pending grilling (item-level vs lesson-level views, motivation, relationship to mastery breadcrumbs + readiness tracker)
+- **J.2** Progress Dashboard — ✅ **locked**
+  - **J.2.a** Distinct lean "scoreboard" surface (aggregate mastery / modality / momentum); links to Outline for positional detail; ships only motivating-or-actionable metrics
+  - **J.2.b** Two levels deep: aggregate top-line + four-item-type breakdown + modality profile; weak spots link to Practice Mode scopes; no individual-item list
+  - **J.2.c** Cumulative mastery curve + recent-rate callout; effort/consistency deferred to Phase K; exam readiness tracker stays separate (link, not absorb)
 - **J.3** Media Learning Feature 8 — ⏳ pending grilling (bring-your-own-YouTube/song: processing pipeline, vocab extraction, runtime lesson generation, licensing/legal posture)
 
 ---

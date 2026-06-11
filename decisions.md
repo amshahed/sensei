@@ -938,9 +938,43 @@ Surfaces the "practice outside the curriculum" job (PRD v1 §9). Resolved as a r
 
 **What's OUT / deferred for J.1:** interaction with daily target / streak (Phase K — soft signals); whether Practice contributes to any "goal met today" signal deferred there.
 
-### J.2 Progress Dashboard (pending)
+### J.2 Progress Dashboard (complete)
 
-Pending grilling. Open questions: item-level vs lesson-level views, what motivates without overwhelming, relationship to mastery breadcrumbs + readiness tracker.
+A lean "scoreboard" surface answering *how much do I know, and am I improving?* — distinct from the Curriculum Outline's *where am I in the path?*
+
+#### J.2.a Earns a distinct surface — lean analytics job (option A, lean)
+
+**Decision:** Ship a distinct Progress Dashboard that owns what existing surfaces don't: **aggregate mastery counts, modality profile, and momentum over time.** Positional detail stays in the Curriculum Outline (links there, doesn't duplicate). Guardrail: a metric ships only if it **motivates** (progress %) or is **actionable** (weak spot → Practice Mode); vanity metrics that are neither don't ship.
+
+**Why (boundary with existing surfaces):**
+- Curriculum Outline (I.4.e) answers *where am I in the path* (positional, not counted).
+- Goal Overlay readiness tracker (I.2.b) answers *goal progress* — but exam-only, goal-relative.
+- Mastery breadcrumbs (G.1) are per-item, not rolled up.
+- Gap: for a **non-exam learner** there is no surface saying "you're 80% through Foundation, production is your weak spot." Aggregate mastery + modality profile have no home. That's the dashboard's job.
+
+**Rejected:** B (fold a summary header into the Outline) — overloads a navigation surface with analytics, makes both worse; map and scoreboard are different questions. C (cut for MVP) — data already exists; "look how far you've come" is a known retention lever; cheap to surface if kept lean.
+
+#### J.2.b Granularity — aggregate + item-type breakdown (option B)
+
+**Decision:** Two levels deep. Top-line aggregate ("X of Y Foundation items mastered, Z%") + **one-level breakdown by the four item types** (Kana / Vocab / Kanji / Grammar, each with %). Modality profile (recognition / recall / production) shown at aggregate level (and per item-type where readable). **No individual-item list.** Each weak spot links to the matching **Practice Mode** scope (J.1.b item-type filter).
+
+**Why:** aggregate-only (A) motivates but isn't actionable — user can't tell what to work on. Item-type breakdown is exactly the actionable layer ("Kanji is weak" → drill Kanji), and clicks together with Practice Mode. Two deep is enough to act and stays lean.
+
+**Rejected:** A (aggregate-only) — fails the actionable half of the guardrail. C (full per-item drill-down list) — analytics product nobody acts on ("猫 is at 0.72 recall"); duplicates Outline lesson/key-item drill + FSRS resurfacing. Per-item "show my weak kanji" want is already served indirectly (Practice "weakest" shortcut, Outline per-chapter state); a separate inspect-list is a clean v2 add if beta demands it.
+
+#### J.2.c Momentum element — cumulative curve + recent-rate callout (option B)
+
+**Decision:** Show learning **output over time**: a cumulative mastery curve (total items mastered by week) **plus** a recent-rate callout ("this week +28, last week +19"). Data modeled from timestamped mastery-events.
+
+**Boundary with Phase K:** Phase K owns **behavioral consistency** (streaks, daily targets, did-you-show-up). Dashboard momentum owns **learning output** (results over time). Effort-consistency metrics — minutes studied, review-session adherence, streaks — are **deferred to Phase K**, not built here.
+
+**Boundary with readiness tracker:** the exam-learner readiness tracker (I.2.b) **stays separate** — the dashboard may surface a link/snippet for Goal Overlay users but does not absorb it (readiness is goal-relative + exam-only; the dashboard is universal).
+
+**Why:** the cumulative curve delivers the core "I am measurably getting better" payload with one honest chart; the rate-delta adds near-term momentum and is a trivial add once mastery-events are timestamped (which they are). Activity-rich panels (C) pre-empt Phase K and risk two surfaces fighting over the "did you show up" story.
+
+**Rejected:** A (cumulative curve only) — fine but leaves the cheap, motivating rate-delta on the table. C (rate + time-spent + review-adherence panel) — consistency/effort metrics belong to Phase K.
+
+**Honest caveat noted:** a cumulative curve only goes up (mastery rarely drops), so it's low-information as analytics — but its job is purely motivational ("you're moving"); the actionable load is carried by the J.2.b modality + item-type breakdown.
 
 ### J.3 Media Learning — Feature 8 (pending)
 
@@ -981,4 +1015,4 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 
 ## Pending Decisions
 
-See `progress.md` for live status. Phase I fully locked. **Phase J in progress:** J.1 Practice Mode locked (J.1.a–J.1.e); **J.2 Progress Dashboard** and **J.3 Media Learning** still pending grilling.
+See `progress.md` for live status. Phase I fully locked. **Phase J in progress:** J.1 Practice Mode locked (J.1.a–J.1.e); J.2 Progress Dashboard locked (J.2.a–J.2.c); **J.3 Media Learning** still pending grilling.

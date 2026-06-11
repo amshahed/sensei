@@ -411,7 +411,10 @@ Refer to `docs/PRD_v1.md` for descriptions; below are v2 deltas where applicable
   - **Feedback format (J.1.d):** review-style immediate feedback per item; no end-of-session score report. (The PRD v1 "Quiz" framing retires — the test job lives in Assessments + mock exams.)
   - **Availability (J.1.e):** learned-items-only. Future items stay visible/skip-testable in the Outline but are not drillable in Practice (no Teach beat = no cold-quizzing unseen material; also keeps FSRS data clean).
   - **Deferred to Phase K:** whether Practice contributes to daily-target / streak signals.
-- **Progress Dashboard** — **TBD Phase J**. Refines PRD v1 §10; emphasizes item-level mastery and modality-specific progress.
+- **Progress Dashboard (J.2 locked):** A lean "scoreboard" surface answering *how much do I know, and am I improving?* — distinct from the Curriculum Outline's *where am I in the path?* Guardrail: a metric ships only if it **motivates** (progress %) or is **actionable** (weak spot → drill); no vanity metrics.
+  - **Why distinct (J.2.a):** for a non-exam learner there is no surface today that says "you're 80% through Foundation, production is your weak spot" — the Outline is positional, the readiness tracker is exam-only, breadcrumbs are per-item. The dashboard owns aggregate mastery + modality profile + momentum.
+  - **Granularity (J.2.b):** two levels deep — aggregate top-line ("X of Y Foundation items mastered, Z%") + breakdown by the four item types (Kana/Vocab/Kanji/Grammar) + modality profile (recognition/recall/production). Each weak spot links to the matching Practice Mode scope. No individual-item list (served indirectly by Practice "weakest" + the Outline; a clean v2 add if beta demands it).
+  - **Momentum (J.2.c):** cumulative mastery curve (items mastered by week) + recent-rate callout ("this week +28, last week +19"). Shows *learning output*. **Effort/consistency metrics (minutes, review-adherence, streaks) are Phase K**, not built here. The exam-learner **readiness tracker (I.2.b) stays separate** — dashboard may link/snippet it but doesn't absorb it (readiness is goal-relative + exam-only; the dashboard is universal).
 - **Internal Authoring UI** — per §6.3.
 
 ---
