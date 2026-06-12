@@ -45,13 +45,24 @@ const lessonFixture = {
 describe('LessonsService', () => {
   let service: LessonsService;
   let findFirst: jest.Mock;
+  let userUpsert: jest.Mock;
+  let completionUpsert: jest.Mock;
 
   beforeEach(async () => {
     findFirst = jest.fn();
+    userUpsert = jest.fn();
+    completionUpsert = jest.fn();
     const moduleRef = await Test.createTestingModule({
       providers: [
         LessonsService,
-        { provide: PrismaService, useValue: { lesson: { findFirst } } },
+        {
+          provide: PrismaService,
+          useValue: {
+            lesson: { findFirst },
+            user: { upsert: userUpsert },
+            lessonCompletion: { upsert: completionUpsert },
+          },
+        },
       ],
     }).compile();
     service = moduleRef.get(LessonsService);
@@ -91,5 +102,44 @@ describe('LessonsService', () => {
     await expect(service.getByIdOrSlug('nope')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  describe('complete', () => {
+    it('upserts the user then records the completion', async () => {
+      findFirst.mockResolvedValue({ id: 'lesson-1' });
+      completionUpsert.mockResolvedValue({
+        completedAt: new Date('2026-06-12T00:00:00.000Z'),
+      });
+
+      const dto = await service.complete('the-five-vowels', 'dev-user');
+
+      // User must be upserted before the completion (FK safety).
+      expect(userUpsert).toHaveBeenCalledWith({
+        where: { id: 'dev-user' },
+        update: {},
+        create: { id: 'dev-user' },
+      });
+      expect(completionUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId_lessonId: { userId: 'dev-user', lessonId: 'lesson-1' },
+          },
+        }),
+      );
+      expect(dto).toEqual({
+        lessonId: 'lesson-1',
+        completed: true,
+        completedAt: '2026-06-12T00:00:00.000Z',
+      });
+    });
+
+    it('throws NotFound completing a missing lesson', async () => {
+      findFirst.mockResolvedValue(null);
+
+      await expect(service.complete('nope', 'dev-user')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(userUpsert).not.toHaveBeenCalled();
+    });
   });
 });
