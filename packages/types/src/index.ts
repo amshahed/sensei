@@ -96,3 +96,41 @@ export interface LessonCompletionDto {
   /** ISO-8601 timestamp. */
   completedAt: string;
 }
+
+/* ---- Mastery + spaced repetition (issue #6 / decisions G.1–G.4) ---- */
+
+/** The three evaluation modalities tracked per item (G.1 breadcrumbs). */
+export type Modality = 'recognition' | 'recall' | 'production';
+
+/**
+ * A learner's mastery snapshot for one item. `mastery` is the continuous 0–1
+ * score (derived from FSRS stability); the per-modality fields are rolling
+ * breadcrumbs (G.1). `retrievability` is the FSRS-predicted probability of
+ * recall *right now*.
+ */
+export interface ItemMasteryDto {
+  itemId: string;
+  mastery: number;
+  recognition: number;
+  recall: number;
+  production: number;
+  retrievability: number;
+  /** ISO-8601; when this item next falls due for review. */
+  due: string | null;
+}
+
+/** One item surfaced in the due-review queue (G.4 selection). */
+export interface DueReviewItemDto {
+  itemId: string;
+  type: ItemType;
+  display: string;
+  reading: string | null;
+  meaning: string | null;
+  mastery: number;
+  /** FSRS-predicted probability of recall now; lower = more urgent. */
+  retrievability: number;
+  /** ISO-8601 due timestamp. */
+  due: string;
+  /** The modality with the lowest breadcrumb — what a review should target. */
+  weakestModality: Modality;
+}
