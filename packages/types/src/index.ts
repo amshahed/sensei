@@ -81,6 +81,12 @@ export interface LessonDetailDto {
 
 export interface CheckAnswerRequest {
   answer: string;
+  /**
+   * Optional "I guessed" self-report (K.1). Only meaningful on recognition /
+   * multiple-choice checks: when set AND the answer is correct, the FSRS rating
+   * is downgraded (Good → Hard). Never inflates; ignored on other formats.
+   */
+  guessed?: boolean;
 }
 
 export interface CheckResultDto {

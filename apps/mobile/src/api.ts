@@ -41,10 +41,14 @@ export const api = {
     return request<LessonDetailDto>(`/lessons/${encodeURIComponent(idOrSlug)}`);
   },
 
-  gradeCheck(checkId: string, answer: string): Promise<CheckResultDto> {
+  gradeCheck(
+    checkId: string,
+    answer: string,
+    guessed = false,
+  ): Promise<CheckResultDto> {
     return request<CheckResultDto>(
       `/checks/${encodeURIComponent(checkId)}/answer`,
-      { method: 'POST', body: JSON.stringify({ answer }) },
+      { method: 'POST', body: JSON.stringify({ answer, guessed }) },
     );
   },
 

@@ -228,6 +228,7 @@ function CheckBeat({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
+  const [guessed, setGuessed] = useState(false);
   const [result, setResult] = useState<CheckResultDto | null>(null);
   const [grading, setGrading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -241,7 +242,8 @@ function CheckBeat({
     setGrading(true);
     setFailed(false);
     try {
-      const r = await api.gradeCheck(check.id, answer);
+      // The guess flag only applies to multiple-choice (K.1).
+      const r = await api.gradeCheck(check.id, answer, isMultipleChoice && guessed);
       setResult(r);
     } catch {
       // Don't score a network blip as a wrong answer — let the learner retry.
@@ -273,6 +275,18 @@ function CheckBeat({
         Check {index + 1} of {total}
       </Text>
       <Text style={ui.title}>{check.prompt}</Text>
+
+      {isMultipleChoice ? (
+        <Pressable
+          disabled={!!result || grading}
+          style={[styles.guessToggle, guessed && styles.guessToggleOn]}
+          onPress={() => setGuessed((g) => !g)}
+        >
+          <Text style={guessed ? styles.guessTextOn : styles.guessText}>
+            {guessed ? '☑' : '☐'} I guessed
+          </Text>
+        </Pressable>
+      ) : null}
 
       {isMultipleChoice ? (
         choices.map((choice) => {
@@ -378,6 +392,17 @@ const styles = StyleSheet.create({
   choiceCorrect: { backgroundColor: '#E6F4EA', borderColor: '#0E8A16' },
   choiceWrong: { backgroundColor: '#FBE9E7', borderColor: '#B60205' },
   choiceDim: { opacity: 0.5 },
+  guessToggle: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  guessToggleOn: { backgroundColor: '#FFF4E5', borderColor: '#E8A33D' },
+  guessText: { fontSize: 14, color: '#888' },
+  guessTextOn: { fontSize: 14, color: '#B26A00', fontWeight: '600' },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
