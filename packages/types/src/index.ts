@@ -133,4 +133,21 @@ export interface DueReviewItemDto {
   due: string;
   /** The modality with the lowest breadcrumb — what a review should target. */
   weakestModality: Modality;
+  /** What the learner is asked to recall, e.g. "あ" → prompt to type its reading. */
+  prompt: string;
+}
+
+/* ---- Review session (issue #7 / decisions G.4, B.3) ---- */
+
+export interface ReviewAnswerRequest {
+  answer: string;
+}
+
+export interface ReviewResultDto {
+  itemId: string;
+  correct: boolean;
+  /** Revealed only in the grading response. */
+  correctAnswer: string;
+  /** Updated 0–1 mastery after this review. */
+  mastery: number;
 }

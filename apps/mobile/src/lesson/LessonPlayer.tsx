@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,14 +9,15 @@ import {
 } from 'react-native';
 import type { CheckDto, CheckResultDto, LessonDetailDto } from '@sensei/types';
 import { api } from '../api';
+import { PrimaryButton, Screen, ui } from '../ui';
 import { parseTeachBlocks, type TeachBlock } from './teach';
 
 /**
  * The tracer-bullet lesson player (M.4). Drives one lesson end-to-end through
  * every system: fetches the lesson, renders the authored Teach beat, runs a
- * light Practice recap, then the graded Check beat (server-side grading), and
- * finally records completion. Real runtime-AI Practice arrives in #8; mastery
- * updates on completion in #6.
+ * light Practice recap, then the graded Check beat (server-side grading +
+ * FSRS write-back, #6), and finally records completion. Real runtime-AI
+ * Practice + fuzzy grading arrive in #8.
  */
 type Phase =
   | { kind: 'loading' }
@@ -27,7 +27,13 @@ type Phase =
   | { kind: 'check'; lesson: LessonDetailDto; index: number }
   | { kind: 'done'; lesson: LessonDetailDto; correct: number; total: number };
 
-export function LessonPlayer({ slug }: { slug: string }) {
+export function LessonPlayer({
+  slug,
+  onExit,
+}: {
+  slug: string;
+  onExit?: () => void;
+}) {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [score, setScore] = useState(0);
 
@@ -36,9 +42,7 @@ export function LessonPlayer({ slug }: { slug: string }) {
     api
       .getLesson(slug)
       .then((lesson) => active && setPhase({ kind: 'teach', lesson }))
-      .catch(
-        (e) => active && setPhase({ kind: 'error', message: String(e) }),
-      );
+      .catch((e) => active && setPhase({ kind: 'error', message: String(e) }));
     return () => {
       active = false;
     };
@@ -46,18 +50,19 @@ export function LessonPlayer({ slug }: { slug: string }) {
 
   if (phase.kind === 'loading') {
     return (
-      <View style={styles.center}>
+      <View style={ui.center}>
         <ActivityIndicator />
-        <Text style={styles.hint}>Loading lesson…</Text>
+        <Text style={ui.hint}>Loading lesson…</Text>
       </View>
     );
   }
 
   if (phase.kind === 'error') {
     return (
-      <View style={styles.center}>
-        <Text style={styles.err}>Couldn’t load the lesson</Text>
-        <Text style={styles.hint}>{phase.message}</Text>
+      <View style={ui.center}>
+        <Text style={ui.err}>Couldn’t load the lesson</Text>
+        <Text style={ui.hint}>{phase.message}</Text>
+        {onExit ? <PrimaryButton label="Back" onPress={onExit} /> : null}
       </View>
     );
   }
@@ -66,9 +71,7 @@ export function LessonPlayer({ slug }: { slug: string }) {
     return (
       <TeachBeat
         lesson={phase.lesson}
-        onContinue={() =>
-          setPhase({ kind: 'practice', lesson: phase.lesson })
-        }
+        onContinue={() => setPhase({ kind: 'practice', lesson: phase.lesson })}
       />
     );
   }
@@ -98,7 +101,11 @@ export function LessonPlayer({ slug }: { slug: string }) {
     // than dereferencing undefined.
     if (!check) {
       return (
-        <DoneScreen correct={score} total={lesson.checks.length} />
+        <DoneScreen
+          correct={score}
+          total={lesson.checks.length}
+          onExit={onExit}
+        />
       );
     }
     return (
@@ -127,7 +134,9 @@ export function LessonPlayer({ slug }: { slug: string }) {
     );
   }
 
-  return <DoneScreen correct={phase.correct} total={phase.total} />;
+  return (
+    <DoneScreen correct={phase.correct} total={phase.total} onExit={onExit} />
+  );
 }
 
 /* ---------------- Beats ---------------- */
@@ -142,8 +151,8 @@ function TeachBeat({
   const blocks = parseTeachBlocks(lesson.teach);
   return (
     <Screen footer={<PrimaryButton label="Practice →" onPress={onContinue} />}>
-      <Text style={styles.kicker}>{lesson.chapter.title}</Text>
-      <Text style={styles.title}>{lesson.title}</Text>
+      <Text style={ui.kicker}>{lesson.chapter.title}</Text>
+      <Text style={ui.title}>{lesson.title}</Text>
       {blocks.map((b, i) => (
         <TeachBlockView key={i} block={b} />
       ))}
@@ -156,14 +165,14 @@ function TeachBlockView({ block }: { block: TeachBlock }) {
     return <Text style={styles.heading}>{block.text}</Text>;
   }
   if (block.kind === 'text') {
-    return <Text style={styles.body}>{block.text}</Text>;
+    return <Text style={ui.body}>{block.text}</Text>;
   }
   return (
     <View style={styles.kanaRow}>
       <Text style={styles.kanaChar}>{block.char}</Text>
       <View style={styles.kanaMeta}>
         <Text style={styles.kanaRomaji}>{block.romaji}</Text>
-        {block.hint ? <Text style={styles.hint}>{block.hint}</Text> : null}
+        {block.hint ? <Text style={ui.hint}>{block.hint}</Text> : null}
       </View>
     </View>
   );
@@ -177,14 +186,20 @@ function PracticeBeat({
   onContinue: () => void;
 }) {
   return (
-    <Screen footer={<PrimaryButton label="Start check →" onPress={onContinue} />}>
-      <Text style={styles.kicker}>Practice</Text>
-      <Text style={styles.title}>Quick recap</Text>
-      <Text style={styles.body}>
+    <Screen
+      footer={<PrimaryButton label="Start check →" onPress={onContinue} />}
+    >
+      <Text style={ui.kicker}>Practice</Text>
+      <Text style={ui.title}>Quick recap</Text>
+      <Text style={ui.body}>
         Tap each card to recall its sound before the check.
       </Text>
       {lesson.items.map((item) => (
-        <RecallCard key={item.id} front={item.display} back={item.reading ?? ''} />
+        <RecallCard
+          key={item.id}
+          front={item.display}
+          back={item.reading ?? ''}
+        />
       ))}
     </Screen>
   );
@@ -254,10 +269,10 @@ function CheckBeat({
 
   return (
     <Screen footer={footer}>
-      <Text style={styles.kicker}>
+      <Text style={ui.kicker}>
         Check {index + 1} of {total}
       </Text>
-      <Text style={styles.title}>{check.prompt}</Text>
+      <Text style={ui.title}>{check.prompt}</Text>
 
       {isMultipleChoice ? (
         choices.map((choice) => {
@@ -295,11 +310,11 @@ function CheckBeat({
       )}
 
       {failed ? (
-        <Text style={styles.err}>Couldn’t reach the grader — tap Retry.</Text>
+        <Text style={ui.err}>Couldn’t reach the grader — tap Retry.</Text>
       ) : null}
 
       {result ? (
-        <Text style={result.correct ? styles.ok : styles.err}>
+        <Text style={result.correct ? ui.ok : ui.err}>
           {result.correct
             ? 'Correct!'
             : `Answer: ${result.correctAnswer || '—'}`}
@@ -309,78 +324,31 @@ function CheckBeat({
   );
 }
 
-function DoneScreen({ correct, total }: { correct: number; total: number }) {
+function DoneScreen({
+  correct,
+  total,
+  onExit,
+}: {
+  correct: number;
+  total: number;
+  onExit?: () => void;
+}) {
   return (
-    <View style={styles.center}>
+    <View style={ui.center}>
       <Text style={styles.celebrate}>🎉</Text>
-      <Text style={styles.title}>Lesson complete</Text>
-      <Text style={styles.body}>
+      <Text style={ui.title}>Lesson complete</Text>
+      <Text style={ui.body}>
         {total === 0
           ? 'Nice work — you finished the lesson.'
           : `You got ${correct} of ${total} right.`}
       </Text>
+      {onExit ? <PrimaryButton label="Back to home" onPress={onExit} /> : null}
     </View>
-  );
-}
-
-/* ---------------- Shared UI ---------------- */
-
-function Screen({
-  children,
-  footer,
-}: {
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-}) {
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll}>{children}</ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
-    </View>
-  );
-}
-
-function PrimaryButton({
-  label,
-  onPress,
-  disabled,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      style={[styles.button, disabled && styles.buttonDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      <Text style={styles.buttonText}>{label}</Text>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fff' },
-  scroll: { padding: 24, gap: 12, paddingBottom: 24 },
-  center: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    padding: 24,
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
-  },
-  kicker: { fontSize: 13, color: '#888', textTransform: 'uppercase', letterSpacing: 1 },
-  title: { fontSize: 24, fontWeight: '700' },
   heading: { fontSize: 18, fontWeight: '600', marginTop: 8 },
-  body: { fontSize: 16, lineHeight: 22, color: '#333' },
-  hint: { fontSize: 13, color: '#999' },
   kanaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -418,15 +386,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 18,
   },
-  ok: { fontSize: 16, color: '#0E8A16', fontWeight: '600' },
-  err: { fontSize: 15, color: '#B60205', fontWeight: '600' },
   celebrate: { fontSize: 48 },
-  button: {
-    backgroundColor: '#111',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
