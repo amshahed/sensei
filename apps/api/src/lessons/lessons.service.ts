@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { LessonCompletionDto, LessonDetailDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { lessonDetailArgs, toLessonDetailDto } from './lesson.mapper';
@@ -7,10 +8,14 @@ import { lessonDetailArgs, toLessonDetailDto } from './lesson.mapper';
 export class LessonsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Looks up by primary id or by slug (slug makes manual/testing access easy). */
+  /** Match a lesson by primary id or by slug (slug eases manual/testing access). */
+  private static idOrSlug(value: string): Prisma.LessonWhereInput {
+    return { OR: [{ id: value }, { slug: value }] };
+  }
+
   async getByIdOrSlug(idOrSlug: string): Promise<LessonDetailDto> {
     const lesson = await this.prisma.lesson.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      where: LessonsService.idOrSlug(idOrSlug),
       ...lessonDetailArgs,
     });
 
@@ -32,7 +37,7 @@ export class LessonsService {
     userId: string,
   ): Promise<LessonCompletionDto> {
     const lesson = await this.prisma.lesson.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      where: LessonsService.idOrSlug(idOrSlug),
       select: { id: true },
     });
 

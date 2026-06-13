@@ -14,9 +14,19 @@ export function parseTeachBlocks(teach: unknown): TeachBlock[] {
   const blocks = (teach as { blocks?: unknown }).blocks;
   if (!Array.isArray(blocks)) return [];
 
+  // Validate the fields each kind actually renders, not just the discriminant —
+  // a `kana` block missing char/romaji would otherwise render blank rows.
   return blocks.filter((b): b is TeachBlock => {
     if (!b || typeof b !== 'object') return false;
-    const kind = (b as { kind?: unknown }).kind;
-    return kind === 'heading' || kind === 'text' || kind === 'kana';
+    const r = b as Record<string, unknown>;
+    switch (r.kind) {
+      case 'heading':
+      case 'text':
+        return typeof r.text === 'string';
+      case 'kana':
+        return typeof r.char === 'string' && typeof r.romaji === 'string';
+      default:
+        return false;
+    }
   });
 }

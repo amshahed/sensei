@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import type { CheckDto, CheckResultDto, LessonDetailDto } from '@sensei/types';
@@ -78,7 +79,13 @@ export function LessonPlayer({ slug }: { slug: string }) {
         lesson={phase.lesson}
         onContinue={() => {
           setScore(0);
-          setPhase({ kind: 'check', lesson: phase.lesson, index: 0 });
+          // A lesson with no checks (e.g. an authored stub) skips straight to
+          // the summary instead of indexing into an empty array.
+          setPhase(
+            phase.lesson.checks.length === 0
+              ? { kind: 'done', lesson: phase.lesson, correct: 0, total: 0 }
+              : { kind: 'check', lesson: phase.lesson, index: 0 },
+          );
         }}
       />
     );
@@ -87,6 +94,13 @@ export function LessonPlayer({ slug }: { slug: string }) {
   if (phase.kind === 'check') {
     const { lesson, index } = phase;
     const check = lesson.checks[index];
+    // Defensive: if the index ever runs past the array, end gracefully rather
+    // than dereferencing undefined.
+    if (!check) {
+      return (
+        <DoneScreen correct={score} total={lesson.checks.length} />
+      );
+    }
     return (
       <CheckBeat
         key={check.id}
@@ -198,62 +212,91 @@ function CheckBeat({
   onNext: (correct: boolean) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [typed, setTyped] = useState('');
   const [result, setResult] = useState<CheckResultDto | null>(null);
   const [grading, setGrading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const choices = check.choices ?? [];
+  const isMultipleChoice = choices.length > 0;
 
   async function submit(answer: string) {
-    if (result || grading) return;
-    setSelected(answer);
+    if (result || grading || answer.trim().length === 0) return;
+    if (isMultipleChoice) setSelected(answer);
     setGrading(true);
+    setFailed(false);
     try {
       const r = await api.gradeCheck(check.id, answer);
       setResult(r);
     } catch {
-      // Surface a soft failure rather than blocking the lesson.
-      setResult({ checkId: check.id, correct: false, correctAnswer: '' });
+      // Don't score a network blip as a wrong answer — let the learner retry.
+      setFailed(true);
     } finally {
       setGrading(false);
     }
   }
 
-  const choices = check.choices ?? [];
+  const lastAnswer = isMultipleChoice ? (selected ?? '') : typed;
+  const footer = result ? (
+    <PrimaryButton
+      label={index + 1 < total ? 'Next →' : 'Finish'}
+      onPress={() => onNext(result.correct)}
+    />
+  ) : failed ? (
+    <PrimaryButton label="Retry" onPress={() => submit(lastAnswer)} />
+  ) : !isMultipleChoice ? (
+    <PrimaryButton
+      label="Check"
+      onPress={() => submit(typed)}
+      disabled={grading || typed.trim().length === 0}
+    />
+  ) : null;
+
   return (
-    <Screen
-      footer={
-        result ? (
-          <PrimaryButton
-            label={index + 1 < total ? 'Next →' : 'Finish'}
-            onPress={() => onNext(result.correct)}
-          />
-        ) : null
-      }
-    >
+    <Screen footer={footer}>
       <Text style={styles.kicker}>
         Check {index + 1} of {total}
       </Text>
       <Text style={styles.title}>{check.prompt}</Text>
 
-      {choices.map((choice) => {
-        const isSelected = selected === choice;
-        const isAnswer = result?.correctAnswer === choice;
-        const stateStyle = result
-          ? isAnswer
-            ? styles.choiceCorrect
-            : isSelected
-              ? styles.choiceWrong
-              : styles.choiceDim
-          : null;
-        return (
-          <Pressable
-            key={choice}
-            disabled={!!result || grading}
-            style={[styles.choice, stateStyle]}
-            onPress={() => submit(choice)}
-          >
-            <Text style={styles.choiceText}>{choice}</Text>
-          </Pressable>
-        );
-      })}
+      {isMultipleChoice ? (
+        choices.map((choice) => {
+          const isSelected = selected === choice;
+          const isAnswer = result?.correctAnswer === choice;
+          const stateStyle = result
+            ? isAnswer
+              ? styles.choiceCorrect
+              : isSelected
+                ? styles.choiceWrong
+                : styles.choiceDim
+            : null;
+          return (
+            <Pressable
+              key={choice}
+              disabled={!!result || grading}
+              style={[styles.choice, stateStyle]}
+              onPress={() => submit(choice)}
+            >
+              <Text style={styles.choiceText}>{choice}</Text>
+            </Pressable>
+          );
+        })
+      ) : (
+        <TextInput
+          style={styles.input}
+          value={typed}
+          editable={!result && !grading}
+          onChangeText={setTyped}
+          onSubmitEditing={() => submit(typed)}
+          placeholder="Type your answer"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      )}
+
+      {failed ? (
+        <Text style={styles.err}>Couldn’t reach the grader — tap Retry.</Text>
+      ) : null}
 
       {result ? (
         <Text style={result.correct ? styles.ok : styles.err}>
@@ -272,7 +315,9 @@ function DoneScreen({ correct, total }: { correct: number; total: number }) {
       <Text style={styles.celebrate}>🎉</Text>
       <Text style={styles.title}>Lesson complete</Text>
       <Text style={styles.body}>
-        You got {correct} of {total} right.
+        {total === 0
+          ? 'Nice work — you finished the lesson.'
+          : `You got ${correct} of ${total} right.`}
       </Text>
     </View>
   );
@@ -298,12 +343,18 @@ function Screen({
 function PrimaryButton({
   label,
   onPress,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable style={styles.button} onPress={onPress}>
+    <Pressable
+      style={[styles.button, disabled && styles.buttonDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+    >
       <Text style={styles.buttonText}>{label}</Text>
     </Pressable>
   );
@@ -359,6 +410,14 @@ const styles = StyleSheet.create({
   choiceCorrect: { backgroundColor: '#E6F4EA', borderColor: '#0E8A16' },
   choiceWrong: { backgroundColor: '#FBE9E7', borderColor: '#B60205' },
   choiceDim: { opacity: 0.5 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
+  },
   ok: { fontSize: 16, color: '#0E8A16', fontWeight: '600' },
   err: { fontSize: 15, color: '#B60205', fontWeight: '600' },
   celebrate: { fontSize: 48 },
@@ -368,5 +427,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
+  buttonDisabled: { opacity: 0.4 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
