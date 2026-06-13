@@ -14,16 +14,23 @@ export const lessonDetailArgs = Prisma.validator<Prisma.LessonDefaultArgs>()({
   },
 });
 
-export type LessonWithRelations = Prisma.LessonGetPayload<typeof lessonDetailArgs>;
+export type LessonWithRelations = Prisma.LessonGetPayload<
+  typeof lessonDetailArgs
+>;
 
-export function toLessonDetailDto(lesson: LessonWithRelations): LessonDetailDto {
+export function toLessonDetailDto(
+  lesson: LessonWithRelations,
+): LessonDetailDto {
   return {
     id: lesson.id,
     slug: lesson.slug,
     title: lesson.title,
     type: lesson.type,
     estimatedMinutes: lesson.estimatedMinutes,
-    module: { id: lesson.chapter.module.id, title: lesson.chapter.module.title },
+    module: {
+      id: lesson.chapter.module.id,
+      title: lesson.chapter.module.title,
+    },
     chapter: { id: lesson.chapter.id, title: lesson.chapter.title },
     teach: lesson.teach,
     items: lesson.items.map(mapLessonItem),
@@ -31,7 +38,9 @@ export function toLessonDetailDto(lesson: LessonWithRelations): LessonDetailDto 
   };
 }
 
-function mapLessonItem(link: LessonWithRelations['items'][number]): LessonItemDto {
+function mapLessonItem(
+  link: LessonWithRelations['items'][number],
+): LessonItemDto {
   return {
     id: link.item.id,
     language: link.item.language,

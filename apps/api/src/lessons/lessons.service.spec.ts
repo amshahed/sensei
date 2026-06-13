@@ -67,7 +67,11 @@ describe('LessonsService', () => {
     expect(dto.module.title).toBe('Foundation (Japanese)');
     expect(dto.chapter.title).toBe('Hiragana — Vowels');
     expect(dto.items).toHaveLength(1);
-    expect(dto.items[0]).toMatchObject({ id: 'ja:kana:a', display: 'あ', role: 'TARGET' });
+    expect(dto.items[0]).toMatchObject({
+      id: 'ja:kana:a',
+      display: 'あ',
+      role: 'TARGET',
+    });
     expect(dto.checks[0].choices).toEqual(['あ', 'い', 'う']);
   });
 
