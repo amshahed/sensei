@@ -10,6 +10,14 @@ import {
 
 export type RatingLabel = 'Again' | 'Hard' | 'Good' | 'Easy';
 
+const RATING_LABELS: readonly RatingLabel[] = ['Again', 'Hard', 'Good', 'Easy'];
+
+function isRatingLabel(v: unknown): v is RatingLabel {
+  return (
+    typeof v === 'string' && (RATING_LABELS as readonly string[]).includes(v)
+  );
+}
+
 export interface OpenGradeInput {
   prompt: string;
   answer: string;
@@ -95,10 +103,18 @@ export class GradingService {
           }),
           GRADE_TIMEOUT_MS,
         );
+        // Don't trust the rating blindly — if it's somehow off-enum, treating
+        // it as a pass while ratingFromLabel maps it to Again would desync the
+        // learner-facing result from the FSRS write. Fall back instead.
+        if (!isRatingLabel(res.rating)) {
+          throw new Error(
+            `grader returned an invalid rating: ${String(res.rating)}`,
+          );
+        }
         return {
           rating: res.rating,
           correct: res.rating !== 'Again',
-          feedback: res.feedback,
+          feedback: typeof res.feedback === 'string' ? res.feedback : '',
           exemplar,
           gradedBy: 'ai',
           scored: true,

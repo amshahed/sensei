@@ -168,6 +168,20 @@ describe('ChecksService', () => {
       );
     });
 
+    it('keeps a MULTIPLE_CHOICE check closed even if its stored answer is missing', async () => {
+      // Misconfigured MC check (answer blank): must grade deterministically as
+      // wrong, never route to the AI grader.
+      findUnique.mockResolvedValue({
+        ...check,
+        data: { choices: ['あ'], answer: '' },
+      });
+
+      const result = await service.grade('chk-1', 'あ', 'dev-user');
+
+      expect(gradeOpen).not.toHaveBeenCalled();
+      expect(result.correct).toBe(false);
+    });
+
     it('does NOT write mastery when the grader could not actually score it', async () => {
       findUnique.mockResolvedValue(openCheck);
       gradeOpen.mockResolvedValue({

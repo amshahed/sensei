@@ -53,8 +53,16 @@ export class ChecksService {
     const data = (check.data ?? {}) as CheckData;
     const fixedAnswer = asString(data.answer);
 
-    const graded = fixedAnswer
-      ? this.gradeClosed(answer, fixedAnswer)
+    // A MULTIPLE_CHOICE check is always closed (graded against its fixed
+    // answer) — even if that answer is mis-stored, it must never silently
+    // become AI-graded. Other formats are open only when no fixed answer is
+    // present. A misconfigured closed check thus grades wrong (surfacing the
+    // content bug) rather than quietly routing to the model.
+    const isClosed =
+      check.format === 'MULTIPLE_CHOICE' || fixedAnswer !== undefined;
+
+    const graded = isClosed
+      ? this.gradeClosed(answer, fixedAnswer ?? '')
       : await this.gradeOpen(check.prompt, answer, data);
 
     // Only feed a real judgement into FSRS. An open check we couldn't actually

@@ -36,6 +36,24 @@ describe('GradingService', () => {
       expect(parseJson).toHaveBeenCalledTimes(1);
     });
 
+    it('falls back when the model returns an off-enum rating', async () => {
+      const parseJson = jest
+        .fn()
+        .mockResolvedValue({ rating: 'great', feedback: 'hmm' });
+      const service = await makeService({ enabled: true, parseJson });
+
+      const result = await service.gradeOpen({
+        prompt: 'p',
+        answer: 'おはようございます',
+        exemplar: 'おはようございます',
+      });
+
+      // Did not trust the bad rating; fell back to exemplar exact-match.
+      expect(result.gradedBy).toBe('fallback');
+      expect(result.rating).toBe('Good');
+      expect(result.correct).toBe(true);
+    });
+
     it('falls back when the model call throws', async () => {
       const parseJson = jest.fn().mockRejectedValue(new Error('429'));
       const service = await makeService({ enabled: true, parseJson });
