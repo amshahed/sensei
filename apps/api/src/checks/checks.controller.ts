@@ -14,6 +14,8 @@ export class ChecksController {
     @Body() body: CheckAnswerRequest,
     @CurrentUserId() userId: string,
   ): Promise<CheckResultDto> {
-    return this.checks.grade(id, body.answer ?? '', userId);
+    return this.checks.grade(id, body.answer ?? '', userId, {
+      guessed: body.guessed === true,
+    });
   }
 }

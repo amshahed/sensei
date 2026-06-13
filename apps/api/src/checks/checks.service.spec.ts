@@ -92,6 +92,54 @@ describe('ChecksService', () => {
     });
   });
 
+  describe('"I guessed" flag (K.1)', () => {
+    it('downgrades a correct guessed multiple-choice answer to Hard', async () => {
+      findUnique.mockResolvedValue(check);
+
+      await service.grade('chk-1', 'あ', 'dev-user', { guessed: true });
+
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ correct: true, rating: Rating.Hard }),
+      );
+    });
+
+    it('leaves an un-guessed correct answer at the default rating', async () => {
+      findUnique.mockResolvedValue(check);
+
+      await service.grade('chk-1', 'あ', 'dev-user', { guessed: false });
+
+      // No explicit rating → mastery derives Good from `correct`.
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ correct: true, rating: undefined }),
+      );
+    });
+
+    it('never inflates: a wrong guessed answer is unaffected', async () => {
+      findUnique.mockResolvedValue(check);
+
+      await service.grade('chk-1', 'い', 'dev-user', { guessed: true });
+
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ correct: false, rating: undefined }),
+      );
+    });
+
+    it('ignores the flag on non-multiple-choice (closed TYPED) checks', async () => {
+      findUnique.mockResolvedValue({
+        ...check,
+        format: 'TYPED',
+        data: { answer: 'あ' },
+      });
+
+      await service.grade('chk-1', 'あ', 'dev-user', { guessed: true });
+
+      // TYPED is not a guess-prone format — no downgrade.
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ correct: true, rating: undefined }),
+      );
+    });
+  });
+
   it('still returns the grade if mastery write-back fails', async () => {
     findUnique.mockResolvedValue(check);
     recordCheckResult.mockRejectedValue(new Error('db down'));

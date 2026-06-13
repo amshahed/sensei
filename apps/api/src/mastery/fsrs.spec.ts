@@ -63,6 +63,13 @@ describe('fsrs helpers', () => {
       expect(card.due.getTime()).toBeGreaterThan(NOW.getTime());
     });
 
+    it('a guessed (Hard) correct answer schedules sooner than a confident (Good) one', () => {
+      // K.1: the "I guessed" downgrade must pull the next review in.
+      const good = applyRating(emptyCard(NOW), Rating.Good, NOW);
+      const hard = applyRating(emptyCard(NOW), Rating.Hard, NOW);
+      expect(hard.due.getTime()).toBeLessThan(good.due.getTime());
+    });
+
     it('a failed review schedules sooner than a passed one', () => {
       const good = applyRating(emptyCard(NOW), ratingFromCorrect(true), NOW);
       const again = applyRating(emptyCard(NOW), ratingFromCorrect(false), NOW);

@@ -3,8 +3,14 @@ import type { CheckResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { GradingService } from '../grading/grading.service';
+import { Rating } from 'ts-fsrs';
 import { ratingFromLabel } from '../mastery/fsrs';
 import { normalizeAnswer } from '../common/normalize-answer';
+
+export interface GradeOptions {
+  /** Learner's "I guessed" self-report (K.1). */
+  guessed?: boolean;
+}
 
 /** The persisted Check `data` shape we read for grading. */
 interface CheckData {
@@ -41,6 +47,7 @@ export class ChecksService {
     checkId: string,
     answer: string,
     userId: string,
+    opts: GradeOptions = {},
   ): Promise<CheckResultDto> {
     const check = await this.prisma.check.findUnique({
       where: { id: checkId },
@@ -65,6 +72,15 @@ export class ChecksService {
       ? this.gradeClosed(answer, fixedAnswer ?? '')
       : await this.gradeOpen(check.prompt, answer, data);
 
+    // "I guessed" downgrade (K.1): a correct multiple-choice answer the learner
+    // admits guessing is treated as Hard, not Good — FSRS then reschedules it
+    // sooner. Only ever downgrades, and only on the guess-prone format.
+    const guessDowngrade =
+      opts.guessed === true &&
+      graded.correct &&
+      check.format === 'MULTIPLE_CHOICE';
+    const rating = guessDowngrade ? Rating.Hard : graded.rating;
+
     // Only feed a real judgement into FSRS. An open check we couldn't actually
     // grade (no model, no exemplar) is returned to the learner but kept out of
     // the spaced-repetition schedule. The write-back must also never block the
@@ -76,7 +92,7 @@ export class ChecksService {
           itemId: check.targetItemId,
           format: check.format,
           correct: graded.correct,
-          rating: graded.rating,
+          rating,
         });
       } catch (err) {
         this.logger.error(
