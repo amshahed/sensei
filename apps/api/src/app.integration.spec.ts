@@ -2,7 +2,12 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import type { CheckResultDto, LessonDetailDto } from '@sensei/types';
+import type {
+  CheckResultDto,
+  LessonCompletionDto,
+  LessonDetailDto,
+  ReviewResultDto,
+} from '@sensei/types';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { DEV_USER_HEADER } from './auth/dev-user';
@@ -14,6 +19,16 @@ import { DEV_USER_HEADER } from './auth/dev-user';
  * tests (which call methods directly) can't: routing, the header → user
  * resolution, and answer-stripping on the wire. No database required.
  */
+
+const kanaA = {
+  id: 'ja:kana:a',
+  language: 'ja',
+  type: 'KANA',
+  display: 'あ',
+  reading: 'あ',
+  meaning: null,
+  data: { romaji: 'a' },
+};
 
 const lessonRow = {
   id: 'lesson-1',
@@ -56,6 +71,11 @@ const lessonRow = {
 /** Minimal in-memory stand-in for the Prisma surface the routes touch. */
 function fakePrisma() {
   const masteryStates = new Map<string, Record<string, unknown>>();
+  const completions: Array<{
+    userId: string;
+    lessonId: string;
+    completedAt: Date;
+  }> = [];
   return {
     lesson: {
       findFirst: () => Promise.resolve(lessonRow),
@@ -64,9 +84,25 @@ function fakePrisma() {
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
         Promise.resolve(lessonRow.checks.find((c) => c.id === id) ?? null),
     },
+    item: {
+      findUnique: ({ where: { id } }: { where: { id: string } }) =>
+        Promise.resolve(id === kanaA.id ? kanaA : null),
+    },
     user: {
       upsert: ({ create }: { create: { id: string } }) =>
         Promise.resolve(create),
+    },
+    lessonCompletion: {
+      upsert: ({
+        where,
+      }: {
+        where: { userId_lessonId: { userId: string; lessonId: string } };
+      }) => {
+        const { userId, lessonId } = where.userId_lessonId;
+        const row = { userId, lessonId, completedAt: new Date() };
+        completions.push(row);
+        return Promise.resolve(row);
+      },
     },
     itemMasteryState: {
       findUnique: ({
@@ -173,5 +209,39 @@ describe('API (HTTP integration)', () => {
       .get('/reviews/due')
       .expect(200);
     expect(res.body).toEqual([]);
+  });
+
+  it('POST /reviews/:itemId/answer grades typed recall against the item exemplar', async () => {
+    // KANA → expected = rōmaji from data; "a" matches kanaA.data.romaji.
+    const res = await request(app.getHttpServer())
+      .post(`/reviews/${encodeURIComponent(kanaA.id)}/answer`)
+      .send({ answer: 'A' }) // case-insensitive match
+      .expect(201);
+    const body = res.body as ReviewResultDto;
+
+    expect(body.itemId).toBe(kanaA.id);
+    expect(body.correct).toBe(true);
+    expect(body.correctAnswer).toBe('a');
+    expect(typeof body.mastery).toBe('number');
+  });
+
+  it('POST /reviews/:itemId/answer 404s for an unknown item', async () => {
+    await request(app.getHttpServer())
+      .post('/reviews/ja:kana:none/answer')
+      .send({ answer: 'a' })
+      .expect(404);
+  });
+
+  it('POST /lessons/:slug/complete records the completion for the dev user', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/lessons/the-five-vowels/complete')
+      .set(DEV_USER_HEADER, 'user_int_test')
+      .expect(201);
+    const body = res.body as LessonCompletionDto;
+
+    expect(body.lessonId).toBe('lesson-1');
+    expect(body.completed).toBe(true);
+    // ISO-8601 timestamp.
+    expect(() => new Date(body.completedAt).toISOString()).not.toThrow();
   });
 });
