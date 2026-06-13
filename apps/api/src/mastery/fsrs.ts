@@ -33,6 +33,26 @@ export function ratingFromCorrect(correct: boolean): Grade {
   return correct ? Rating.Good : Rating.Again;
 }
 
+/** Map an AI grader's label (G.3, #8) to an FSRS rating. */
+export function ratingFromLabel(
+  label: 'Again' | 'Hard' | 'Good' | 'Easy',
+): Grade {
+  switch (label) {
+    case 'Hard':
+      return Rating.Hard;
+    case 'Good':
+      return Rating.Good;
+    case 'Easy':
+      return Rating.Easy;
+    case 'Again':
+      return Rating.Again;
+    default:
+      // Structured output constrains the label to the enum, but guard anyway:
+      // an unexpected value must not become an `undefined` Grade downstream.
+      return Rating.Again;
+  }
+}
+
 /** Which modality a Check format exercises (G.1 breadcrumbs). */
 export function modalityForFormat(format: CheckFormat): Modality {
   switch (format) {

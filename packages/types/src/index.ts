@@ -88,6 +88,8 @@ export interface CheckResultDto {
   correct: boolean;
   /** Revealed only after the learner has answered (the grading response). */
   correctAnswer: string;
+  /** One line of tutor feedback — present for AI-graded open responses (#8). */
+  feedback?: string;
 }
 
 export interface LessonCompletionDto {
