@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Sensei",
+    "slug": "sensei",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "sensei",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sensei.app"
+    },
+    "android": {
+      "package": "com.sensei.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

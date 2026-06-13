@@ -1,0 +1,17 @@
+// Prisma schema for the Sensei API.
+//
+// Domain models (items, modules, chapters, lessons, mastery/FSRS state) are
+// added in issue #4 (data model + one seeded lesson). This file establishes the
+// datasource + the pgvector extension now (decisions E.3 / L.3), so migrations
+// and the reference-corpus embeddings have a home from the start.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
