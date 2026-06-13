@@ -1,0 +1,49 @@
+name: CI
+
+# Runs on every PR (any base) and on pushes to main. Gates the merge stack:
+# typecheck + lint + test + build across the pnpm/Turborepo workspace. No
+# database is needed — unit tests mock Prisma, and build/typecheck don't connect.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        # Version is read from the root package.json "packageManager" field.
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Generate the Prisma client explicitly so typecheck/build don't depend on
+      # install-time build-script approval running in CI.
+      - name: Generate Prisma client
+        run: pnpm --filter api exec prisma generate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
