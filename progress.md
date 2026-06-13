@@ -126,21 +126,29 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 ## In Progress
 
-Design grilling COMPLETE (all phases A–M locked). Now **implementing** against the GitHub issues (epic #1, children #2–#22), critical path first toward the M.4 tracer bullet.
+Design grilling COMPLETE (all phases A–M locked). **Implementing** against the GitHub issues (epic #1, children #2–#22). The core learning loop is merged to `main`, each via a high-reviewed, CI-green PR.
 
-### Implementation status
+### Implementation status (as of 2026-06-13)
 
 | Issue | Scope | Status |
 |---|---|---|
-| #2 | Monorepo scaffold + deploy skeleton (pnpm+Turborepo, NestJS, Expo, `/health`) | ✅ built · PR |
-| #4 | Data model: Prisma schema + first seeded lesson + `GET /lessons/:id` | ✅ built · PR (`feat/4-data-model`) |
-| #5 | **Tracer bullet** — lesson player end-to-end (Teach→Practice→Check→complete; server-side grading; dev-user stub) | ✅ built · PR #25 (stacked on #4) |
-| #3 | Real Clerk auth (replaces dev-user stub) | ⏭ next on critical path (HITL) |
-| #6 | FSRS + mastery update on completion | ⏭ after #3 |
+| #2 | Monorepo scaffold + deploy skeleton + **CI** (Actions: typecheck/lint/test/build, Node 22) | ✅ merged to main |
+| #4 | Data model: Prisma schema + seeded "five vowels" lesson + `GET /lessons/:id` | ✅ merged |
+| #5 | **Tracer bullet** — lesson player end-to-end (Teach→Practice→Check→complete) | ✅ merged |
+| #6 | FSRS scheduling + mastery write-back (`enable_short_term:false`) + `GET /reviews/due` | ✅ merged |
+| #7 | Review session (due queue, typed recall) | ✅ merged |
+| #8 | AI grading of open responses via thin `LlmClient`/Anthropic (flag-gated; deterministic fallback) | ✅ merged |
+| #18 | "I guessed" confidence flag (K.1) — MC-only Good→Hard downgrade | ✅ merged |
 
-> #5 verified offline (typecheck · api build · 10 unit tests · lint). **HITL remaining:** provision Neon, run `prisma migrate deploy` + `db:seed`, then walk the lesson on a device — proves the tracer bullet live.
+**The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
 
-The M.4 loop (item DB → lesson player → Check → grading → completion) is now closed in code; **FSRS/mastery (#6)** and **runtime-AI Practice + fuzzy grading (#8)** are the deferred segments of the full pipeline. After the critical path, content authoring (#21/#22) scales in parallel with surface build.
+**Next, in rough priority** (each needs a small founder call before autonomous build — flagged where so):
+- **#3 Clerk auth** — HITL (needs Clerk keys); the dev-user stub (`@CurrentUserId`) is the seam it replaces.
+- **#19 streak (K.2/K.3)** — unlocked sub-decisions: exact freeze cap, over-deliver multiplier, recalibration window, "unit"/day-boundary.
+- **#16 dashboard (J.2)** / **#17 practice (J.1)** — read on existing mastery data; metric/UX nuance.
+- **#9–#12 modalities** (#10/#11 need Azure speech — HITL), **#20 notifications**, **#21/#22 authoring + content**.
+
+**HITL still pending from the founder:** provision Neon · Clerk · Railway · Azure · R2; set `ANTHROPIC_API_KEY`; run live `prisma migrate deploy` + `db:seed`; device walkthrough via EAS.
 
 ---
 

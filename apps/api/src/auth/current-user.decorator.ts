@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import { DEV_USER_HEADER, DEV_USER_ID } from './dev-user';
+import { DEV_USER_HEADER, resolveDevUserId } from './dev-user';
 
 /**
  * Resolves the acting user's id for a request.
@@ -13,7 +13,6 @@ import { DEV_USER_HEADER, DEV_USER_ID } from './dev-user';
 export const CurrentUserId = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): string => {
     const req = ctx.switchToHttp().getRequest<Request>();
-    const header = req.header(DEV_USER_HEADER);
-    return header && header.trim().length > 0 ? header.trim() : DEV_USER_ID;
+    return resolveDevUserId(req.header(DEV_USER_HEADER));
   },
 );

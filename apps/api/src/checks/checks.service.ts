@@ -5,7 +5,7 @@ import { MasteryService } from '../mastery/mastery.service';
 import { GradingService } from '../grading/grading.service';
 import { Rating } from 'ts-fsrs';
 import { ratingFromLabel } from '../mastery/fsrs';
-import { normalizeAnswer } from '../common/normalize-answer';
+import { exactMatch } from '../common/normalize-answer';
 
 export interface GradeOptions {
   /** Learner's "I guessed" self-report (K.1). */
@@ -110,7 +110,7 @@ export class ChecksService {
   }
 
   private gradeClosed(answer: string, fixedAnswer: string) {
-    const correct = normalizeAnswer(answer) === normalizeAnswer(fixedAnswer);
+    const correct = exactMatch(answer, fixedAnswer);
     return {
       correct,
       correctAnswer: fixedAnswer,
