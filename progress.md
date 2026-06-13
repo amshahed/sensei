@@ -126,11 +126,21 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 ## In Progress
 
-**(none — design grilling COMPLETE. All phases A–M locked.)**
+Design grilling COMPLETE (all phases A–M locked). Now **implementing** against the GitHub issues (epic #1, children #2–#22), critical path first toward the M.4 tracer bullet.
 
-Next step is **implementation**, not more grilling. Per M.4, begin with the **tracer bullet**: build one complete lesson flowing end-to-end through every system (item DB → lesson player → check → AI grading → FSRS → review → progress), then scale content authoring in parallel with surface build.
+### Implementation status
 
-Per project convention, the repo is still pre-implementation: confirm stack scaffolding intent before generating code.
+| Issue | Scope | Status |
+|---|---|---|
+| #2 | Monorepo scaffold + deploy skeleton (pnpm+Turborepo, NestJS, Expo, `/health`) | ✅ built · PR |
+| #4 | Data model: Prisma schema + first seeded lesson + `GET /lessons/:id` | ✅ built · PR (`feat/4-data-model`) |
+| #5 | **Tracer bullet** — lesson player end-to-end (Teach→Practice→Check→complete; server-side grading; dev-user stub) | ✅ built · PR #25 (stacked on #4) |
+| #3 | Real Clerk auth (replaces dev-user stub) | ⏭ next on critical path (HITL) |
+| #6 | FSRS + mastery update on completion | ⏭ after #3 |
+
+> #5 verified offline (typecheck · api build · 10 unit tests · lint). **HITL remaining:** provision Neon, run `prisma migrate deploy` + `db:seed`, then walk the lesson on a device — proves the tracer bullet live.
+
+The M.4 loop (item DB → lesson player → Check → grading → completion) is now closed in code; **FSRS/mastery (#6)** and **runtime-AI Practice + fuzzy grading (#8)** are the deferred segments of the full pipeline. After the critical path, content authoring (#21/#22) scales in parallel with surface build.
 
 ---
 

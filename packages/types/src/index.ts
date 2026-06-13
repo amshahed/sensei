@@ -76,3 +76,23 @@ export interface LessonDetailDto {
   items: LessonItemDto[];
   checks: CheckDto[];
 }
+
+/* ---- Check grading + lesson completion (issue #5) ---- */
+
+export interface CheckAnswerRequest {
+  answer: string;
+}
+
+export interface CheckResultDto {
+  checkId: string;
+  correct: boolean;
+  /** Revealed only after the learner has answered (the grading response). */
+  correctAnswer: string;
+}
+
+export interface LessonCompletionDto {
+  lessonId: string;
+  completed: boolean;
+  /** ISO-8601 timestamp. */
+  completedAt: string;
+}

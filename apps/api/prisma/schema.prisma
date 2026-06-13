@@ -116,9 +116,10 @@ model Lesson {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  chapter Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  items   LessonItem[]
-  checks  Check[]
+  chapter     Chapter            @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  items       LessonItem[]
+  checks      Check[]
+  completions LessonCompletion[]
 
   @@index([chapterId, position])
 }
@@ -164,6 +165,22 @@ model User {
   updatedAt DateTime @updatedAt
 
   masteryStates ItemMasteryState[]
+  completions   LessonCompletion[]
+}
+
+/// Records that a user finished a lesson (the Check beat all the way through).
+/// One row per (user, lesson); re-completing just refreshes completedAt.
+model LessonCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
 }
 
 /// Per-(user, item) mastery + spaced-repetition state.
