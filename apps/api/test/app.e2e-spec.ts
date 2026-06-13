@@ -21,8 +21,9 @@ describe('AppModule (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect((res) => {
-        if (res.body.status !== 'ok') {
-          throw new Error(`expected status ok, got ${res.body.status}`);
+        const body = res.body as { status?: string };
+        if (body.status !== 'ok') {
+          throw new Error(`expected status ok, got ${String(body.status)}`);
         }
       });
   });
