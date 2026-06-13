@@ -7,6 +7,7 @@ import type {
   Modality,
 } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { reviewQuestionFor } from '../reviews/review-question';
 import {
   applyRating,
   emptyCard,
@@ -133,6 +134,7 @@ export class MasteryService {
           retrievability: card ? retrievability(card, now) : 0,
           due: (s.due ?? now).toISOString(),
           weakestModality: weakestModality(s),
+          prompt: reviewQuestionFor(s.item).prompt,
         };
       })
       .sort((a, b) => a.retrievability - b.retrievability);

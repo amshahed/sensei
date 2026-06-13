@@ -1,8 +1,10 @@
 import type {
   CheckResultDto,
+  DueReviewItemDto,
   HealthResponse,
   LessonCompletionDto,
   LessonDetailDto,
+  ReviewResultDto,
 } from '@sensei/types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -50,6 +52,17 @@ export const api = {
     return request<LessonCompletionDto>(
       `/lessons/${encodeURIComponent(idOrSlug)}/complete`,
       { method: 'POST' },
+    );
+  },
+
+  dueReviews(): Promise<DueReviewItemDto[]> {
+    return request<DueReviewItemDto[]>('/reviews/due');
+  },
+
+  gradeReview(itemId: string, answer: string): Promise<ReviewResultDto> {
+    return request<ReviewResultDto>(
+      `/reviews/${encodeURIComponent(itemId)}/answer`,
+      { method: 'POST', body: JSON.stringify({ answer }) },
     );
   },
 };

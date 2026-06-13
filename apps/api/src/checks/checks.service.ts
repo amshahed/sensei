@@ -2,15 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { CheckResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
-
-/**
- * Normalises an answer for comparison: trims, collapses internal whitespace and
- * lowercases. Deliberately conservative for the tracer bullet — kana/kanji are
- * compared as-is (no romaji folding). Fuzzy/AI grading arrives in issue #8.
- */
-function normalize(value: string): string {
-  return value.trim().replace(/\s+/g, ' ').toLowerCase();
-}
+import { normalizeAnswer } from '../common/normalize-answer';
 
 @Injectable()
 export class ChecksService {
@@ -43,7 +35,7 @@ export class ChecksService {
 
     const data = (check.data ?? {}) as { answer?: unknown };
     const correctAnswer = typeof data.answer === 'string' ? data.answer : '';
-    const correct = normalize(answer) === normalize(correctAnswer);
+    const correct = normalizeAnswer(answer) === normalizeAnswer(correctAnswer);
 
     // Mastery write-back must never block returning the grade to the learner.
     try {
