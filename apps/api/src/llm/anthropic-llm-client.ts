@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmClient, LlmTask, ParseJsonOptions } from './llm-client';
@@ -29,8 +29,12 @@ export class AnthropicLlmClient implements LlmClient {
 
   constructor(
     private readonly config: ConfigService,
-    /** Test seam: inject a fake client instead of hitting the network. */
-    client?: AnthropicLike,
+    /**
+     * Test seam: inject a fake client instead of hitting the network.
+     * `@Optional()` is required so Nest's DI doesn't try to resolve this
+     * non-injectable param — without it the app fails to construct at boot.
+     */
+    @Optional() client?: AnthropicLike,
   ) {
     if (client) {
       this.client = client;
