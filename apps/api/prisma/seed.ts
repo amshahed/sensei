@@ -97,24 +97,26 @@ async function main() {
     });
   }
 
-  // Checks — rebuilt deterministically so re-seeding stays idempotent.
-  await prisma.check.deleteMany({ where: { lessonId: lesson.id } });
+  // Checks — rebuilt deterministically so re-seeding stays idempotent. The
+  // delete + re-create run in one transaction so an interrupted re-seed can't
+  // leave the lesson with a partial (or empty) set of checks.
   const choices = VOWELS.map((v) => v.display);
-  for (let i = 0; i < VOWELS.length; i++) {
-    const v = VOWELS[i];
-    await prisma.check.create({
-      data: {
-        lessonId: lesson.id,
-        position: i,
-        prompt: `Which kana is read “${v.romaji}”?`,
-        format: 'MULTIPLE_CHOICE',
-        targetItemId: v.id,
-        data: { choices, answer: v.display },
-      },
-    });
-  }
+  await prisma.$transaction([
+    prisma.check.deleteMany({ where: { lessonId: lesson.id } }),
+    ...VOWELS.map((v, i) =>
+      prisma.check.create({
+        data: {
+          lessonId: lesson.id,
+          position: i,
+          prompt: `Which kana is read “${v.romaji}”?`,
+          format: 'MULTIPLE_CHOICE',
+          targetItemId: v.id,
+          data: { choices, answer: v.display },
+        },
+      }),
+    ),
+  ]);
 
-  // eslint-disable-next-line no-console
   console.log(
     `Seeded "${lesson.title}" (slug: ${lesson.slug}) — ${VOWELS.length} items, ${VOWELS.length} checks.`,
   );
@@ -123,7 +125,6 @@ async function main() {
 main()
   .then(() => prisma.$disconnect())
   .catch(async (e) => {
-    // eslint-disable-next-line no-console
     console.error(e);
     await prisma.$disconnect();
     process.exit(1);
