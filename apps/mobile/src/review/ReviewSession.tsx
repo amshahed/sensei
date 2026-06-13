@@ -122,20 +122,18 @@ function ReviewCard({
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState<ReviewResultDto | null>(null);
   const [grading, setGrading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function submit() {
     if (result || grading || answer.trim().length === 0) return;
     setGrading(true);
+    setFailed(false);
     try {
       const r = await api.gradeReview(item.itemId, answer);
       setResult(r);
     } catch {
-      setResult({
-        itemId: item.itemId,
-        correct: false,
-        correctAnswer: '',
-        mastery: 0,
-      });
+      // Don't score a network blip as a wrong answer — let the learner retry.
+      setFailed(true);
     } finally {
       setGrading(false);
     }
@@ -151,7 +149,7 @@ function ReviewCard({
           />
         ) : (
           <PrimaryButton
-            label="Check"
+            label={failed ? 'Retry' : 'Check'}
             onPress={submit}
             disabled={grading || answer.trim().length === 0}
           />
@@ -167,13 +165,17 @@ function ReviewCard({
       <TextInput
         style={styles.input}
         value={answer}
-        editable={!result}
+        editable={!result && !grading}
         onChangeText={setAnswer}
         placeholder="Type your answer"
         autoCapitalize="none"
         autoCorrect={false}
         onSubmitEditing={submit}
       />
+
+      {failed ? (
+        <Text style={ui.err}>Couldn’t reach the grader — tap Retry.</Text>
+      ) : null}
 
       {result ? (
         <Text style={result.correct ? ui.ok : ui.err}>
