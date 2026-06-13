@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { DueReviewItemDto, ReviewResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
-import { normalizeAnswer } from '../common/normalize-answer';
+import { exactMatch } from '../common/normalize-answer';
 import { reviewQuestionFor } from './review-question';
 
 /** G.4 session cap — matches the ~5–10 min micro-session length. */
@@ -38,7 +38,7 @@ export class ReviewsService {
     }
 
     const { expectedAnswer } = reviewQuestionFor(item);
-    const correct = normalizeAnswer(answer) === normalizeAnswer(expectedAnswer);
+    const correct = exactMatch(answer, expectedAnswer);
 
     const state = await this.mastery.recordCheckResult({
       userId,

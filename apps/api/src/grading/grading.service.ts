@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { LLM_CLIENT, type LlmClient } from '../llm/llm-client';
-import { normalizeAnswer } from '../common/normalize-answer';
+import { exactMatch } from '../common/normalize-answer';
 import {
   buildGradingUser,
   GRADING_SCHEMA,
@@ -134,8 +134,7 @@ export class GradingService {
    */
   private fallback(input: OpenGradeInput, exemplar: string): OpenGradeResult {
     if (exemplar) {
-      const correct =
-        normalizeAnswer(input.answer) === normalizeAnswer(exemplar);
+      const correct = exactMatch(input.answer, exemplar);
       return {
         rating: correct ? 'Good' : 'Again',
         correct,
