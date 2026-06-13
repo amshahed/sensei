@@ -15,7 +15,14 @@ import type { Modality } from '@sensei/types';
  * get identical due dates. Default parameters are fine at MVP; FSRS calibrates
  * per-learner automatically once review history accumulates (decisions G.2).
  */
-export const scheduler = fsrs(generatorParameters({ enable_fuzz: false }));
+// `enable_short_term: false` — new items graduate straight to multi-day
+// intervals instead of FSRS's default minutes-out learning steps. Within-lesson
+// reinforcement is handled by the lesson's own Check beats and Practice mode
+// (J.1); the Reviews surface is the cross-session forgetting-curve tool (G.4),
+// so it must not flood with items the learner just saw minutes ago.
+export const scheduler = fsrs(
+  generatorParameters({ enable_fuzz: false, enable_short_term: false }),
+);
 
 /**
  * Deterministic Check result → FSRS rating. Until AI grading (#8) supplies the
