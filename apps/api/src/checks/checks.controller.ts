@@ -1,5 +1,6 @@
 import { Body, Controller, Param, Post } from '@nestjs/common';
 import type { CheckAnswerRequest, CheckResultDto } from '@sensei/types';
+import { CurrentUserId } from '../auth/current-user.decorator';
 import { ChecksService } from './checks.service';
 
 @Controller('checks')
@@ -11,7 +12,8 @@ export class ChecksController {
   answer(
     @Param('id') id: string,
     @Body() body: CheckAnswerRequest,
+    @CurrentUserId() userId: string,
   ): Promise<CheckResultDto> {
-    return this.checks.grade(id, body.answer ?? '');
+    return this.checks.grade(id, body.answer ?? '', userId);
   }
 }
