@@ -45,6 +45,24 @@ Whole-repo tasks via Turborepo: `pnpm build` · `pnpm typecheck` · `pnpm test` 
 > Running on a physical device? Set `EXPO_PUBLIC_API_URL` to your machine's LAN IP
 > (e.g. `http://192.168.x.x:3000`), not `localhost`.
 
+## Database (Postgres + Prisma)
+
+Schema lives in [`apps/api/prisma/schema.prisma`](apps/api/prisma/schema.prisma);
+the init migration (incl. enabling `pgvector`) is committed under
+`apps/api/prisma/migrations/`. Once `DATABASE_URL` points at a real Postgres:
+
+```bash
+pnpm --filter api prisma:deploy   # apply migrations (creates tables + pgvector)
+pnpm --filter api db:seed         # seed the first lesson (the five hiragana vowels)
+
+# verify the lesson endpoint
+pnpm --filter api start:dev
+curl http://localhost:3000/lessons/the-five-vowels
+```
+
+> No DB configured? The app still boots and `/health` works (Prisma connects
+> lazily); only DB-backed routes like `/lessons/:id` require `DATABASE_URL`.
+
 ## Deployment (HITL — accounts required)
 
 - **Backend → Railway:** connect the repo, root `apps/api`, set env from `apps/api/.env.example` (incl. Neon `DATABASE_URL`).
