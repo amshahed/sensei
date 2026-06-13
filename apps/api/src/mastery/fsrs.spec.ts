@@ -5,6 +5,7 @@ import {
   masteryFromStability,
   modalityForFormat,
   ratingFromCorrect,
+  ratingFromLabel,
   retrievability,
   reviveCard,
   serializeCard,
@@ -17,6 +18,15 @@ describe('fsrs helpers', () => {
   it('maps correctness to Good / Again', () => {
     expect(ratingFromCorrect(true)).toBe(Rating.Good);
     expect(ratingFromCorrect(false)).toBe(Rating.Again);
+  });
+
+  it('maps AI rating labels to FSRS ratings', () => {
+    expect(ratingFromLabel('Again')).toBe(Rating.Again);
+    expect(ratingFromLabel('Hard')).toBe(Rating.Hard);
+    expect(ratingFromLabel('Good')).toBe(Rating.Good);
+    expect(ratingFromLabel('Easy')).toBe(Rating.Easy);
+    // Defensive default: an out-of-enum label must not become undefined.
+    expect(ratingFromLabel('nonsense' as 'Good')).toBe(Rating.Again);
   });
 
   it('maps each Check format to its modality', () => {

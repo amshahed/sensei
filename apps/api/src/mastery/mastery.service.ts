@@ -6,6 +6,7 @@ import type {
   ItemMasteryDto,
   Modality,
 } from '@sensei/types';
+import type { Grade } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
 import { reviewQuestionFor } from '../reviews/review-question';
 import {
@@ -25,6 +26,11 @@ export interface RecordCheckResultInput {
   itemId: string;
   format: CheckFormat;
   correct: boolean;
+  /**
+   * Explicit FSRS rating (from AI grading, #8). When omitted, derived from
+   * `correct` (deterministic Good/Again).
+   */
+  rating?: Grade;
   /** Defaults to now; injectable for deterministic tests. */
   reviewedAt?: Date;
 }
@@ -70,7 +76,8 @@ export class MasteryService {
     });
 
     const priorCard = reviveCard(existing?.fsrs) ?? emptyCard(now);
-    const card = applyRating(priorCard, ratingFromCorrect(input.correct), now);
+    const grade = input.rating ?? ratingFromCorrect(input.correct);
+    const card = applyRating(priorCard, grade, now);
 
     const modality = modalityForFormat(input.format);
     const priorBreadcrumb = existing ? existing[modality] : 0;
