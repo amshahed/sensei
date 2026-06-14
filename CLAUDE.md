@@ -49,3 +49,42 @@ The `/grill-me` design session that took Sensei from idea to implementation-read
 - `progress.md` is the live status board; update it when sub-decisions resolve or phases move.
 - Tasks in the TaskList mirror `progress.md` phases. When updating one, consider updating the other.
 - There is no README; the PRD plays that role for now. If you create a README, link to the PRD instead of duplicating content.
+
+## Autonomous Build Pipeline
+
+When the user opens a session with "continue" or any prompt that isn't a specific ask, **start by asking one question**:
+
+> "Anything specific to work on, or continue with the issue backlog?"
+
+If they pick the backlog (or were mid-task last session), run this loop until interrupted or blocked:
+
+1. **Pick the work.** If a PR is open or a branch has unfinished work, finish that first. Otherwise `gh issue list --state open` and take the lowest unblocked issue NOT labeled `hitl`. If every open issue is `hitl`, surface the list and ask which to unblock.
+2. **Read design context.** `decisions.md`, `progress.md`, and the issue's referenced phases (e.g. F.1, E.4). Honor every locked decision. If a genuinely-open question surfaces, lock it with the user and append (never rewrite) a new `decisions.md` entry before coding.
+3. **Branch off `main`** with a descriptive name (e.g. `feat/21a-item-ingest`, `chore/integration-tests`). Prefer landing fast over stacking; stack only when strictly necessary.
+4. **Implement → typecheck → lint → test.** Run `pnpm typecheck && pnpm lint && pnpm test` locally before pushing. Don't bypass hooks (`--no-verify`, `--no-gpg-sign`, etc.).
+5. **Open PR to `main`** with a clear summary + test plan; let CI run (Node 22 — pnpm 11 needs `node:sqlite`).
+6. **Run `/code-review high`** on the PR, often via an independent agent for fresh eyes on the same model's own output.
+7. **Fix every finding**, push, wait for green CI.
+8. **Merge** with `gh pr merge <#> --merge` (merge commits, not squash). On stacks: **retarget child PRs to `main` BEFORE deleting the parent branch** — `--delete-branch` auto-closes any children still targeting the deleted parent.
+9. **Update `progress.md`**, close the issue if it didn't auto-close.
+10. **Loop.**
+
+### Stop the loop and ask when
+
+- Every open issue is `hitl` → list them, ask which to unblock.
+- A design decision surfaces that isn't already in `decisions.md` → lock it with the user first.
+- CI breaks on infra (DB unreachable, missing key) rather than code → don't work around it silently.
+- A destructive action would help (force push, hard reset, branch delete) → ask first.
+
+### Stacked-PR gotchas
+
+- `gh pr merge --delete-branch` on a parent **auto-closes any children still targeting it.** Retarget first with `gh pr edit <child> --base main`, or skip `--delete-branch` until the top of the stack.
+- After a parent lands on `main` with rebased commits, replay child branches with `git rebase --onto origin/main <old-parent-sha> <branch>`. A plain `rebase origin/main` will double-apply already-merged commits and explode with conflicts.
+
+### "Done" means
+
+- All issue acceptance-criteria boxes ticked
+- CI green on the PR
+- `/code-review high` findings fixed or explicitly justified
+- Merged to `main` (not just pushed)
+- `progress.md` reflects the new state
