@@ -146,7 +146,7 @@ describe('buildVectorQuery', () => {
 describe('generateDraft', () => {
   it('returns a validated draft with token counts', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
-    const voyage = makeVoyageFake(false); // disabled — skip vector search
+    const { voyage } = makeVoyageFake(false); // disabled — skip vector search
     const prisma = makePrisma([
       { id: 'ja:kana:a', display: 'あ', type: 'KANA', data: {} },
       { id: 'ja:kana:i', display: 'い', type: 'KANA', data: {} },
@@ -163,7 +163,7 @@ describe('generateDraft', () => {
 
   it('calls LLM with temperature:0 and correct model', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
-    const voyage = makeVoyageFake(false);
+    const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma();
 
     await generateDraft(fake, voyage, prisma, TEST_LESSON, []);
@@ -209,7 +209,7 @@ describe('generateDraft', () => {
       usage: { input_tokens: 10, output_tokens: 5 },
     });
     const fake: AnthropicLike = { messages: { create: createFn } };
-    const voyage = makeVoyageFake(false);
+    const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma();
 
     await expect(
@@ -224,7 +224,7 @@ describe('generateDraft', () => {
       usage: { input_tokens: 10, output_tokens: 5 },
     });
     const fake: AnthropicLike = { messages: { create: createFn } };
-    const voyage = makeVoyageFake(false);
+    const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma([
       { id: 'ja:kana:a', display: 'あ', type: 'KANA', data: {} },
       { id: 'ja:kana:i', display: 'い', type: 'KANA', data: {} },
@@ -240,7 +240,7 @@ describe('generateDraft', () => {
       meta: { ...MINIMAL_DRAFT.meta, generatedAt: '<ISO8601 timestamp>' },
     };
     const { fake } = makeAnthropicFake(draftWithPlaceholder);
-    const voyage = makeVoyageFake(false);
+    const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma([
       { id: 'ja:kana:a', display: 'あ', type: 'KANA', data: {} },
       { id: 'ja:kana:i', display: 'い', type: 'KANA', data: {} },
@@ -255,7 +255,7 @@ describe('generateDraft', () => {
 
   it('includes corrections in the prompt when provided', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
-    const voyage = makeVoyageFake(false);
+    const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma();
     const corrections = [
       {
