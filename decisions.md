@@ -1138,6 +1138,29 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 **Rejected:** B (AWS/GCP hyperscaler at MVP) — premature IAM/VPC/ops complexity for scale not yet needed. C (Supabase/Firebase *as* backend) — would underuse the deliberate NestJS choice (L.2); use managed pieces *under* the backend, not instead of it. **Caveat:** PaaS costs more than raw cloud at high scale + Neon scale-to-zero adds first-request cold-start latency; both non-issues at MVP, both have clean upgrade paths before a hyperscaler is warranted.
 
+### L.4.a Provider split — Anthropic for authoring, Gemini Flash for grading (amends L.4, locked 2026-06-15)
+
+**Decision (amendment to L.4):** Split providers by task. **Anthropic** stays the default for **offline authoring** (#21d drafter = Opus 4.8, critic = Haiku 4.5 — quality-sensitive, one-time spend). **Google Gemini 2.5 Flash** becomes the default for **runtime grading** (#8 open-response rating — recurring per-user spend, rubric-based). Both providers sit behind the same thin `LLMClient` interface from L.4 — the existing `AnthropicLlmClient` keeps its role; a new `GeminiLlmClient` lands alongside it; the grading code path selects per task.
+
+**Why:** trigger was the founder discovering Claude.ai subscription does *not* include API credits, so ongoing API spend is a real solo-bootstrap concern. Cost/quality breakdown for our actual workloads:
+- **Authoring is one-time + quality-sensitive** — ~$50-100 total for ~100 lessons; Opus has a real edge on Japanese naturalness; the F.3 critic gate doesn't fully substitute for drafter quality. Wrong place to squeeze pennies.
+- **Grading is recurring + quality-equivalent** — rubric-based scoring of short open answers (G.3 → 4-level FSRS rating). Both Haiku 4.5 and Gemini 2.5 Flash are well above the capability bar for this. Pricing: Flash ~$0.30/$2.50 per MTok vs Haiku ~$1/$5 (~3x cheaper at paid tier) — plus a real free tier (~15 RPM, ~1500 req/day) covering dev + early-beta.
+- **Build the seam, keep it thin (L.4 principle preserved).** Adding one second provider for a specific recurring task is not "full multi-provider routing" (which L.4 rejected as over-engineering) — it's the seam being used as designed.
+
+**Concrete env contract:** `GEMINI_API_KEY` joins `ANTHROPIC_API_KEY` + `VOYAGE_API_KEY` in `apps/api/.env.example`. `LLM_GRADING_MODEL` retains its meaning but now defaults to `gemini-2.5-flash`; `LLM_AUTHORING_MODEL` continues to default to `claude-opus-4-8` (drafter) with critic at `claude-haiku-4-5` per L.4. Provider selection is keyed by task, not by global default.
+
+**Rejected at this decision point:**
+- **All-Gemini (Pro for authoring + Flash for grading)** — biggest absolute $ savings but a real-not-imagined quality risk on lesson naturalness; F.3 critic catches structural errors, not flat prose. Authoring quality echoes for the lifetime of the curriculum.
+- **All-Anthropic, no split** — ~$100-200 lifetime to MVP, totally fine financially, but free-tier Gemini for grading is genuinely free at solo + early-beta scale and the seam is already there.
+- **Anthropic primary + OpenAI fallback (post-MVP L.4 caveat)** — OpenAI no longer has a meaningful free tier (~$5 trial credit only); Gemini fills the cost-arbitrage role better for our specific recurring workload.
+
+**Caveats:**
+- Free tier dies in real beta — ~15 RPM / ~1500/day is fine for solo dev + handful of testers but won't survive a serious user load. Plan: once paid Flash kicks in, it's still ~3x cheaper than Haiku, so the per-token economics keep working.
+- Provider behavioral drift on borderline grading cases — different models judge "almost right" answers slightly differently, so the grading prompt is tuned against Flash from day one (avoids the re-tune cost of swapping later).
+- Single-provider availability risk per task — if Gemini has an outage, grading degrades; the `LLMClient` interface *enables* Anthropic failover for grading but wiring it is post-MVP. Authoring is offline, so an Anthropic outage delays drafting, not learners.
+
+**Implementation hand-off:** new GitHub issue tracks the `GeminiLlmClient` + switching #8's grading path (kept narrow — provider swap, not a re-architect). #21d authoring stays on Anthropic per L.4 model tiers.
+
 ---
 
 ## Phase M — MVP scope cut + Beta launch slice
