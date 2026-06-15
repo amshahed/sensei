@@ -86,17 +86,31 @@ export async function ingestVocab(
 ): Promise<void> {
   const raw = fs.readFileSync(sourcePath, 'utf-8');
   const file = JSON.parse(raw) as unknown as JmdictFile;
+  if (!Array.isArray(file.words)) {
+    throw new Error(
+      `Invalid vocab source file: expected { words: [...] } (jmdict-simplified format) but got a different shape. Check that you are using the correct file for this command.`,
+    );
+  }
 
   const filtered = file.words.filter(isTargetJlpt);
   const items = filtered.map(buildVocabItem);
 
-  // Deduplicate by id (same display form from multiple entries is rare but possible).
+  // Deduplicate by id — homographs (different JMdict entries with the same primary kanji form) collapse here.
   const seen = new Set<string>();
-  const unique = items.filter((item) => {
-    if (seen.has(item.id)) return false;
+  const dropped: string[] = [];
+  const unique = items.filter((item, idx) => {
+    if (seen.has(item.id)) {
+      dropped.push(`${item.id} (jmdict_id=${filtered[idx].id})`);
+      return false;
+    }
     seen.add(item.id);
     return true;
   });
+  if (dropped.length) {
+    console.warn(
+      `ingest:items vocab — ${dropped.length} homograph(s) skipped:\n  ${dropped.join('\n  ')}`,
+    );
+  }
 
   for (const item of unique) {
     await prisma.item.upsert({

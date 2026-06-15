@@ -48,7 +48,19 @@ export function parseGrammarSource(sourcePath: string): GrammarEntry[] {
   const ext = path.extname(sourcePath).toLowerCase();
 
   if (ext === '.json') {
-    return JSON.parse(raw) as GrammarEntry[];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      throw new Error(
+        `Invalid grammar source file: expected a JSON array but got ${typeof parsed}`,
+      );
+    }
+    return parsed as GrammarEntry[];
+  }
+
+  if (ext === '.csv') {
+    throw new Error(
+      'CSV format is not supported; use JSON (see docs/ingest.md) or TSV (.tsv / .txt).',
+    );
   }
 
   // TSV: pattern\tdescription (header row optional — skip if first cell is "pattern")
@@ -80,11 +92,20 @@ export async function ingestGrammar(
   const items = entries.map(buildGrammarItem);
 
   const seen = new Set<string>();
-  const unique = items.filter((item) => {
-    if (seen.has(item.id)) return false;
+  const dropped: string[] = [];
+  const unique = items.filter((item, idx) => {
+    if (seen.has(item.id)) {
+      dropped.push(`${item.id} (pattern: "${entries[idx].pattern}")`);
+      return false;
+    }
     seen.add(item.id);
     return true;
   });
+  if (dropped.length) {
+    console.warn(
+      `ingest:items grammar — ${dropped.length} slug collision(s) skipped:\n  ${dropped.join('\n  ')}`,
+    );
+  }
 
   for (const item of unique) {
     await prisma.item.upsert({

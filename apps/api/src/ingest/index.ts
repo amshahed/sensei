@@ -38,46 +38,35 @@ async function main() {
         await ingestKana(prisma);
         break;
       case 'vocab':
-        if (!SOURCE) {
-          console.error(
-            'Error: --source <path> is required for vocab ingestion\n',
+        if (!SOURCE)
+          throw new Error(
+            '--source <path> is required for vocab ingestion\n\n' + USAGE,
           );
-          console.log(USAGE);
-          process.exit(1);
-        }
         await ingestVocab(prisma, SOURCE);
         break;
       case 'kanji':
-        if (!SOURCE) {
-          console.error(
-            'Error: --source <path> is required for kanji ingestion\n',
+        if (!SOURCE)
+          throw new Error(
+            '--source <path> is required for kanji ingestion\n\n' + USAGE,
           );
-          console.log(USAGE);
-          process.exit(1);
-        }
         await ingestKanji(prisma, SOURCE);
         break;
       case 'grammar':
-        if (!SOURCE) {
-          console.error(
-            'Error: --source <path> is required for grammar ingestion\n',
+        if (!SOURCE)
+          throw new Error(
+            '--source <path> is required for grammar ingestion\n\n' + USAGE,
           );
-          console.log(USAGE);
-          process.exit(1);
-        }
         await ingestGrammar(prisma, SOURCE);
         break;
       default:
-        console.error(`Error: unknown kind "${KIND}"\n`);
-        console.log(USAGE);
-        process.exit(1);
+        throw new Error(`Unknown kind "${KIND}"\n\n` + USAGE);
     }
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((err) => {
-  console.error(err);
+main().catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

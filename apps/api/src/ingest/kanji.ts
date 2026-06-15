@@ -65,6 +65,11 @@ export async function ingestKanji(
 ): Promise<void> {
   const raw = fs.readFileSync(sourcePath, 'utf-8');
   const file = JSON.parse(raw) as unknown as Kd2File;
+  if (!Array.isArray(file.characters)) {
+    throw new Error(
+      `Invalid kanji source file: expected { characters: [...] } (kanjidic2-simplified format) but got a different shape. Check that you are using the correct file for this command.`,
+    );
+  }
 
   const filtered = file.characters.filter(isN5Kanji);
   const items = filtered.map(buildKanjiItem);
