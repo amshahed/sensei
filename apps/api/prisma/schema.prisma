@@ -157,6 +157,22 @@ model Check {
   @@index([lessonId, position])
 }
 
+// ---------------- Reference corpus (E.3 / L.3 pgvector) ----------------
+
+/// Embedded reference passage for RAG-grounded authoring (E.3).
+/// Insertions go via $executeRaw because the vector column is Unsupported.
+model ReferenceDoc {
+  id        String                      @id @default(cuid())
+  source    String // "tatoeba", "grammar-ref"
+  language  String // "ja"
+  text      String
+  embedding Unsupported("vector(1024)")?
+  metadata  Json                        @default("{}")
+  createdAt DateTime                    @default(now())
+
+  @@index([source, language])
+}
+
 // ---------------- Learners + mastery (D.1 / G.1 / G.2) ----------------
 
 model User {

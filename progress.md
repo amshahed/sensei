@@ -140,6 +140,7 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #7 | Review session (due queue, typed recall) | ✅ merged |
 | #8 | AI grading of open responses via thin `LlmClient`/Anthropic (flag-gated; deterministic fallback) | ✅ merged |
 | #18 | "I guessed" confidence flag (K.1) — MC-only Good→Hard downgrade | ✅ merged |
+| #34 | Item ingestion CLI — kana / vocab (jmdict-simplified) / kanji (kanjidic2) / grammar (Tanos shells) | ✅ merged |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
 
