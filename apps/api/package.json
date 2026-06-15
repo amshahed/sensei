@@ -23,7 +23,9 @@
     "db:seed": "prisma db seed",
     "ingest:items": "ts-node -r tsconfig-paths/register src/ingest/index.ts",
     "ingest:refs": "ts-node -r tsconfig-paths/register src/ingest/refs/index.ts",
-    "authoring:skeleton": "ts-node -r tsconfig-paths/register src/authoring/skeleton.ts"
+    "authoring:skeleton": "ts-node -r tsconfig-paths/register src/authoring/skeleton.ts",
+    "authoring:draft": "ts-node -r tsconfig-paths/register src/authoring/draft.ts",
+    "authoring:critique": "ts-node -r tsconfig-paths/register src/authoring/critique.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
