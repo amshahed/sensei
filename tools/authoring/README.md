@@ -76,6 +76,66 @@ and same model produces the same skeleton.
 | `I-Writing` | Integration: writing practice |
 | `I-Speaking` | Integration: guided speaking |
 
+## draft — Lesson drafter (F.2 / F.3 / F.5)
+
+Generates a full lesson draft (Teach + Practice + Check) for one lesson or all lessons in a chapter.
+Reads the skeleton, loads item data from DB, optionally retrieves relevant corpus passages via Voyage AI,
+and calls Claude Opus. Runs the structural validator after each draft.
+
+```bash
+pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--corrections <path>]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `<slug>` | required | Lesson ID (`foundation-ja-ch01-l01`) or chapter ID (`foundation-ja-ch01`) |
+| `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file to read |
+| `--corrections` | `tools/authoring/corrections.jsonl` | Corrections log (few-shot) |
+
+Output: `tools/authoring/output/<lesson-id>.json` (gitignored).
+
+If `VOYAGE_API_KEY` is set, the drafter retrieves top-5 reference passages from the vector DB for context.
+If not set, vector search is skipped silently — the drafter still works.
+
+Model: `LLM_AUTHORING_MODEL` env var ?? `claude-opus-4-8`. Temperature=0. Max tokens: 4096.
+
+## critique — AI critic (F.3 / F.4)
+
+Runs the structural validator + Claude Haiku 9-point checklist on an existing lesson draft.
+
+```bash
+pnpm --filter api authoring:critique <draft-path>
+```
+
+Output: `<draft-path>.critique.json`.
+
+Model: `LLM_CRITIC_MODEL` env var ?? `claude-haiku-4-5-20251001`. Temperature=0. Max tokens: 2048.
+Cost: ~$0.05/lesson.
+
+### 9-point checklist
+
+| # | Name | What it checks |
+|---|---|---|
+| 1 | tone | Friendly and encouraging, not academic |
+| 2 | length | Appropriate for lesson type (5–10 min) |
+| 3 | flow | Teach → Practice → Check progression is coherent |
+| 4 | example-feel | Examples feel natural, not textbook |
+| 5 | audio | Audio src values are relative placeholder paths |
+| 6 | lesson-type-adherence | Content matches lesson type and item types |
+| 7 | item-ref-match | All referenced items declared in targetItemIds |
+| 8 | theme-tag-accuracy | Lesson title matches content |
+| 9 | learner-confusion | No unexplained jargon; concepts build on each other |
+
+## corrections.jsonl — Corrections log (F.5)
+
+Flat JSONL file; each line is a correction entry:
+```json
+{ "lesson_type": "F-Kana", "original_draft": {...}, "notes": "...", "regenerated_version": null, "timestamp": "..." }
+```
+
+The drafter reads the 5 most recent entries of the same lesson type as few-shot examples.
+When you send a draft back for revision, append a correction entry manually (editorial review UI is issue #38).
+
 ## output/
 
 Generated files land here. The directory is gitignored — only `.gitkeep` is committed.
