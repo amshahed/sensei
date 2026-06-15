@@ -38,7 +38,7 @@ export async function loadItemData(prisma: PrismaClient): Promise<ItemData> {
       where: { language: 'ja', type: 'VOCAB' },
       select: { id: true, display: true, data: true },
       take: MAX_VOCAB_FOR_PROMPT,
-      orderBy: { id: 'asc' },
+      orderBy: { createdAt: 'asc' },
     }),
     prisma.item.findMany({
       where: { language: 'ja', type: 'KANJI' },
@@ -73,11 +73,11 @@ function formatVocab(items: RawItem[]): string {
   return items
     .map((v) => {
       const d = v.data as {
-        readings?: Array<{ text: string }>;
-        senses?: Array<{ glosses: string[] }>;
+        readings?: string[];
+        senses?: string[];
       };
-      const reading = d.readings?.[0]?.text ?? '';
-      const gloss = d.senses?.[0]?.glosses?.[0] ?? '';
+      const reading = d.readings?.[0] ?? '';
+      const gloss = d.senses?.[0] ?? '';
       return `${v.id}(${v.display}・${reading}・${gloss})`;
     })
     .join(', ');
@@ -169,7 +169,7 @@ export async function generateSkeleton(
 
   const res = await anthropic.messages.create({
     model,
-    max_tokens: 8192,
+    max_tokens: 16384,
     temperature: 0,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
@@ -180,10 +180,16 @@ export async function generateSkeleton(
   const outputTokens =
     (res as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? 0;
 
-  const text = res.content
+  const raw = res.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')
     .join('')
+    .trim();
+
+  // Strip markdown code fences the LLM may add despite instructions
+  const text = raw
+    .replace(/^```[\w]*\n?/, '')
+    .replace(/\n?```$/, '')
     .trim();
 
   let parsed: unknown;
@@ -195,19 +201,18 @@ export async function generateSkeleton(
     );
   }
 
-  // Patch in actual token usage if LLM left placeholders
-  if (
-    parsed &&
-    typeof parsed === 'object' &&
-    'tokenUsage' in parsed &&
-    parsed.tokenUsage &&
-    typeof parsed.tokenUsage === 'object'
-  ) {
-    const tu = parsed.tokenUsage as Record<string, unknown>;
-    if (!tu['inputTokens'] || tu['inputTokens'] === 0)
-      tu['inputTokens'] = inputTokens;
-    if (!tu['outputTokens'] || tu['outputTokens'] === 0)
-      tu['outputTokens'] = outputTokens;
+  if (parsed && typeof parsed === 'object') {
+    const p = parsed as Record<string, unknown>;
+    // Always overwrite with actual timestamp — LLM echoes a placeholder literal
+    p['generatedAt'] = new Date().toISOString();
+    // Patch in actual token usage if LLM left placeholder zeros
+    if (p['tokenUsage'] && typeof p['tokenUsage'] === 'object') {
+      const tu = p['tokenUsage'] as Record<string, unknown>;
+      if (!tu['inputTokens'] || tu['inputTokens'] === 0)
+        tu['inputTokens'] = inputTokens;
+      if (!tu['outputTokens'] || tu['outputTokens'] === 0)
+        tu['outputTokens'] = outputTokens;
+    }
   }
 
   const skeleton = SkeletonSchema.parse(parsed);
