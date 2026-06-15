@@ -28,3 +28,4 @@ coverage/
 # misc
 *.log
 .DS_Store
+tools/authoring/output/*.json
