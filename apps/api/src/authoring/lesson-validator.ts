@@ -29,19 +29,25 @@ function isPlaceholderAudioSrc(src: string): boolean {
  * 2. All question/template targetItemIds are declared in targetItemIds
  * 3. Lesson-type adherence (F-* lessons constrain item types)
  * 4. Audio block src values are placeholder paths (not absolute URLs)
+ *
+ * Pass `preloadedItems` when you already have the items from a prior DB query
+ * (e.g. from generateDraft) to avoid a redundant round-trip.
  */
 export async function validateStructure(
   draft: LessonDraft,
   prisma: PrismaClient,
+  preloadedItems?: Array<{ id: string; type: string }>,
 ): Promise<ValidationResult> {
   const errors: string[] = [];
   const declaredIds = new Set(draft.targetItemIds);
 
   // 1. All declared targetItemIds must exist in DB
-  const items = await prisma.item.findMany({
-    where: { id: { in: draft.targetItemIds } },
-    select: { id: true, type: true },
-  });
+  const items =
+    preloadedItems ??
+    (await prisma.item.findMany({
+      where: { id: { in: draft.targetItemIds } },
+      select: { id: true, type: true },
+    }));
   const foundIds = new Set(items.map((i) => i.id));
   for (const id of declaredIds) {
     if (!foundIds.has(id)) {

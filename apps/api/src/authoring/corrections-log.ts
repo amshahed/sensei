@@ -21,7 +21,13 @@ export function readCorrections(
   const entries: CorrectionEntry[] = raw
     .split('\n')
     .filter((line) => line.trim())
-    .map((line) => JSON.parse(line) as CorrectionEntry)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line) as CorrectionEntry];
+      } catch {
+        return [];
+      }
+    })
     .filter((e) => e.lesson_type === lessonType);
   return entries.slice(-n);
 }

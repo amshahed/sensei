@@ -156,6 +156,7 @@ describe('generateDraft', () => {
 
     expect(() => LessonDraftSchema.parse(result.draft)).not.toThrow();
     expect(result.draft.lessonId).toBe('foundation-ja-ch01-l01');
+    expect(result.items).toBeDefined();
     expect(result.inputTokens).toBe(200);
     expect(result.outputTokens).toBe(400);
     expect(createFn).toHaveBeenCalledTimes(1);

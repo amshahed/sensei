@@ -169,9 +169,24 @@ Rules:
 
 export type GenerateDraftResult = {
   draft: LessonDraft;
+  items: RawItem[];
   inputTokens: number;
   outputTokens: number;
 };
+
+function parseLlmJson(raw: string, callerLabel: string): unknown {
+  const text = raw
+    .replace(/^```[\w]*\n?/, '')
+    .replace(/\n?```$/, '')
+    .trim();
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(
+      `${callerLabel} returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
+    );
+  }
+}
 
 export async function generateDraft(
   anthropic: AnthropicLike,
@@ -213,19 +228,7 @@ export async function generateDraft(
     .join('')
     .trim();
 
-  const text = raw
-    .replace(/^```[\w]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text) as unknown;
-  } catch {
-    throw new Error(
-      `Drafter returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
-    );
-  }
+  const parsed = parseLlmJson(raw, 'Drafter');
 
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;
@@ -241,7 +244,7 @@ export async function generateDraft(
   }
 
   const draft = LessonDraftSchema.parse(parsed);
-  return { draft, inputTokens, outputTokens };
+  return { draft, items, inputTokens, outputTokens };
 }
 
 // ── Critic ────────────────────────────────────────────────────────────────────
@@ -315,19 +318,7 @@ export async function generateCritique(
     .join('')
     .trim();
 
-  const text = raw
-    .replace(/^```[\w]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text) as unknown;
-  } catch {
-    throw new Error(
-      `Critic returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
-    );
-  }
+  const parsed = parseLlmJson(raw, 'Critic');
 
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;

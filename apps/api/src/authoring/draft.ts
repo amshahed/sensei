@@ -86,7 +86,7 @@ async function draftLesson(
     `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections)`,
   );
 
-  const { draft, inputTokens, outputTokens } = await generateDraft(
+  const { draft, items, inputTokens, outputTokens } = await generateDraft(
     anthropic,
     voyage,
     prisma,
@@ -94,7 +94,7 @@ async function draftLesson(
     corrections,
   );
 
-  const validation = await validateStructure(draft, prisma);
+  const validation = await validateStructure(draft, prisma, items);
   if (!validation.pass) {
     console.warn(`  [validator] FAIL — ${validation.errors.join('; ')}`);
   } else {
