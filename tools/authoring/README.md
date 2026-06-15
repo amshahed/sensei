@@ -136,6 +136,60 @@ Flat JSONL file; each line is a correction entry:
 The drafter reads the 5 most recent entries of the same lesson type as few-shot examples.
 When you send a draft back for revision, append a correction entry manually (editorial review UI is issue #38).
 
+## review — Editorial review CLI (F.4)
+
+Opens `$EDITOR` with a structured review template: lesson preview (Teach + first 3 Check questions) + 9-point checklist + Notes section.
+
+```bash
+pnpm --filter api authoring:review <lesson-id> [--skeleton <path>] [--regenerate]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `<lesson-id>` | required | Lesson ID to review (must exist in `output/`) |
+| `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file for context |
+| `--regenerate` | off | Re-run drafter after send-back (uses updated corrections) |
+
+On save:
+- **DECISION: APPROVE** → copies draft to `tools/authoring/published/<lesson-id>.json`; prints publish command
+- **DECISION: SEND_BACK** → appends correction to `corrections.jsonl`; tip to re-run draft
+
+### Checklist format
+
+```markdown
+DECISION: APPROVE
+
+## Checklist
+
+- [ ] tone
+- [x] length — too short, add one more teach block
+- [ ] flow
+...
+
+## Notes
+
+General notes here.
+```
+
+## publish — Publish to database (F.6)
+
+Writes the approved lesson JSON to `Module → Chapter → Lesson → LessonItem → Check` rows transactionally. Re-publishing is idempotent (upserts by slug).
+
+```bash
+pnpm --filter api authoring:publish <lesson-id> [--skeleton <path>]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `<lesson-id>` | required | Lesson ID (must exist in `published/`) |
+| `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file for module/chapter hierarchy |
+
+Prerequisites: `DATABASE_URL` set, `authoring:review` approved.
+
 ## output/
 
-Generated files land here. The directory is gitignored — only `.gitkeep` is committed.
+Generated draft files land here. The directory is gitignored — only `.gitkeep` is committed.
+
+## published/
+
+Approved (editor-reviewed) lesson drafts land here after `authoring:review` approves them. The directory is gitignored — only `.gitkeep` is committed. Files here are ready for `authoring:publish`.
