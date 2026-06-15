@@ -1,8 +1,8 @@
 import { generateGrammarRef, ingestGrammarRefs } from './grammar-ref';
 import { VoyageLike, VoyageClient } from '../../voyage/voyage-client';
+import type { AnthropicLike } from '../../llm/anthropic-llm-client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
-import Anthropic from '@anthropic-ai/sdk';
 
 const fakeConfig = () => ({ get: () => undefined }) as unknown as ConfigService;
 const makeEmbedding = () => Array.from({ length: 1024 }, (_, i) => i / 1024);
@@ -34,11 +34,7 @@ describe('generateGrammarRef', () => {
     const client = makeFakeAnthropicClient(
       'は marks the topic of a sentence...',
     );
-    const result = await generateGrammarRef(
-      client as unknown as Anthropic,
-      'は',
-      'N5',
-    );
+    const result = await generateGrammarRef(client, 'は', 'N5');
     expect(result).toContain('topic');
     expect(client.messages.create).toHaveBeenCalledTimes(1);
   });
@@ -48,7 +44,7 @@ describe('generateGrammarRef', () => {
       messages: { create: jest.fn().mockResolvedValue({ content: [] }) },
     };
     await expect(
-      generateGrammarRef(client as unknown as Anthropic, 'は', 'N5'),
+      generateGrammarRef(client as AnthropicLike, 'は', 'N5'),
     ).rejects.toThrow('No text returned');
   });
 });
@@ -75,12 +71,7 @@ describe('ingestGrammarRefs', () => {
     } as unknown as PrismaClient;
     const fakeAnthropic = makeFakeAnthropicClient('passage');
     await expect(
-      ingestGrammarRefs(
-        prisma,
-        voyage,
-        'key',
-        fakeAnthropic as unknown as Anthropic,
-      ),
+      ingestGrammarRefs(prisma, voyage, 'key', fakeAnthropic as AnthropicLike),
     ).rejects.toThrow('No grammar items');
   });
 
@@ -101,12 +92,7 @@ describe('ingestGrammarRefs', () => {
     } as unknown as PrismaClient;
 
     const fakeAnthropic = makeFakeAnthropicClient('Reference passage for は');
-    await ingestGrammarRefs(
-      prisma,
-      voyage,
-      'fake-key',
-      fakeAnthropic as unknown as Anthropic,
-    );
+    await ingestGrammarRefs(prisma, voyage, 'fake-key', fakeAnthropic);
 
     expect(executeRawMock).toHaveBeenCalledTimes(1);
     expect(fakeAnthropic.messages.create).toHaveBeenCalledTimes(1);

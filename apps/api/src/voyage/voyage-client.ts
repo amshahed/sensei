@@ -85,7 +85,7 @@ export class VoyageClient {
   }
 
   get enabled(): boolean {
-    return this.fakeClient !== null || this.apiKey !== null;
+    return this.fakeClient !== null || !!this.apiKey;
   }
 
   /** Embed a single batch (≤ BATCH_SIZE), with exponential backoff on 429. */
