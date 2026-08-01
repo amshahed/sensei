@@ -5,6 +5,7 @@ import { ChecksService } from './checks.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { GradingService } from '../grading/grading.service';
+import { WritingEvalService } from '../writing-eval/writing-eval.service';
 
 const check = {
   id: 'chk-1',
@@ -42,6 +43,15 @@ describe('ChecksService', () => {
         { provide: PrismaService, useValue: { check: { findUnique } } },
         { provide: MasteryService, useValue: { recordCheckResult } },
         { provide: GradingService, useValue: { gradeOpen } },
+        {
+          provide: WritingEvalService,
+          useValue: {
+            // Simple normalise-and-compare stub; Japanese-specific normalisation
+            // (wanakana + kuromoji) is tested in writing-eval.service.spec.ts.
+            exactMatch: (a: string, b: string) =>
+              a.trim().toLowerCase() === b.trim().toLowerCase(),
+          },
+        },
       ],
     }).compile();
     service = moduleRef.get(ChecksService);

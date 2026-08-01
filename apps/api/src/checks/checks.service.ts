@@ -3,6 +3,7 @@ import type { CheckResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { GradingService } from '../grading/grading.service';
+import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { Rating } from 'ts-fsrs';
 import { ratingFromLabel } from '../mastery/fsrs';
 import { exactMatch } from '../common/normalize-answer';
@@ -31,6 +32,7 @@ export class ChecksService {
     private readonly prisma: PrismaService,
     private readonly mastery: MasteryService,
     private readonly grading: GradingService,
+    private readonly writingEval: WritingEvalService,
   ) {}
 
   /**
@@ -69,7 +71,7 @@ export class ChecksService {
       check.format === 'MULTIPLE_CHOICE' || fixedAnswer !== undefined;
 
     const graded = isClosed
-      ? this.gradeClosed(answer, fixedAnswer ?? '')
+      ? this.gradeClosed(answer, fixedAnswer ?? '', check.format)
       : await this.gradeOpen(check.prompt, answer, data);
 
     // "I guessed" downgrade (K.1): a correct multiple-choice answer the learner
@@ -109,8 +111,14 @@ export class ChecksService {
     };
   }
 
-  private gradeClosed(answer: string, fixedAnswer: string) {
-    const correct = exactMatch(answer, fixedAnswer);
+  private gradeClosed(answer: string, fixedAnswer: string, format: string) {
+    // TYPED checks use Japanese normalization (wanakana + kuromoji, H.2) so that
+    // romaji input and spacing differences don't cause false negatives.
+    // MULTIPLE_CHOICE answers are option IDs — ASCII exact-match is correct there.
+    const correct =
+      format === 'TYPED'
+        ? this.writingEval.exactMatch(answer, fixedAnswer)
+        : exactMatch(answer, fixedAnswer);
     return {
       correct,
       correctAnswer: fixedAnswer,
