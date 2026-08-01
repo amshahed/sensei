@@ -132,7 +132,8 @@ OUTPUT the lesson draft as JSON matching this exact shape (no other text):
       { "type": "text", "md": "## Lesson introduction\\n..." },
       { "type": "example", "japanese": "...", "reading": "...", "translation": "..." },
       { "type": "mnemonic", "text": "..." },
-      { "type": "audio", "src": "audio/${lesson.type.toLowerCase()}/${lesson.id}.mp3", "label": "..." }
+      { "type": "audio", "src": "audio/${lesson.type.toLowerCase()}/${lesson.id}.mp3", "label": "..." },
+      { "type": "passage", "text": "...", "title": "Read this" }
     ]
   },
   "practice": {
@@ -164,7 +165,9 @@ Rules:
 - Produce at least 2 teach blocks, 1 practice template per target item, 2 check questions per target item
 - Multiple-choice questions must include exactly 4 choices
 - Audio src must be a relative placeholder path (e.g. "audio/kana/a.mp3")
-- All targetItemIds in questions/templates must be from the TARGET ITEMS list above`;
+- All targetItemIds in questions/templates must be from the TARGET ITEMS list above
+- For I-Reading lessons: open with a "passage" block containing the reading text, then use "text" blocks for comprehension guidance; check questions test the passage content (multiple-choice or typed)
+- Available teach block types: text, example, mnemonic, audio, passage`;
 }
 
 export type GenerateDraftResult = {

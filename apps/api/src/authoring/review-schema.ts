@@ -62,6 +62,8 @@ function buildPreviewLines(draft: LessonDraft): string[] {
       );
     } else if (block.type === 'mnemonic') {
       lines.push(`  ${n}. [mnemonic] ${block.text.slice(0, 80)}`);
+    } else if (block.type === 'passage') {
+      lines.push(`  ${n}. [passage] ${block.text.slice(0, 80)}`);
     } else {
       // audio
       lines.push(`  ${n}. [audio] ${block.src} (${block.label})`);

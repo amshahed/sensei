@@ -22,11 +22,17 @@ export const AudioBlockSchema = z.object({
   src: z.string().min(1),
   label: z.string().min(1),
 });
+export const PassageBlockSchema = z.object({
+  type: z.literal('passage'),
+  text: z.string().min(1),
+  title: z.string().optional(),
+});
 export const TeachBlockSchema = z.discriminatedUnion('type', [
   TextBlockSchema,
   ExampleBlockSchema,
   MnemonicBlockSchema,
   AudioBlockSchema,
+  PassageBlockSchema,
 ]);
 export type TeachBlock = z.infer<typeof TeachBlockSchema>;
 
