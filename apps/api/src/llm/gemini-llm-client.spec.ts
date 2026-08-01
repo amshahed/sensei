@@ -15,7 +15,7 @@ function fakeGemini(text: string): {
   let req: Record<string, unknown> = {};
   const model: GeminiModelLike = {
     generateContent: (r) => {
-      req = r as Record<string, unknown>;
+      req = r;
       return Promise.resolve({ response: { text: () => text } });
     },
   };
@@ -145,7 +145,10 @@ describe('GeminiLlmClient', () => {
     expect(
       () =>
         new GeminiLlmClient(
-          config({ GEMINI_API_KEY: 'fake-key', LLM_GRADING_MODEL: 'gemini-2.0-flash' }),
+          config({
+            GEMINI_API_KEY: 'fake-key',
+            LLM_GRADING_MODEL: 'gemini-2.0-flash',
+          }),
         ),
     ).not.toThrow();
   });

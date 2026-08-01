@@ -20,7 +20,9 @@ export interface GeminiModelLike {
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 /** Strip `additionalProperties` recursively — Gemini's responseSchema ignores it but some versions reject it. */
-function toGeminiSchema(schema: Record<string, unknown>): Record<string, unknown> {
+function toGeminiSchema(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { additionalProperties: _dropped, ...rest } = schema;
   if (rest.properties && typeof rest.properties === 'object') {
@@ -50,7 +52,8 @@ export class GeminiLlmClient implements LlmClient {
     } else {
       const apiKey = config.get<string>('GEMINI_API_KEY');
       if (apiKey) {
-        const modelName = config.get<string>('LLM_GRADING_MODEL') || DEFAULT_MODEL;
+        const modelName =
+          config.get<string>('LLM_GRADING_MODEL') || DEFAULT_MODEL;
         const genAI = new GoogleGenerativeAI(apiKey);
         this.model = genAI.getGenerativeModel({ model: modelName });
       } else {
@@ -68,7 +71,9 @@ export class GeminiLlmClient implements LlmClient {
 
   async parseJson<T>(opts: ParseJsonOptions): Promise<T> {
     if (!this.model) {
-      throw new Error('Gemini LLM client is not configured (no GEMINI_API_KEY).');
+      throw new Error(
+        'Gemini LLM client is not configured (no GEMINI_API_KEY).',
+      );
     }
 
     const result = await this.model.generateContent({
