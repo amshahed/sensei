@@ -151,6 +151,41 @@ export interface ReviewAnswerRequest {
   answer: string;
 }
 
+/* ---- Progress Dashboard (issue #16 / decisions J.2.a–J.2.c) ---- */
+
+export interface ProgressByTypeDto {
+  type: ItemType;
+  masteredCount: number;
+  totalItems: number;
+}
+
+/**
+ * Learner progress snapshot for the Dashboard (J.2). An item is "mastered"
+ * when its mastery score ≥ 0.7 (stable in FSRS terms).
+ */
+export interface ProgressDto {
+  aggregate: {
+    /** Items with mastery ≥ 0.7. */
+    masteredCount: number;
+    /** Total items in the Foundation catalog. */
+    totalItems: number;
+    masteredPercent: number;
+  };
+  byType: ProgressByTypeDto[];
+  modality: {
+    /** Averages across all items the user has encountered (0–1). */
+    recognition: number;
+    recall: number;
+    production: number;
+  };
+  recentRate: {
+    /** Items reviewed in the last 7 days. */
+    thisWeek: number;
+    /** Items reviewed in the 7–14 day window before that. */
+    lastWeek: number;
+  };
+}
+
 export interface ReviewResultDto {
   itemId: string;
   correct: boolean;

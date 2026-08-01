@@ -11,9 +11,11 @@ import { ui } from '../ui';
 export function HomeScreen({
   onStartLesson,
   onStartReview,
+  onShowProgress,
 }: {
   onStartLesson: () => void;
   onStartReview: () => void;
+  onShowProgress: () => void;
 }) {
   const [dueCount, setDueCount] = useState<number | null>(null);
 
@@ -52,9 +54,14 @@ export function HomeScreen({
           {dueCount === null
             ? 'Due count unavailable'
             : dueCount === 0
-              ? 'Nothing due — you’re on track'
+              ? "Nothing due — you're on track"
               : `${dueCount} item${dueCount === 1 ? '' : 's'} due now`}
         </Text>
+      </Pressable>
+
+      <Pressable style={styles.tile} onPress={onShowProgress}>
+        <Text style={styles.tileTitle}>Progress</Text>
+        <Text style={ui.hint}>View your mastery dashboard</Text>
       </Pressable>
     </View>
   );
