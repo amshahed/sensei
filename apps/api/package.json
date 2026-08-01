@@ -25,7 +25,9 @@
     "ingest:refs": "ts-node -r tsconfig-paths/register src/ingest/refs/index.ts",
     "authoring:skeleton": "ts-node -r tsconfig-paths/register src/authoring/skeleton.ts",
     "authoring:draft": "ts-node -r tsconfig-paths/register src/authoring/draft.ts",
-    "authoring:critique": "ts-node -r tsconfig-paths/register src/authoring/critique.ts"
+    "authoring:critique": "ts-node -r tsconfig-paths/register src/authoring/critique.ts",
+    "authoring:review": "ts-node -r tsconfig-paths/register src/authoring/review.ts",
+    "authoring:publish": "ts-node -r tsconfig-paths/register src/authoring/publish.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
