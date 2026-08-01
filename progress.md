@@ -145,6 +145,7 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #36 | Skeleton author CLI — F.1 (SkeletonSchema + skeleton-prompter + skeleton.ts CLI) | ✅ merged |
 | #37 | Lesson drafter + AI critic + corrections-log loop — F.2/F.3/F.5 | ✅ merged |
 | #38 | Editorial review CLI + publish command — F.4/F.6 | ✅ merged |
+| #39 | Gemini 2.5 Flash grading client — L.4.a provider split | ✅ merged |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
 
