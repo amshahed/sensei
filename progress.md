@@ -146,14 +146,13 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #37 | Lesson drafter + AI critic + corrections-log loop — F.2/F.3/F.5 | ✅ merged |
 | #38 | Editorial review CLI + publish command — F.4/F.6 | ✅ merged |
 | #39 | Gemini 2.5 Flash grading client — L.4.a provider split | ✅ merged |
+| #9 | Writing eval service (H.2) — wanakana + kuromoji + rule-based + AI fallback | ✅ merged |
+| #12 | Reading lessons (H.4) — LessonPlayer teach beat + kana/text/example blocks; normaliseTeach publisher | ✅ merged |
+| #16 | Progress Dashboard (J.2) — `GET /progress` API + ProgressScreen | ✅ merged |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
 
-**Next, in rough priority** (each needs a small founder call before autonomous build — flagged where so):
-- **#3 Clerk auth** — HITL (needs Clerk keys); the dev-user stub (`@CurrentUserId`) is the seam it replaces.
-- **#19 streak (K.2/K.3)** — unlocked sub-decisions: exact freeze cap, over-deliver multiplier, recalibration window, "unit"/day-boundary.
-- **#16 dashboard (J.2)** / **#17 practice (J.1)** — read on existing mastery data; metric/UX nuance.
-- **#9–#12 modalities** (#10/#11 need Azure speech — HITL), **#20 notifications**, **#21/#22 authoring + content**.
+**All remaining open issues are HITL** — every next issue requires founder input (Azure speech keys, Clerk keys, sub-decision locks). The autonomous queue is exhausted until unblocked.
 
 **HITL still pending from the founder:** provision Neon · Clerk · Railway · Azure · R2; set `ANTHROPIC_API_KEY` + `VOYAGE_API_KEY` (for #21b) + `GEMINI_API_KEY` (for grading per L.4.a); run live `prisma migrate deploy` + `db:seed`; device walkthrough via EAS.
 
