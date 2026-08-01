@@ -4,6 +4,7 @@ import type {
   HealthResponse,
   LessonCompletionDto,
   LessonDetailDto,
+  ProgressDto,
   ReviewResultDto,
 } from '@sensei/types';
 
@@ -68,5 +69,9 @@ export const api = {
       `/reviews/${encodeURIComponent(itemId)}/answer`,
       { method: 'POST', body: JSON.stringify({ answer }) },
     );
+  },
+
+  progress(): Promise<ProgressDto> {
+    return request<ProgressDto>('/progress');
   },
 };
