@@ -44,7 +44,7 @@ export class AnthropicLlmClient implements LlmClient {
     }
     if (!this.client) {
       this.logger.warn(
-        'ANTHROPIC_API_KEY not set — AI grading disabled, falling back to deterministic grading.',
+        'ANTHROPIC_API_KEY not set — AI authoring disabled (drafting/critique will fail without a key).',
       );
     }
   }
