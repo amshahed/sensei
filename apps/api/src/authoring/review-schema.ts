@@ -111,6 +111,15 @@ export function parseReviewFile(
     throw new Error('No checklist items found — file may be malformed');
   }
 
+  const unknown = checks.filter(
+    (c) => !(CRITIQUE_CHECKLIST as readonly string[]).includes(c.name),
+  );
+  if (unknown.length > 0) {
+    console.warn(
+      `Warning: unrecognised checklist item(s): ${unknown.map((c) => c.name).join(', ')} — possible typo`,
+    );
+  }
+
   // Extract Notes section
   const notes = extractNotes(content);
 

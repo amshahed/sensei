@@ -148,18 +148,22 @@ export async function publishLesson(
     // 5. Replace Check rows
     await tx.check.deleteMany({ where: { lessonId: dbLesson.id } });
     await tx.check.createMany({
-      data: draft.check.questions.map((q, i) => ({
-        lessonId: dbLesson.id,
-        position: i,
-        prompt: q.prompt,
-        format: CHECK_FORMAT_MAP[q.answerType] ?? 'MULTIPLE_CHOICE',
-        targetItemId: q.targetItemId,
-        data: {
-          choices: q.choices ?? [],
-          answer: q.correctAnswer,
-          ...(q.explanation ? { explanation: q.explanation } : {}),
-        },
-      })),
+      data: draft.check.questions.map((q, i) => {
+        const format = CHECK_FORMAT_MAP[q.answerType];
+        if (!format) throw new Error(`Unknown check format: ${q.answerType}`);
+        return {
+          lessonId: dbLesson.id,
+          position: i,
+          prompt: q.prompt,
+          format,
+          targetItemId: q.targetItemId,
+          data: {
+            choices: q.choices ?? [],
+            answer: q.correctAnswer,
+            ...(q.explanation ? { explanation: q.explanation } : {}),
+          },
+        };
+      }),
     });
 
     return { lessonDbId: dbLesson.id };

@@ -61,8 +61,14 @@ function openEditor(filePath: string): void {
 }
 
 function main(): void {
-  const { lessonId, outputDir, publishedDir, correctionsPath, regenerate } =
-    parseArgs();
+  const {
+    lessonId,
+    skeletonPath,
+    outputDir,
+    publishedDir,
+    correctionsPath,
+    regenerate,
+  } = parseArgs();
 
   const draftPath = path.join(outputDir, `${lessonId}.json`);
   if (!fs.existsSync(draftPath)) {
@@ -80,12 +86,16 @@ function main(): void {
   const tmpFile = path.join(os.tmpdir(), `sensei-review-${lessonId}.md`);
   fs.writeFileSync(tmpFile, buildReviewTemplate(draft), 'utf8');
 
-  openEditor(tmpFile);
+  try {
+    openEditor(tmpFile);
+  } catch (err) {
+    fs.rmSync(tmpFile, { force: true });
+    throw err;
+  }
 
   const saved = fs.readFileSync(tmpFile, 'utf8');
-  fs.rmSync(tmpFile, { force: true });
-
   const review = parseReviewFile(saved, lessonId);
+  fs.rmSync(tmpFile, { force: true });
 
   const fails = review.checks.filter((c) => !c.pass);
   const passCount = review.checks.length - fails.length;
@@ -100,12 +110,23 @@ function main(): void {
   }
 
   if (review.decision === 'APPROVE') {
+    if (fails.length > 0) {
+      console.warn(
+        `\nWarning: approving with ${fails.length} failing check(s) — consider SEND_BACK.`,
+      );
+    }
     fs.mkdirSync(publishedDir, { recursive: true });
     const destPath = path.join(publishedDir, `${lessonId}.json`);
     fs.copyFileSync(draftPath, destPath);
     console.log(`\nApproved → ${destPath}`);
     console.log(`Run: pnpm --filter api authoring:publish ${lessonId}`);
   } else {
+    if (fails.length === 0 && !review.notes.trim()) {
+      throw new Error(
+        'SEND_BACK requires at least one failing check ([x]) or a note in the Notes section.',
+      );
+    }
+
     const notes = [
       review.notes,
       ...fails.map((f) =>
@@ -138,10 +159,7 @@ function main(): void {
           'authoring:draft',
           lessonId,
           '--skeleton',
-          path.resolve(
-            process.cwd(),
-            '../../tools/authoring/output/skeleton.json',
-          ),
+          skeletonPath,
         ],
         { stdio: 'inherit', cwd: path.resolve(process.cwd(), '../..') },
       );
