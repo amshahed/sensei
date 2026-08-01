@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import type { LessonType, CheckFormat } from '@prisma/client';
+import type { LessonType, CheckFormat, Prisma } from '@prisma/client';
 import type { LessonDraft } from './lesson-schema';
 import type { Skeleton } from './skeleton-schema';
 
@@ -33,8 +33,8 @@ const CHECK_FORMAT_MAP: Partial<Record<string, CheckFormat>> = {
  * runtime format ({ kind, text }) before writing to the DB so the mobile parser
  * always reads one consistent shape.
  */
-function normaliseTeach(teach: LessonDraft['teach']): Record<string, unknown> {
-  return {
+function normaliseTeach(teach: LessonDraft['teach']): Prisma.InputJsonValue {
+  const result = {
     blocks: teach.blocks.map((block) => {
       const { type, ...rest } = block as Record<string, unknown>;
       // TextBlock legacy `md` field renamed to `text` for runtime uniformity.
@@ -45,6 +45,7 @@ function normaliseTeach(teach: LessonDraft['teach']): Record<string, unknown> {
       return { kind: type, ...rest };
     }),
   };
+  return result as unknown as Prisma.InputJsonValue;
 }
 
 interface SkeletonContext {
