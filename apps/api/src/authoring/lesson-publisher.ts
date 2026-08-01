@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import type { LessonType, CheckFormat } from '@prisma/client';
+import type { LessonType, CheckFormat, Prisma } from '@prisma/client';
 import type { LessonDraft } from './lesson-schema';
 import type { Skeleton } from './skeleton-schema';
 
@@ -27,6 +27,26 @@ const CHECK_FORMAT_MAP: Partial<Record<string, CheckFormat>> = {
   typed: 'TYPED',
   spoken: 'SPOKEN',
 };
+
+/**
+ * Convert authoring-format teach blocks ({ type, text/md }) to the canonical
+ * runtime format ({ kind, text }) before writing to the DB so the mobile parser
+ * always reads one consistent shape.
+ */
+function normaliseTeach(teach: LessonDraft['teach']): Prisma.InputJsonValue {
+  const result = {
+    blocks: teach.blocks.map((block) => {
+      const { type, ...rest } = block as Record<string, unknown>;
+      // TextBlock legacy `md` field renamed to `text` for runtime uniformity.
+      if (type === 'text' && 'md' in rest && !('text' in rest)) {
+        const { md, ...remaining } = rest as Record<string, unknown>;
+        return { kind: 'text', text: md, ...remaining };
+      }
+      return { kind: type, ...rest };
+    }),
+  };
+  return result as unknown as Prisma.InputJsonValue;
+}
 
 interface SkeletonContext {
   moduleSlug: string;
@@ -121,7 +141,7 @@ export async function publishLesson(
         title: draft.title,
         type: lessonType,
         estimatedMinutes: ctx.estimatedMinutes,
-        teach: draft.teach,
+        teach: normaliseTeach(draft.teach),
       },
       create: {
         slug: draft.lessonId,
@@ -130,7 +150,7 @@ export async function publishLesson(
         type: lessonType,
         position: ctx.lessonPosition,
         estimatedMinutes: ctx.estimatedMinutes,
-        teach: draft.teach,
+        teach: normaliseTeach(draft.teach),
       },
     });
 

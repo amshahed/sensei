@@ -10,7 +10,7 @@ function makeDraft(overrides: Partial<LessonDraft> = {}): LessonDraft {
     targetItemIds: ['ja:kana:a', 'ja:kana:i'],
     teach: {
       blocks: [
-        { type: 'text', md: '## Intro\nLearn the vowels.' },
+        { type: 'text', text: 'Intro. Learn the vowels.' },
         { type: 'audio', src: 'audio/kana/a.mp3', label: 'あ' },
       ],
     },
@@ -122,7 +122,7 @@ describe('validateStructure', () => {
     const draft = makeDraft({
       teach: {
         blocks: [
-          { type: 'text' as const, md: '## Intro' },
+          { type: 'text' as const, text: 'Intro' },
           {
             type: 'audio' as const,
             src: 'https://cdn.example.com/audio/a.mp3', // absolute URL

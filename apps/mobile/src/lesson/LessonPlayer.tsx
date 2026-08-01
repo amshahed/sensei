@@ -167,6 +167,33 @@ function TeachBlockView({ block }: { block: TeachBlock }) {
   if (block.kind === 'text') {
     return <Text style={ui.body}>{block.text}</Text>;
   }
+  if (block.kind === 'passage') {
+    return (
+      <View style={styles.passage}>
+        {block.title ? (
+          <Text style={styles.passageTitle}>{block.title}</Text>
+        ) : null}
+        <Text style={styles.passageText}>{block.text}</Text>
+      </View>
+    );
+  }
+  if (block.kind === 'example') {
+    return (
+      <View style={styles.example}>
+        <Text style={styles.exampleJP}>{block.japanese}</Text>
+        <Text style={styles.exampleReading}>{block.reading}</Text>
+        <Text style={styles.exampleTranslation}>{block.translation}</Text>
+      </View>
+    );
+  }
+  if (block.kind === 'mnemonic') {
+    return (
+      <View style={styles.mnemonic}>
+        <Text style={styles.mnemonicLabel}>💡 Tip</Text>
+        <Text style={ui.body}>{block.text}</Text>
+      </View>
+    );
+  }
   return (
     <View style={styles.kanaRow}>
       <Text style={styles.kanaChar}>{block.char}</Text>
@@ -411,5 +438,38 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 18,
   },
+  passage: {
+    backgroundColor: '#F7F7FA',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A6CF7',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
+  },
+  passageTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A6CF7',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  passageText: { fontSize: 17, lineHeight: 26 },
+  example: {
+    backgroundColor: '#F0F4FF',
+    borderRadius: 10,
+    padding: 14,
+    gap: 4,
+  },
+  exampleJP: { fontSize: 22, fontWeight: '600' },
+  exampleReading: { fontSize: 14, color: '#555' },
+  exampleTranslation: { fontSize: 15, color: '#333', fontStyle: 'italic' },
+  mnemonic: {
+    backgroundColor: '#FFFBEA',
+    borderRadius: 10,
+    padding: 14,
+    gap: 4,
+  },
+  mnemonicLabel: { fontSize: 13, fontWeight: '600', color: '#8A6914' },
   celebrate: { fontSize: 48 },
 });

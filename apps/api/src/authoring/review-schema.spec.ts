@@ -9,7 +9,7 @@ const MINIMAL_DRAFT: LessonDraft = {
   targetItemIds: ['ja:kana:a', 'ja:kana:i'],
   teach: {
     blocks: [
-      { type: 'text', md: '## Vowels\nHiragana starts here.' },
+      { type: 'text', text: 'Vowels. Hiragana starts here.' },
       { type: 'audio', src: 'audio/kana/a.mp3', label: 'あ' },
     ],
   },
