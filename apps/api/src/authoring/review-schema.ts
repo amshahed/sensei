@@ -55,7 +55,9 @@ function buildPreviewLines(draft: LessonDraft): string[] {
   draft.teach.blocks.forEach((block, i) => {
     const n = i + 1;
     if (block.type === 'text') {
-      lines.push(`  ${n}. [text] ${block.md.replace(/\n/g, '↵').slice(0, 80)}`);
+      lines.push(
+        `  ${n}. [text] ${block.text.replace(/\n/g, '↵').slice(0, 80)}`,
+      );
     } else if (block.type === 'example') {
       lines.push(
         `  ${n}. [example] ${block.japanese} (${block.reading}) — ${block.translation}`,
@@ -64,9 +66,13 @@ function buildPreviewLines(draft: LessonDraft): string[] {
       lines.push(`  ${n}. [mnemonic] ${block.text.slice(0, 80)}`);
     } else if (block.type === 'passage') {
       lines.push(`  ${n}. [passage] ${block.text.slice(0, 80)}`);
-    } else {
-      // audio
+    } else if (block.type === 'kana') {
+      lines.push(`  ${n}. [kana] ${block.char} (${block.romaji})`);
+    } else if (block.type === 'audio') {
       lines.push(`  ${n}. [audio] ${block.src} (${block.label})`);
+    } else {
+      const _exhaustive: never = block;
+      lines.push(`  ${n}. [unknown] ${JSON.stringify(_exhaustive)}`);
     }
   });
 

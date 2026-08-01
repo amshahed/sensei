@@ -13,7 +13,7 @@ const MINIMAL_DRAFT = {
     blocks: [
       {
         type: 'text',
-        md: '## Introduction\nHiragana vowels are the foundation.',
+        text: 'Introduction. Hiragana vowels are the foundation.',
       },
       {
         type: 'example',

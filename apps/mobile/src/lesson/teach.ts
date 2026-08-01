@@ -11,7 +11,7 @@
 export type TeachBlock =
   | { kind: 'heading'; text: string }
   | { kind: 'text'; text: string }
-  | { kind: 'kana'; itemId: string; char: string; romaji: string; hint?: string }
+  | { kind: 'kana'; itemId?: string; char: string; romaji: string; hint?: string }
   /** Reading passage displayed as a card before comprehension checks (H.4). */
   | { kind: 'passage'; text: string; title?: string }
   /** Japanese example sentence with reading and translation (authoring output). */
@@ -38,7 +38,8 @@ export function parseTeachBlocks(teach: unknown): TeachBlock[] {
         return typeof r.text === 'string' ? [{ kind: 'heading', text: r.text }] : [];
 
       case 'text': {
-        // Authoring uses `md` for the text content; runtime uses `text`.
+        // `text` is the canonical field; `md` is kept as a legacy fallback for
+        // any records written before the md→text rename in lesson-schema.ts.
         const text =
           typeof r.text === 'string' ? r.text : typeof r.md === 'string' ? r.md : null;
         return text !== null ? [{ kind: 'text', text }] : [];
@@ -49,7 +50,7 @@ export function parseTeachBlocks(teach: unknown): TeachBlock[] {
           ? [
               {
                 kind: 'kana',
-                itemId: typeof r.itemId === 'string' ? r.itemId : '',
+                itemId: typeof r.itemId === 'string' ? r.itemId : undefined,
                 char: r.char,
                 romaji: r.romaji,
                 hint: typeof r.hint === 'string' ? r.hint : undefined,

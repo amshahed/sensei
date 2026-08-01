@@ -5,7 +5,7 @@ import { LessonTypeSchema } from './skeleton-schema';
 
 export const TextBlockSchema = z.object({
   type: z.literal('text'),
-  md: z.string().min(1),
+  text: z.string().min(1),
 });
 export const ExampleBlockSchema = z.object({
   type: z.literal('example'),
@@ -27,12 +27,21 @@ export const PassageBlockSchema = z.object({
   text: z.string().min(1),
   title: z.string().optional(),
 });
+/** Kana character card — used in F-Kana lesson Teach beats. */
+export const KanaBlockSchema = z.object({
+  type: z.literal('kana'),
+  char: z.string().min(1),
+  romaji: z.string().min(1),
+  itemId: z.string().optional(),
+  hint: z.string().optional(),
+});
 export const TeachBlockSchema = z.discriminatedUnion('type', [
   TextBlockSchema,
   ExampleBlockSchema,
   MnemonicBlockSchema,
   AudioBlockSchema,
   PassageBlockSchema,
+  KanaBlockSchema,
 ]);
 export type TeachBlock = z.infer<typeof TeachBlockSchema>;
 

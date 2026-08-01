@@ -11,7 +11,7 @@ const MINIMAL_DRAFT: LessonDraft = {
   title: 'The Five Vowels',
   targetItemIds: ['ja:kana:a', 'ja:kana:i'],
   teach: {
-    blocks: [{ type: 'text', md: '## Vowels' }],
+    blocks: [{ type: 'text', text: 'Vowels' }],
   },
   practice: {
     templates: [{ targetItemId: 'ja:kana:a', mode: 'recognition' }],
