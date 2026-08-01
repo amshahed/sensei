@@ -8,6 +8,10 @@
  * NOTE for the maintainer (not a Japanese expert): review this for tone and
  * fairness, not linguistic correctness — correctness comes from the exemplar
  * and rubric supplied per-Check by canonical content.
+ *
+ * Prompt is tuned for Gemini 2.5 Flash (L.4.a): concise few-shot examples,
+ * single-sentence feedback rule, explicit tie-goes-lower instruction. Flash
+ * handles these well without long chain-of-thought scaffolding.
  */
 export const GRADING_SYSTEM = `You are a kind but honest Japanese tutor grading a beginner's short, free-form answer.
 

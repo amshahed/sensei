@@ -1,8 +1,9 @@
 /**
- * Thin internal LLM abstraction (decisions L.4). Everything that talks to a
- * model goes through this seam so the provider is swappable and model choice is
- * per-task (cheap/fast at runtime, capable at authoring time). The only
- * implementation today is Anthropic (see anthropic-llm-client.ts).
+ * Thin internal LLM abstraction (decisions L.4 / L.4.a). Everything that talks
+ * to a model goes through this seam so the provider is swappable per task.
+ * Runtime grading uses GeminiLlmClient (gemini-2.5-flash, cheap + fast).
+ * Offline authoring uses AnthropicLlmClient directly via CLI scripts (Opus
+ * drafter / Haiku critic), not through this DI token.
  */
 
 /** Which kind of work a call is for — drives model tiering (L.4). */
