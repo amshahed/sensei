@@ -144,6 +144,7 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #35 | Reference corpus — ReferenceDoc+pgvector, Voyage AI client, Tatoeba + grammar-ref ingest CLIs | ✅ merged |
 | #36 | Skeleton author CLI — F.1 (SkeletonSchema + skeleton-prompter + skeleton.ts CLI) | ✅ merged |
 | #37 | Lesson drafter + AI critic + corrections-log loop — F.2/F.3/F.5 | ✅ merged |
+| #38 | Editorial review CLI + publish command — F.4/F.6 | ✅ merged |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
 
