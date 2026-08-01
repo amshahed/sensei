@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { ProgressDto } from '@sensei/types';
+import type { ItemType, ProgressDto } from '@sensei/types';
 import { api } from '../api';
 import { PrimaryButton, ui } from '../ui';
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS = {
   KANA: 'Kana',
   VOCAB: 'Vocab',
   KANJI: 'Kanji',
   GRAMMAR: 'Grammar',
-};
+} satisfies Record<ItemType, string>;
 
 /** Round a 0-1 value to a display percentage. */
 function pct(v: number) {
@@ -67,17 +67,18 @@ export function ProgressScreen({ onBack }: { onBack?: () => void }) {
   }
 
   const { aggregate, byType, modality, recentRate } = data;
-  const trendUp = recentRate.thisWeek >= recentRate.lastWeek;
+  const noActivity = recentRate.thisWeek === 0 && recentRate.lastWeek === 0;
+  const trendUp = !noActivity && recentRate.thisWeek >= recentRate.lastWeek;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={ui.title}>Progress</Text>
       {onBack ? <PrimaryButton label="← Back" onPress={onBack} /> : null}
 
-      {/* ── Aggregate hero ── */}
+      {/* ── Aggregate hero — percent of full Foundation catalog mastered ── */}
       <View style={styles.hero}>
         <Text style={styles.heroNumber}>{aggregate.masteredPercent}%</Text>
-        <Text style={styles.heroLabel}>Foundation mastered</Text>
+        <Text style={styles.heroLabel}>of Foundation mastered</Text>
         <Text style={ui.hint}>
           {aggregate.masteredCount} of {aggregate.totalItems} items
         </Text>
@@ -128,8 +129,17 @@ export function ProgressScreen({ onBack }: { onBack?: () => void }) {
           <Text style={styles.rateNum}>{recentRate.thisWeek}</Text>
           <Text style={styles.rateLabel}>This week</Text>
         </View>
-        <Text style={[styles.trend, trendUp ? styles.trendUp : styles.trendDown]}>
-          {trendUp ? '↑' : '↓'}
+        <Text
+          style={[
+            styles.trend,
+            noActivity
+              ? styles.trendNeutral
+              : trendUp
+                ? styles.trendUp
+                : styles.trendDown,
+          ]}
+        >
+          {noActivity ? '–' : trendUp ? '↑' : '↓'}
         </Text>
         <View style={styles.rateBox}>
           <Text style={styles.rateNum}>{recentRate.lastWeek}</Text>
@@ -206,4 +216,5 @@ const styles = StyleSheet.create({
   trend: { fontSize: 32, fontWeight: '700' },
   trendUp: { color: '#0E8A16' },
   trendDown: { color: '#B60205' },
+  trendNeutral: { color: '#888' },
 });

@@ -14,25 +14,17 @@ export class ProgressService {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-    // Total catalog items by type (denominator for percentages).
-    const catalogByType = await this.prisma.item.groupBy({
-      by: ['type'],
-      _count: { id: true },
-    });
+    // Run independent queries in parallel.
+    const [catalogByType, masteryStates] = await Promise.all([
+      this.prisma.item.groupBy({ by: ['type'], _count: { id: true } }),
+      this.prisma.itemMasteryState.findMany({
+        where: { userId },
+        include: { item: { select: { type: true } } },
+      }),
+    ]);
 
-    // All mastery states for this user, with the item type attached.
-    const masteryStates = await this.prisma.itemMasteryState.findMany({
-      where: { userId },
-      include: { item: { select: { type: true } } },
-    });
-
-    // ── Aggregate ──────────────────────────────────────────────────────────────
+    // ── Aggregate + per-type breakdown (single pass over masteryStates) ────────
     const totalCatalog = catalogByType.reduce((s, g) => s + g._count.id, 0);
-    const masteredCount = masteryStates.filter(
-      (m) => m.mastery >= MASTERY_THRESHOLD,
-    ).length;
-
-    // ── Per-type breakdown ─────────────────────────────────────────────────────
     const typeMap = new Map<ItemType, { mastered: number; total: number }>();
     for (const g of catalogByType) {
       typeMap.set(g.type, { mastered: 0, total: g._count.id });
@@ -43,6 +35,10 @@ export class ProgressService {
         if (entry) entry.mastered++;
       }
     }
+    const masteredCount = Array.from(typeMap.values()).reduce(
+      (s, { mastered }) => s + mastered,
+      0,
+    );
 
     // ── Modality averages ──────────────────────────────────────────────────────
     const avg = (vals: number[]) =>
