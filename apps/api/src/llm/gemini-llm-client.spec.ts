@@ -123,6 +123,54 @@ describe('GeminiLlmClient', () => {
     expect(props.rating).not.toHaveProperty('additionalProperties');
   });
 
+  it('strips additionalProperties from array item schemas', async () => {
+    const { model, lastRequest } = fakeGemini('[]');
+    const client = new GeminiLlmClient(config({}), model);
+
+    await client.parseJson({
+      task: 'grading',
+      system: 's',
+      user: 'u',
+      schema: {
+        type: 'array',
+        additionalProperties: false,
+        items: { type: 'object', additionalProperties: false },
+      },
+      schemaName: 'list',
+    });
+
+    const cfg = lastRequest().generationConfig as Record<string, unknown>;
+    const schema = cfg.responseSchema as Record<string, unknown>;
+    expect(schema).not.toHaveProperty('additionalProperties');
+    expect(schema.items as Record<string, unknown>).not.toHaveProperty(
+      'additionalProperties',
+    );
+  });
+
+  it('wraps safety-block SDK errors with a domain message', async () => {
+    const model: GeminiModelLike = {
+      generateContent: () =>
+        Promise.resolve({
+          response: {
+            text: () => {
+              throw new Error('Response was blocked due to SAFETY');
+            },
+          },
+        }),
+    };
+    const client = new GeminiLlmClient(config({}), model);
+
+    await expect(
+      client.parseJson({
+        task: 'grading',
+        system: 's',
+        user: 'u',
+        schema: {},
+        schemaName: 'x',
+      }),
+    ).rejects.toThrow(/safety block or malformed response/);
+  });
+
   it('throws when response text is empty', async () => {
     const { model } = fakeGemini('');
     const client = new GeminiLlmClient(config({}), model);

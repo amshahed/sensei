@@ -31,6 +31,9 @@ function toGeminiSchema(
       Object.entries(props).map(([k, v]) => [k, toGeminiSchema(v)]),
     );
   }
+  if (rest.items && typeof rest.items === 'object') {
+    rest.items = toGeminiSchema(rest.items as Record<string, unknown>);
+  }
   return rest;
 }
 
@@ -86,7 +89,14 @@ export class GeminiLlmClient implements LlmClient {
       },
     });
 
-    const text = result.response.text();
+    let text: string;
+    try {
+      text = result.response.text();
+    } catch (err) {
+      throw new Error(
+        `Gemini response unreadable (safety block or malformed response): ${String(err)}`,
+      );
+    }
     if (!text) {
       throw new Error('Gemini returned no text content to parse.');
     }
