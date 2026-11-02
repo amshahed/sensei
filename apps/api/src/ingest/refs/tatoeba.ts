@@ -5,7 +5,8 @@ import {
   buildTokenizer,
   type JapaneseTokenizer,
 } from '../../common/japanese-tokenizer';
-import { upsertRefDoc } from './upsert-doc';
+import { hasKanji } from '../../common/japanese-script';
+import { upsertRefDocs } from './upsert-doc';
 
 // Tatoeba sentences.csv / jpn_sentences.tsv format: id\tlang\ttext
 // (or id\ttext when pre-filtered to Japanese).
@@ -26,7 +27,6 @@ export const DEFAULT_PER_ITEM = 8;
 
 /** Longest word, in tokens, matched as a compound (日本語 = 日本 + 語). */
 const MAX_WINDOW = 4;
-const KANJI = /[一-鿿]/;
 
 export type MatchableItem = {
   id: string;
@@ -36,6 +36,12 @@ export type MatchableItem = {
   data?: unknown;
 };
 
+// Non-independent *nouns* (はず, 以上, 以内 — 名詞,非自立) are real vocab items,
+// so only auxiliaries and non-independent verbs / adjectives are excluded.
+const isGrammatical = (t: { pos: string; pos_detail_1: string }) =>
+  t.pos === '助動詞' ||
+  ((t.pos === '動詞' || t.pos === '形容詞') && t.pos_detail_1 === '非自立');
+
 /** Returns the ids of the items a sentence genuinely contains. */
 export type ItemMatcher = (text: string) => Set<string>;
 
@@ -44,7 +50,11 @@ export type ItemMatcher = (text: string) => Set<string>;
  *  - VOCAB: a run of 1–4 tokens whose surfaces concatenate to one of the
  *    item's spellings — with the last token also tried in dictionary form, so
  *    conjugations match (食べました → 食べる, おいしかった → おいしい). Being
- *    token-aligned, いる no longer matches inside はいる, nor その inside そのまま.
+ *    token-aligned, ある no longer matches inside あるいは, nor その inside そのまま.
+ *  - A word never *starts* at a grammatical token: auxiliaries (助動詞 — the
+ *    ない of 食べない) and non-independent verbs/adjectives (非自立 — the いる
+ *    of 読んでいる, the ある of 書いてある) are grammar, not the vocab items
+ *    ない / いる / ある.
  *  - KANJI: the character appears anywhere (any word using it is an example).
  * Spellings: the display, standard kanji writing forms and — for words shown in
  * kana — their kana readings (いい/よい).
@@ -73,7 +83,7 @@ export function buildItemMatcher(
     };
     addKey(item.display, item.id);
     for (const form of d.writing_forms ?? []) addKey(form, item.id);
-    if (!KANJI.test(item.display)) {
+    if (!hasKanji(item.display)) {
       if (item.reading) addKey(item.reading, item.id);
       for (const r of d.readings ?? []) addKey(r, item.id);
     }
@@ -87,6 +97,7 @@ export function buildItemMatcher(
     }
     const tokens = tokenizer.tokenize(text);
     for (let i = 0; i < tokens.length; i++) {
+      if (isGrammatical(tokens[i])) continue;
       let surfaces = '';
       for (let n = 0; n < MAX_WINDOW && i + n < tokens.length; n++) {
         const last = tokens[i + n];
@@ -172,9 +183,10 @@ const docId = (s: TatoebaSentence) => `tatoeba-${s.id}`;
 
 /**
  * Sync the `tatoeba` slice of ReferenceDoc to the current selection: embed and
- * insert only sentences not already stored, and delete stored ones the
- * selection no longer keeps (e.g. after lowering --per-item, or rows from an
- * older uncapped run) — so the storage cap is actually enforced.
+ * upsert sentences that are new or whose text changed upstream (Tatoeba fixes
+ * typos), and — only with `prune` — delete stored ones the selection no longer
+ * keeps (e.g. after lowering --per-item, or rows from an older uncapped run).
+ * Pruning is opt-in so a trial run on a sample file can't wipe the corpus.
  */
 export async function ingestTatoeba(
   prisma: PrismaClient,
@@ -182,7 +194,7 @@ export async function ingestTatoeba(
   sourcePath: string,
   preFiltered = false,
   perItem = DEFAULT_PER_ITEM,
-  tokenizer?: JapaneseTokenizer,
+  options: { prune?: boolean; tokenizer?: JapaneseTokenizer } = {},
 ): Promise<void> {
   if (!voyage.enabled) {
     throw new Error('VOYAGE_API_KEY is required for ingest:refs tatoeba.');
@@ -213,50 +225,54 @@ export async function ingestTatoeba(
 
   const matcher = buildItemMatcher(
     items,
-    tokenizer ?? (await buildTokenizer()),
+    options.tokenizer ?? (await buildTokenizer()),
   );
   const selected = selectForItems(parsed, matcher, perItem);
   const keepIds = new Set(selected.map(docId));
 
-  const stored = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM "ReferenceDoc" WHERE source = 'tatoeba'
+  const stored = await prisma.$queryRaw<{ id: string; text: string }[]>`
+    SELECT id, text FROM "ReferenceDoc" WHERE source = 'tatoeba'
   `;
-  const storedIds = new Set(stored.map((r) => r.id));
-  const toInsert = selected.filter((s) => !storedIds.has(docId(s)));
-  const toDelete = [...storedIds].filter((id) => !keepIds.has(id));
+  const storedText = new Map(stored.map((r) => [r.id, r.text]));
+  const toEmbed = selected.filter((s) => storedText.get(docId(s)) !== s.text);
+  const stale = stored.map((r) => r.id).filter((id) => !keepIds.has(id));
 
   console.log(
-    `ingest:refs tatoeba — ${parsed.length} sentences after filtering; selected ${selected.length} (≤${perItem} per item across ${items.length} items): ${toInsert.length} new, ${selected.length - toInsert.length} already stored, ${toDelete.length} to prune`,
+    `ingest:refs tatoeba — ${parsed.length} sentences after filtering; selected ${selected.length} (≤${perItem} per item across ${items.length} items): ${toEmbed.length} new or changed, ${selected.length - toEmbed.length} unchanged, ${stale.length} stored but no longer selected`,
   );
 
-  if (toInsert.length) {
+  if (toEmbed.length) {
     const { embeddings, totalTokens } = await voyage.embedAll(
-      toInsert.map((s) => s.text),
+      toEmbed.map((s) => s.text),
     );
     const costUsd = (totalTokens / 1_000_000) * 0.06;
     console.log(`  Voyage: ${totalTokens} tokens (~$${costUsd.toFixed(4)})`);
 
-    for (let i = 0; i < toInsert.length; i++) {
-      const s = toInsert[i];
-      await upsertRefDoc(prisma, {
+    await upsertRefDocs(
+      prisma,
+      toEmbed.map((s, i) => ({
         id: docId(s),
         source: 'tatoeba',
         language: 'ja',
         text: s.text,
         embedding: embeddings[i],
         metadata: { tatoeba_id: s.id },
-      });
-    }
+      })),
+    );
   }
 
-  if (toDelete.length) {
+  if (stale.length && options.prune) {
     await prisma.$executeRaw`
       DELETE FROM "ReferenceDoc"
-      WHERE source = 'tatoeba' AND id = ANY(${toDelete}::text[])
+      WHERE source = 'tatoeba' AND id = ANY(${stale}::text[])
     `;
+  } else if (stale.length) {
+    console.warn(
+      `  ${stale.length} stored sentence(s) are no longer selected — rerun with --prune to delete them.`,
+    );
   }
 
   console.log(
-    `ingest:refs tatoeba — inserted ${toInsert.length}, pruned ${toDelete.length}; ${selected.length} docs in the corpus`,
+    `ingest:refs tatoeba — embedded ${toEmbed.length}${options.prune ? `, pruned ${stale.length}` : ''}; ${selected.length} selected docs in the corpus`,
   );
 }

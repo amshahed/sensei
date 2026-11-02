@@ -10,6 +10,7 @@ const PRE_FILTERED = process.argv.includes('--pre-filtered');
 const perItemIdx = process.argv.indexOf('--per-item');
 const PER_ITEM =
   perItemIdx !== -1 ? Number(process.argv[perItemIdx + 1]) : undefined;
+const PRUNE = process.argv.includes('--prune');
 
 const USAGE = `
 Usage: pnpm --filter api ingest:refs <kind> [--source <path>]
@@ -20,6 +21,8 @@ Usage: pnpm --filter api ingest:refs <kind> [--source <path>]
                   --pre-filtered      file is id\\ttext (already filtered to JA)
                   --per-item <n>      keep each VOCAB/KANJI item's n shortest
                                       sentences (default 8; needs items ingested)
+                  --prune             also delete stored sentences the selection
+                                      no longer keeps (off by default)
     grammar     generate + embed grammar reference passages via Claude Opus
                   (reads grammar items already in the DB from ingest:items grammar)
 
@@ -48,7 +51,9 @@ async function main() {
           throw new Error(
             '--source <path> is required for tatoeba ingestion\n\n' + USAGE,
           );
-        await ingestTatoeba(prisma, voyage, SOURCE, PRE_FILTERED, PER_ITEM);
+        await ingestTatoeba(prisma, voyage, SOURCE, PRE_FILTERED, PER_ITEM, {
+          prune: PRUNE,
+        });
         break;
       case 'grammar':
         await ingestGrammarRefs(

@@ -90,6 +90,11 @@ describe('buildKanjiItem', () => {
     expect(data.jlpt).toBe('N5');
   });
 
+  it('takes jlpt from the old-scale mapping, not a hardcoded N5', () => {
+    expect(buildKanjiItem(DOU).data.jlpt).toBe('N4'); // old level 3
+    expect(buildKanjiItem(UTSU).data.jlpt).toBeNull(); // unlevelled
+  });
+
   it('falls back to on-reading when no kun-reading', () => {
     const char: Kd2Character = {
       literal: '玉',

@@ -247,6 +247,28 @@ describe('assignVocabIds', () => {
     }
   });
 
+  it('keeps an id sticky to its JMdict word across re-ingests', () => {
+    // A previous run gave かた the bare id; ほう has now joined the list.
+    const existing = new Map([['ja:vocab:方', '1516925']]);
+    const ms = matchJlptList(REAL, [
+      row('方', 'かた'),
+      row('方', 'ほう'),
+    ]).matches;
+    expect(assignVocabIds(ms, existing).map((a) => a.id)).toEqual([
+      'ja:vocab:方', // not renamed → its learners' mastery stays attached
+      'ja:vocab:方:ほう',
+    ]);
+  });
+
+  it('never re-points an existing id at a different word', () => {
+    // The bare id belongs to ほう in the DB; the list now only has かた.
+    const existing = new Map([['ja:vocab:方', '1516930']]);
+    const ms = matchJlptList(REAL, [row('方', 'かた')]).matches;
+    expect(assignVocabIds(ms, existing).map((a) => a.id)).toEqual([
+      'ja:vocab:方:かた',
+    ]);
+  });
+
   it('qualifies kana homophones by JMdict id', () => {
     const [m] = matchJlptList(REAL, [row('そば', 'そば', 'beside')]).matches;
     const other = { ...m, word: word('1238460') }; // 蕎麦, also spelled そば
@@ -302,7 +324,7 @@ describe('buildVocabItem', () => {
 });
 
 describe('ingestVocab', () => {
-  it('upserts list words with order-independent ids and levels; logs skips', async () => {
+  it('upserts list words with ids + levels, logs skips, retires dropped words', async () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vocab-'));
     const jmdictPath = path.join(tmp, 'jmdict.json');
     fs.writeFileSync(jmdictPath, JSON.stringify({ words: REAL }));
@@ -318,7 +340,16 @@ describe('ingestVocab', () => {
     );
 
     const upsert = jest.fn().mockResolvedValue({});
-    const prisma = { item: { upsert } } as unknown as PrismaClient;
+    const update = jest.fn().mockResolvedValue({});
+    // A stored word that is no longer on either list.
+    const findMany = jest
+      .fn()
+      .mockResolvedValue([
+        { id: 'ja:vocab:猫', data: { jmdict_id: '1467640', jlpt: 'N5' } },
+      ]);
+    const prisma = {
+      item: { upsert, update, findMany },
+    } as unknown as PrismaClient;
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -345,5 +376,13 @@ describe('ingestVocab', () => {
     ]);
     expect(warnings.some((w) => w.includes('no JMdict match'))).toBe(true);
     expect(warnings.some((w) => w.includes('already took'))).toBe(true);
+    // ...the dropped word keeps its row but loses its level.
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'ja:vocab:猫' },
+      data: { data: { jmdict_id: '1467640', jlpt: null } },
+    });
+    expect(warnings.some((w) => w.includes('no longer on the lists'))).toBe(
+      true,
+    );
   });
 });

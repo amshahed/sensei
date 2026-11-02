@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isKanaOnly } from '../common/japanese-script';
 
 // jmdict-simplified JSON entry (relevant fields only).
 // Full spec: https://github.com/scriptin/jmdict-simplified
@@ -51,7 +52,6 @@ export const DEFAULT_JLPT_LISTS: JlptListSource[] = [
   { level: 'N4', file: path.join(DATA_DIR, 'n4-vocab.csv') },
 ];
 
-const KANA_ONLY = /^[぀-ヿー]+$/;
 const AFFIX_MARK = /[〜～~]/g;
 /** Kanji spellings JMdict marks rare / search-only / irregular / outdated. */
 const NON_STANDARD_KANJI_TAGS = new Set(['rK', 'sK', 'iK', 'oK']);
@@ -108,8 +108,7 @@ export function parseJlptList(raw: string, level: JlptLevel): JlptListRow[] {
     const meaning = meanIdx === -1 ? undefined : cells[meanIdx]?.trim();
     // A few upstream rows leave the reading blank for kana-only words
     // (ごらんになる, かまう) — there the spelling *is* the reading.
-    const reading =
-      rawReading || (KANA_ONLY.test(expression) ? expression : '');
+    const reading = rawReading || (isKanaOnly(expression) ? expression : '');
 
     const exprParts = expression.split('、');
     const readParts = reading.split('、');
@@ -207,7 +206,7 @@ export function learnerSpelling(
   form: string,
   reading: string,
 ): string {
-  if (KANA_ONLY.test(form)) return form;
+  if (isKanaOnly(form)) return form;
   const primary = applicableSenses(word, form, reading)[0];
   return primary?.misc?.includes('uk') ? reading : form;
 }
@@ -296,7 +295,7 @@ export function matchJlptList(
           overlap,
           density: glosses.size ? overlap / glosses.size : 0,
           usuallyKana:
-            KANA_ONLY.test(form) &&
+            isKanaOnly(form) &&
             (word.kanji.length === 0 ||
               senses.some((s) => s.misc?.includes('uk'))),
           common:
@@ -420,17 +419,29 @@ export function buildVocabItem(match: JlptMatch, id: string) {
 }
 
 /**
- * Order-independent ids. `ja:vocab:<display>` when the spelling is unique among
- * the ingested words; otherwise EVERY word sharing it is qualified — by reading
- * (方 → `ja:vocab:方:かた`, `ja:vocab:方:ほう`), and by JMdict id when spelling
- * and reading coincide (kana homophones: `ja:vocab:そう:1006610`). Reordering or
- * editing the list therefore never re-points an existing id at another word;
- * at worst a newly colliding word renames ids, which leaves the old row orphaned
- * rather than silently changing its meaning.
+ * Item ids. Once a JMdict word has an id it keeps it forever (`existing`, read
+ * from the DB), so re-ingesting after a list edit or a new JMdict release can
+ * never rename a word's id (orphaning its mastery) or re-point an id at a
+ * different word (silently corrupting every learner's FSRS state for it).
+ *
+ * A word new to the DB gets `ja:vocab:<display>` if that spelling is unique in
+ * the current set and unused; otherwise it is qualified — by reading
+ * (`ja:vocab:方:ほう`), or by JMdict id when spelling and reading coincide (kana
+ * homophones, `ja:vocab:そう:1006610`) or the reading-qualified id is taken.
+ * Given the same DB state and lists, the result is independent of list order.
  */
 export function assignVocabIds(
   matches: JlptMatch[],
+  existing: ReadonlyMap<string, string> = new Map(),
 ): { match: JlptMatch; id: string }[] {
+  const stickyByJmdict = new Map<string, string>();
+  for (const [id, jmdictId] of [...existing].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (!stickyByJmdict.has(jmdictId)) stickyByJmdict.set(jmdictId, id);
+  }
+  const taken = new Set(existing.keys());
+
   const count = (key: (m: JlptMatch) => string) => {
     const n = new Map<string, number>();
     for (const m of matches) n.set(key(m), (n.get(key(m)) ?? 0) + 1);
@@ -439,22 +450,42 @@ export function assignVocabIds(
   const byDisplay = count((m) => m.display);
   const byDisplayReading = count((m) => `${m.display}:${m.reading}`);
 
+  // Sticky ids first, so a new word can never claim one this run.
+  const sticky = new Map<JlptMatch, string>();
+  for (const m of matches) {
+    const id = stickyByJmdict.get(m.word.id);
+    if (id) sticky.set(m, id);
+  }
+
   return matches.map((match) => {
+    const kept = sticky.get(match);
+    if (kept) return { match, id: kept };
+
     const { display, reading, word } = match;
-    let id = `ja:vocab:${display}`;
-    if ((byDisplay.get(display) ?? 0) > 1) {
-      // A kana spelling *is* its reading, so qualify kana homophones by id.
-      if (display === reading) return { match, id: `${id}:${word.id}` };
-      id = `${id}:${reading}`;
-      if ((byDisplayReading.get(`${display}:${reading}`) ?? 0) > 1) {
-        id = `${id}:${word.id}`;
-      }
-    }
+    const bare = `ja:vocab:${display}`;
+    const byReading = `${bare}:${reading}`;
+    const byJmdict = `${bare}:${word.id}`;
+    const kanaHomophone = display === reading;
+    let id: string;
+    if ((byDisplay.get(display) ?? 0) === 1 && !taken.has(bare)) id = bare;
+    else if (
+      !kanaHomophone &&
+      (byDisplayReading.get(`${display}:${reading}`) ?? 0) === 1 &&
+      !taken.has(byReading)
+    )
+      id = byReading;
+    else id = byJmdict;
+    taken.add(id);
     return { match, id };
   });
 }
 
 const fmtRow = (r: JlptListRow) => `${r.level} ${r.expression} / ${r.reading}`;
+
+const jmdictIdOf = (data: unknown): string | undefined =>
+  (data as { jmdict_id?: string } | null)?.jmdict_id;
+const levelOf = (data: unknown): string | null =>
+  (data as { jlpt?: string | null } | null)?.jlpt ?? null;
 
 export async function ingestVocab(
   prisma: PrismaClient,
@@ -473,9 +504,18 @@ export async function ingestVocab(
     parseJlptList(fs.readFileSync(listPath, 'utf-8'), level),
   );
   const report = matchJlptList(file.words, rows);
-  const items = assignVocabIds(report.matches).map(({ match, id }) =>
+
+  const stored = await prisma.item.findMany({
+    where: { language: 'ja', type: 'VOCAB' },
+    select: { id: true, data: true },
+  });
+  const existing = new Map(
+    stored.map((r) => [r.id, String(jmdictIdOf(r.data) ?? `?${r.id}`)]),
+  );
+  const items = assignVocabIds(report.matches, existing).map(({ match, id }) =>
     buildVocabItem(match, id),
   );
+  const itemByJmdict = new Map(items.map((i) => [i.data.jmdict_id, i]));
 
   if (report.unmatched.length) {
     console.warn(
@@ -492,7 +532,7 @@ export async function ingestVocab(
       `ingest:items vocab — ${report.lowConfidence.length} row(s) matched several JMdict words equally well; picked by common/file order — worth a look:\n  ${report.lowConfidence
         .map(
           ({ row, picked }) =>
-            `${fmtRow(row)} → ${picked.display}/${picked.reading} (jmdict_id=${picked.word.id}) "${buildVocabItem(picked, '').meaning ?? ''}"`,
+            `${fmtRow(row)} → ${picked.display}/${picked.reading} (jmdict_id=${picked.word.id}) "${itemByJmdict.get(picked.word.id)?.meaning ?? ''}"`,
         )
         .join('\n  ')}`,
     );
@@ -509,6 +549,25 @@ export async function ingestVocab(
       },
       create: item,
     });
+  }
+
+  // Words that dropped off the lists keep their row (lessons / mastery may
+  // reference them) but lose their level, so level-filtered authoring stops
+  // offering them.
+  const current = new Set(items.map((i) => i.id));
+  const retired = stored.filter(
+    (r) => !current.has(r.id) && levelOf(r.data) !== null,
+  );
+  for (const r of retired) {
+    await prisma.item.update({
+      where: { id: r.id },
+      data: { data: { ...(r.data as object), jlpt: null } },
+    });
+  }
+  if (retired.length) {
+    console.warn(
+      `ingest:items vocab — ${retired.length} stored word(s) are no longer on the lists; kept, but their jlpt level was cleared:\n  ${retired.map((r) => r.id).join('\n  ')}`,
+    );
   }
 
   const byLevel = (l: JlptLevel) =>

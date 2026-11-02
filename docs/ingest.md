@@ -47,7 +47,8 @@ pnpm --filter api ingest:items vocab --source ./data/jmdict-eng-3.6.2.json
 
 Result on jmdict-eng-3.6.2: **1,358 items (N5 702, N4 656)**, 0 null meanings. 4 malformed upstream rows are unmatched, 25 duplicates are skipped, and 3 picks are flagged low-confidence.
 
-- **IDs:** `ja:vocab:<spelling>`, qualified **only when spellings collide**: by reading (`ja:vocab:方:かた`, `ja:vocab:方:ほう`), or by JMdict id for kana homophones (`ja:vocab:いる:1577980` "to be", `ja:vocab:いる:1546640` "to need"). The rule doesn't depend on list order, so editing the list can never re-point an existing id at a different word.
+- **IDs:** `ja:vocab:<spelling>`, qualified **only when spellings collide**: by reading (`ja:vocab:方:かた`, `ja:vocab:方:ほう`), or by JMdict id for kana homophones (`ja:vocab:いる:1577980` "to be", `ja:vocab:いる:1546640` "to need").
+- **IDs are sticky:** once a JMdict word has an id, re-ingesting keeps it, and a new word never takes an id already in use. So list edits and new JMdict releases can't rename or re-point ids. A stored word that drops off the lists keeps its row but has its `jlpt` level cleared (logged).
 - **`data` shape:**
   ```json
   {
@@ -141,8 +142,8 @@ pnpm --filter api ingest:refs tatoeba --source ./data/jpn_sentences.tsv [--per-i
 
 **Run `ingest:items vocab` and `kanji` first.** The full Japanese corpus (~250k sentences) would be about 2 GB once embedded (1024-dim) and HNSW-indexed, which is over Neon free tier's 1 GiB. So for each VOCAB/KANJI item the ingester keeps its `--per-item` (default 8) **shortest** sentences (decisions.md §E.3.a). On jpn_sentences 2026-11: **~9.7k sentences, ~80 MB**, and every item gets at least one example.
 
-- **Matching is morphological** (kuromoji): a vocab item matches a run of 1–4 tokens that spells it, with the last token also tried in dictionary form. So `食べました` → `食べる` and `おいしかった` → `おいしい`, but `ある` never matches inside `あるいは` or `その` inside `そのまま`. Kanji items match the character anywhere.
-- **The ingest syncs:** it embeds only sentences not already stored (reruns cost ~nothing) and **prunes** stored `tatoeba-*` rows the selection no longer keeps, for example after lowering `--per-item`.
+- **Matching is morphological** (kuromoji): a vocab item matches a run of 1–4 tokens that spells it, with the last token also tried in dictionary form. So `食べました` → `食べる` and `おいしかった` → `おいしい`, but `ある` never matches inside `あるいは` or `その` inside `そのまま`. Grammatical uses don't count either: the auxiliary `ない` of `食べない`, the `いる` of `読んでいる`, the `ある` of `書いてある`. Kanji items match the character anywhere.
+- **Reruns are incremental:** only sentences that are new, or whose text Tatoeba changed, are embedded, written in batched INSERTs of 100. Stored `tatoeba-*` rows the selection no longer keeps are reported and deleted only with **`--prune`**, so a trial run on a sample file can't wipe the corpus.
 - Sentences of 5–120 characters are considered, so short beginner sentences like `猫が好きです。` are kept.
 
 ---
@@ -155,6 +156,6 @@ pnpm ingest:items kana
 pnpm ingest:items vocab   --source ./data/jmdict-eng-3.6.2.json
 pnpm ingest:items kanji   --source ./data/kanjidic2-en-3.6.2.json
 pnpm ingest:items grammar --source ./data/jlpt/n5-grammar.json
-pnpm ingest:refs tatoeba  --source ./data/jpn_sentences.tsv
+pnpm ingest:refs tatoeba  --source ./data/jpn_sentences.tsv   # add --prune to drop stale rows
 pnpm authoring:skeleton                        # → tools/authoring/output/skeleton.json
 ```

@@ -128,6 +128,23 @@ describe('buildItemMatcher (real kuromoji)', () => {
     ]);
   });
 
+  it('ignores grammatical uses: auxiliary ない, non-independent いる / ある', () => {
+    const items = [vocab('ない'), vocab('いる'), vocab('ある')];
+    expect(hits(items, '食べない。')).toEqual([]); // ない = 助動詞
+    expect(hits(items, '本を読んでいる。')).toEqual([]); // いる = 非自立
+    expect(hits(items, '名前が書いてある。')).toEqual([]); // ある = 非自立
+    expect(hits(items, 'お金がない。')).toEqual(['ja:vocab:ない']);
+    expect(hits(items, '家にいる。')).toEqual(['ja:vocab:いる']);
+    expect(hits(items, '車がある。')).toEqual(['ja:vocab:ある']);
+  });
+
+  it('still matches non-independent nouns, which are real vocab (はず, 以上)', () => {
+    expect(hits([vocab('はず')], '彼は来るはずだ。')).toEqual([
+      'ja:vocab:はず',
+    ]);
+    expect(hits([vocab('以上')], '三人以上いる。')).toEqual(['ja:vocab:以上']);
+  });
+
   it('matches kana words on their kana variants (いい / よい)', () => {
     const ii = vocab('いい', {
       reading: 'いい',
@@ -184,7 +201,7 @@ describe('ingestTatoeba', () => {
     fs.writeFileSync(p, lines.join('\n'));
     return p;
   };
-  const fakePrisma = (stored: string[]) => {
+  const fakePrisma = (stored: Record<string, string>) => {
     const executeRaw = jest.fn().mockResolvedValue(1);
     const prisma = {
       item: {
@@ -192,11 +209,16 @@ describe('ingestTatoeba', () => {
           .fn()
           .mockResolvedValue([vocab('猫'), vocab('犬'), kanji('本')]),
       },
-      $queryRaw: jest.fn().mockResolvedValue(stored.map((id) => ({ id }))),
+      $queryRaw: jest
+        .fn()
+        .mockResolvedValue(
+          Object.entries(stored).map(([id, text]) => ({ id, text })),
+        ),
       $executeRaw: executeRaw,
     } as unknown as PrismaClient;
     return { prisma, executeRaw };
   };
+  const sqlOf = (call: unknown[]) => (call[0] as string[]).join('');
   const quiet = () => jest.spyOn(console, 'log').mockImplementation(() => {});
 
   it('throws when voyage not enabled', async () => {
@@ -236,42 +258,65 @@ describe('ingestTatoeba', () => {
     ).rejects.toThrow('--per-item');
   });
 
-  it('embeds only selected sentences that are not stored yet, and prunes the rest', async () => {
-    const tmp = sentencesFile('tatoeba-sync.tsv', [
-      '1\tjpn\t猫がいます。', // cat — already stored
+  const corpus = () =>
+    sentencesFile('tatoeba-sync.tsv', [
+      '1\tjpn\t猫がいます。', // cat — already stored, unchanged
       '2\tjpn\t犬が好きです。', // dog — new
-      '3\tjpn\tこれは本です。', // 本 — new
+      '3\tjpn\tこれは本です。', // 本 — stored with old text (fixed upstream)
       '4\tjpn\t今日は晴れです。', // no item → never stored
     ]);
-    const { voyage, embedFn } = makeFakeVoyage();
-    const { prisma, executeRaw } = fakePrisma([
-      'tatoeba-1',
-      'tatoeba-99', // stale: from an older, larger run
-    ]);
-    const log = quiet();
+  const storedRows = {
+    'tatoeba-1': '猫がいます。',
+    'tatoeba-3': 'これは本でつ。',
+    'tatoeba-99': '古い文です。', // stale: from an older, larger run
+  };
 
-    await ingestTatoeba(prisma, voyage, tmp, false, 8, tokenizer);
+  it('embeds only new or changed sentences, in one batched INSERT; keeps stale rows by default', async () => {
+    const { voyage, embedFn } = makeFakeVoyage();
+    const { prisma, executeRaw } = fakePrisma(storedRows);
+    const log = quiet();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await ingestTatoeba(prisma, voyage, corpus(), false, 8, { tokenizer });
+    const warnings = warn.mock.calls.map((c) => String(c[0]));
     log.mockRestore();
+    warn.mockRestore();
 
     expect(embedFn).toHaveBeenCalledTimes(1);
     expect((embedFn.mock.calls[0] as [string[]])[0].sort()).toEqual(
       ['これは本です。', '犬が好きです。'].sort(),
     );
-    // 2 upserts + 1 prune DELETE carrying the stale id
-    expect(executeRaw).toHaveBeenCalledTimes(3);
-    const deleteCall = executeRaw.mock.calls.find((c: unknown[]) =>
-      String((c[0] as string[]).join('')).includes('DELETE'),
-    ) as unknown[];
-    expect(deleteCall.slice(1)).toEqual([['tatoeba-99']]);
+    expect(executeRaw).toHaveBeenCalledTimes(1); // one multi-row INSERT, no DELETE
+    expect(sqlOf(executeRaw.mock.calls[0] as unknown[])).toContain(
+      'INSERT INTO "ReferenceDoc"',
+    );
+    expect(warnings.some((w) => w.includes('--prune'))).toBe(true);
   });
 
-  it('does not call Voyage when everything selected is already stored', async () => {
-    const tmp = sentencesFile('tatoeba-noop.tsv', ['1\tjpn\t猫がいます。']);
-    const { voyage, embedFn } = makeFakeVoyage();
-    const { prisma, executeRaw } = fakePrisma(['tatoeba-1']);
+  it('deletes stale rows only with prune', async () => {
+    const { voyage } = makeFakeVoyage();
+    const { prisma, executeRaw } = fakePrisma(storedRows);
     const log = quiet();
 
-    await ingestTatoeba(prisma, voyage, tmp, false, 8, tokenizer);
+    await ingestTatoeba(prisma, voyage, corpus(), false, 8, {
+      tokenizer,
+      prune: true,
+    });
+    log.mockRestore();
+
+    const del = (executeRaw.mock.calls as unknown[][]).find((c) =>
+      sqlOf(c).includes('DELETE'),
+    );
+    expect(del?.slice(1)).toEqual([['tatoeba-99']]);
+  });
+
+  it('does not call Voyage or write when everything selected is stored and unchanged', async () => {
+    const tmp = sentencesFile('tatoeba-noop.tsv', ['1\tjpn\t猫がいます。']);
+    const { voyage, embedFn } = makeFakeVoyage();
+    const { prisma, executeRaw } = fakePrisma({ 'tatoeba-1': '猫がいます。' });
+    const log = quiet();
+
+    await ingestTatoeba(prisma, voyage, tmp, false, 8, { tokenizer });
     log.mockRestore();
 
     expect(embedFn).not.toHaveBeenCalled();

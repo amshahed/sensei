@@ -69,7 +69,7 @@ export function buildKanjiItem(char: Kd2Character) {
       on_readings: onReadings,
       kun_readings: kunReadings,
       stroke_count: strokeCount,
-      jlpt: 'N5',
+      jlpt: toModernJlpt(char.misc.jlptLevel) ?? null,
     },
   };
 }
