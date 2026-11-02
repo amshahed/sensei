@@ -17,6 +17,8 @@ const MAX_VOCAB_FOR_PROMPT = 1000;
 type RawItem = {
   id: string;
   display: string;
+  /** The reading the item was matched on (何 → なん), not JMdict's first kana. */
+  reading?: string | null;
   data: unknown;
 };
 
@@ -31,13 +33,13 @@ export async function loadItemData(prisma: PrismaClient): Promise<ItemData> {
   const [kana, grammar, vocab, kanji] = await Promise.all([
     prisma.item.findMany({
       where: { language: 'ja', type: 'KANA' },
-      select: { id: true, display: true, data: true },
+      select: { id: true, display: true, reading: true, data: true },
       orderBy: { id: 'asc' },
     }),
     prisma.item
       .findMany({
         where: { language: 'ja', type: 'GRAMMAR' },
-        select: { id: true, display: true, data: true },
+        select: { id: true, display: true, reading: true, data: true },
         orderBy: { id: 'asc' },
       })
       .then(bySourceOrder),
@@ -47,13 +49,13 @@ export async function loadItemData(prisma: PrismaClient): Promise<ItemData> {
         type: 'VOCAB',
         data: { path: ['jlpt'], equals: SKELETON_VOCAB_LEVEL },
       },
-      select: { id: true, display: true, data: true },
+      select: { id: true, display: true, reading: true, data: true },
       take: MAX_VOCAB_FOR_PROMPT,
       orderBy: { createdAt: 'asc' },
     }),
     prisma.item.findMany({
       where: { language: 'ja', type: 'KANJI' },
-      select: { id: true, display: true, data: true },
+      select: { id: true, display: true, reading: true, data: true },
       orderBy: { id: 'asc' },
     }),
   ]);
@@ -95,7 +97,7 @@ function formatVocab(items: RawItem[]): string {
         readings?: string[];
         senses?: string[];
       };
-      const reading = d.readings?.[0] ?? '';
+      const reading = v.reading ?? d.readings?.[0] ?? '';
       const gloss = d.senses?.[0] ?? '';
       return `${v.id}(${v.display}・${reading}・${gloss})`;
     })

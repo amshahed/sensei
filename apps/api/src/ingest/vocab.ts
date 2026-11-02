@@ -16,6 +16,11 @@ export type JmdictGloss = { lang: string; text: string };
 export type JmdictSense = {
   gloss: JmdictGloss[];
   partOfSpeech?: string[];
+  /** Kanji / kana forms this sense is restricted to; ["*"] = all. */
+  appliesToKanji?: string[];
+  appliesToKana?: string[];
+  /** e.g. "uk" = usually written using kana alone. */
+  misc?: string[];
 };
 export type JmdictWord = {
   id: string;
@@ -28,10 +33,13 @@ export type JmdictFile = { words: JmdictWord[] };
 // JMdict carries no JLPT data at all, so level membership comes from the Tanos
 // lists (decisions.md §E — "authoritative taxonomy of what to teach per level"),
 // committed under apps/api/data/jlpt. JMdict supplies readings, senses and ids.
+// The list's `meaning` column is used ONLY to choose between JMdict homophones
+// (そば "beside" vs 蕎麦 "noodles"); it is never stored or shown.
 export type JlptLevel = 'N5' | 'N4';
 export type JlptListRow = {
   expression: string;
   reading: string;
+  meaning?: string;
   level: JlptLevel;
 };
 export type JlptListSource = { level: JlptLevel; file: string };
@@ -42,6 +50,11 @@ export const DEFAULT_JLPT_LISTS: JlptListSource[] = [
   { level: 'N5', file: path.join(DATA_DIR, 'n5-vocab.csv') },
   { level: 'N4', file: path.join(DATA_DIR, 'n4-vocab.csv') },
 ];
+
+const KANA_ONLY = /^[぀-ヿー]+$/;
+const AFFIX_MARK = /[〜～~]/g;
+/** Kanji spellings JMdict marks rare / search-only / irregular / outdated. */
+const NON_STANDARD_KANJI_TAGS = new Set(['rK', 'sK', 'iK', 'oK']);
 
 /** Minimal RFC-4180 line parser: commas inside "quoted" fields, "" escapes. */
 export function parseCsvLine(line: string): string[] {
@@ -72,38 +85,49 @@ export function parseCsvLine(line: string): string[] {
   return cells;
 }
 
-/** Parse an `expression,reading` list (header row required). */
+/**
+ * Parse an `expression,reading[,meaning]` list (header row required). A row
+ * naming several words positionally (回る、回す / まわる、まわす) becomes one
+ * row per word.
+ */
 export function parseJlptList(raw: string, level: JlptLevel): JlptListRow[] {
   const lines = raw.split(/\r?\n/).filter((l) => l.trim());
   const header = parseCsvLine(lines[0] ?? '').map((h) => h.trim());
   const exprIdx = header.indexOf('expression');
   const readIdx = header.indexOf('reading');
+  const meanIdx = header.indexOf('meaning');
   if (exprIdx === -1 || readIdx === -1) {
     throw new Error(
       `JLPT list is missing an "expression,reading" header (got: ${lines[0] ?? '<empty>'})`,
     );
   }
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).flatMap((line) => {
     const cells = parseCsvLine(line);
     const expression = (cells[exprIdx] ?? '').trim();
-    const reading = (cells[readIdx] ?? '').trim();
+    const rawReading = (cells[readIdx] ?? '').trim();
+    const meaning = meanIdx === -1 ? undefined : cells[meanIdx]?.trim();
     // A few upstream rows leave the reading blank for kana-only words
     // (ごらんになる, かまう) — there the spelling *is* the reading.
-    return {
-      expression,
-      reading: reading || (KANA_ONLY.test(expression) ? expression : ''),
-      level,
-    };
+    const reading =
+      rawReading || (KANA_ONLY.test(expression) ? expression : '');
+
+    const exprParts = expression.split('、');
+    const readParts = reading.split('、');
+    if (exprParts.length > 1 && exprParts.length === readParts.length) {
+      return exprParts.map((e, i) => ({
+        expression: e.trim(),
+        reading: readParts[i].trim(),
+        meaning,
+        level,
+      }));
+    }
+    return [{ expression, reading, meaning, level }];
   });
 }
 
-const KANA_ONLY = /^[\u3040-\u30ffー]+$/;
-
-const AFFIX_MARK = /[〜～~]/g;
-
 /**
  * Expand one list cell into the spellings JMdict may file it under:
- *  - "足; 脚", "回る、回す" → 足, 脚 / 回る, 回す (alternatives)
+ *  - "足; 脚"         → 足, 脚            (alternatives)
  *  - "～円"           → 円                (counter / affix marker)
  *  - "パート (タイム)" → パートタイム, パート (optional part)
  */
@@ -135,86 +159,246 @@ export function readingVariants(cell: string): string[] {
   return [...out];
 }
 
+const applies = (restriction: string[] | undefined, form: string) =>
+  !restriction || restriction.length === 0
+    ? true
+    : restriction.includes('*') || restriction.includes(form);
+
+/** Senses that apply to this (spelling, reading) — not to another reading of the entry. */
+export function applicableSenses(
+  word: JmdictWord,
+  display: string,
+  reading: string,
+): JmdictSense[] {
+  const displayIsKanjiForm = word.kanji.some((k) => k.text === display);
+  return word.sense.filter(
+    (s) =>
+      applies(s.appliesToKana, reading) &&
+      (!displayIsKanjiForm || applies(s.appliesToKanji, display)),
+  );
+}
+
+const isEnglish = (g: JmdictGloss) => g.lang === 'eng' || g.lang === 'en';
+
+const STOPWORDS = new Set(
+  'a an the to of and or in on at for with by be is as one some someone something abbr esp eg etc'.split(
+    ' ',
+  ),
+);
+
+/** Lower-cased content words, naive plural-stripped ("noodles" ≈ "noodle"). */
+export function glossTokens(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (raw.length < 3 || STOPWORDS.has(raw)) continue;
+    out.add(raw.length > 3 && raw.endsWith('s') ? raw.slice(0, -1) : raw);
+  }
+  return out;
+}
+
+/**
+ * The spelling to teach. Tanos sometimes lists a word under kanji that real
+ * text almost never uses (居る, 有る, 下さい); when JMdict marks the word's
+ * primary sense "uk" (usually written in kana alone), teach the kana — いる,
+ * ある, ください — and keep the kanji in `writing_forms` for reference.
+ */
+export function learnerSpelling(
+  word: JmdictWord,
+  form: string,
+  reading: string,
+): string {
+  if (KANA_ONLY.test(form)) return form;
+  const primary = applicableSenses(word, form, reading)[0];
+  return primary?.misc?.includes('uk') ? reading : form;
+}
+
 export type JlptMatch = {
   word: JmdictWord;
   level: JlptLevel;
-  /** The spelling the list uses (e.g. これ, not the rare kanji 此れ). */
+  /** The list's spelling (これ, not the rare 此れ) — or its kana if usually kana (居る → いる). */
   display: string;
   reading: string;
 };
 
+export type MatchReport = {
+  matches: JlptMatch[];
+  /** No JMdict entry has this (spelling, reading). */
+  unmatched: JlptListRow[];
+  /** Every candidate is a word an earlier row already took (e.g. on both lists). */
+  duplicates: JlptListRow[];
+  /** Top candidates tied on meaning — picked by `common` / file order; worth a look. */
+  lowConfidence: { row: JlptListRow; picked: JlptMatch; others: string[] }[];
+};
+
+type Candidate = {
+  word: JmdictWord;
+  form: string;
+  reading: string;
+  overlap: number;
+  /** overlap ÷ distinct gloss words: specific 点ける beats catch-all 付ける. */
+  density: number;
+  usuallyKana: boolean;
+  common: boolean;
+  order: number;
+};
+
 /**
- * Join list rows to JMdict entries on (spelling, reading). Ambiguous rows prefer
- * a `common` entry, then JMdict file order. A word reached by several rows (or
- * on both lists) is kept once, at its first row's level.
+ * Join list rows to JMdict entries on (spelling, reading). When several JMdict
+ * words fit, rank by gloss overlap with the row's primary meaning (text before
+ * the first ";") → overlap density → usually-kana for a kana spelling →
+ * `common` → JMdict file order. A row whose best match was already taken by an earlier row is a
+ * duplicate, unless an untaken candidate also shares its meaning.
  */
 export function matchJlptList(
   words: JmdictWord[],
   rows: JlptListRow[],
-): { matches: JlptMatch[]; unmatched: JlptListRow[] } {
-  const byText = new Map<string, JmdictWord[]>();
-  for (const w of words) {
+): MatchReport {
+  const byText = new Map<string, number[]>();
+  words.forEach((w, idx) => {
     const texts = new Set([
       ...w.kanji.map((k) => k.text),
       ...w.kana.map((k) => k.text),
     ]);
     for (const t of texts) {
       const bucket = byText.get(t);
-      if (bucket) bucket.push(w);
-      else byText.set(t, [w]);
+      if (bucket) bucket.push(idx);
+      else byText.set(t, [idx]);
     }
-  }
+  });
 
-  const isCommon = (w: JmdictWord) =>
-    w.kanji.some((k) => k.common) || w.kana.some((k) => k.common);
-
-  const matches: JlptMatch[] = [];
-  const unmatched: JlptListRow[] = [];
-  const seen = new Set<string>();
-
-  const findCandidates = (expression: string, readingCell: string) => {
+  const findCandidates = (
+    expression: string,
+    readingCell: string,
+    primaryMeaning: Set<string>,
+  ): Candidate[] => {
     const readings = readingVariants(readingCell);
-    const found: { word: JmdictWord; form: string; reading: string }[] = [];
+    const found = new Map<string, Candidate>();
     for (const form of readingVariants(expression)) {
-      for (const word of byText.get(form) ?? []) {
+      for (const idx of byText.get(form) ?? []) {
+        const word = words[idx];
+        if (found.has(word.id)) continue;
         const reading = readings.find((r) =>
           word.kana.some((k) => k.text === r),
         );
-        if (reading) found.push({ word, form, reading });
+        if (!reading) continue;
+        const senses = applicableSenses(word, form, reading);
+        const glosses = glossTokens(
+          senses
+            .flatMap((s) => s.gloss.filter(isEnglish).map((g) => g.text))
+            .join(' '),
+        );
+        let overlap = 0;
+        for (const t of primaryMeaning) if (glosses.has(t)) overlap++;
+        found.set(word.id, {
+          word,
+          form,
+          reading,
+          overlap,
+          density: glosses.size ? overlap / glosses.size : 0,
+          usuallyKana:
+            KANA_ONLY.test(form) &&
+            (word.kanji.length === 0 ||
+              senses.some((s) => s.misc?.includes('uk'))),
+          common:
+            word.kanji.some((k) => k.common) || word.kana.some((k) => k.common),
+          order: idx,
+        });
       }
     }
-    return found;
+    return [...found.values()];
   };
 
+  const rank = (a: Candidate, b: Candidate) =>
+    b.overlap - a.overlap ||
+    b.density - a.density ||
+    Number(b.usuallyKana) - Number(a.usuallyKana) ||
+    Number(b.common) - Number(a.common) ||
+    a.order - b.order;
+  const sameStrength = (a: Candidate, b: Candidate) =>
+    a.overlap === b.overlap &&
+    a.density === b.density &&
+    a.usuallyKana === b.usuallyKana &&
+    a.common === b.common;
+
+  const report: MatchReport = {
+    matches: [],
+    unmatched: [],
+    duplicates: [],
+    lowConfidence: [],
+  };
+  const taken = new Set<string>();
+
   for (const row of rows) {
-    let candidates = findCandidates(row.expression, row.reading);
+    const primary = glossTokens((row.meaning ?? '').split(/[;；]/)[0]);
+    let candidates = findCandidates(row.expression, row.reading, primary);
     // A few upstream rows have the columns swapped (いただく / 頂く).
     if (candidates.length === 0) {
-      candidates = findCandidates(row.reading, row.expression);
+      candidates = findCandidates(row.reading, row.expression, primary);
     }
     if (candidates.length === 0) {
-      unmatched.push(row);
+      report.unmatched.push(row);
       continue;
     }
-    const pick = candidates.find((c) => isCommon(c.word)) ?? candidates[0];
-    if (seen.has(pick.word.id)) continue;
-    seen.add(pick.word.id);
-    matches.push({
-      word: pick.word,
+    candidates.sort(rank);
+    // If the row's best match is a word an earlier row already took, the row
+    // names that same word (掛ける, then かける "to call") — unless an untaken
+    // candidate genuinely shares its meaning (キロ taken → キロメートル).
+    const fresh = candidates.filter((c) => !taken.has(c.word.id));
+    const usable = taken.has(candidates[0].word.id)
+      ? fresh.filter((c) => c.overlap > 0)
+      : fresh;
+    if (usable.length === 0) {
+      report.duplicates.push(row);
+      continue;
+    }
+    const [best, next] = usable;
+    taken.add(best.word.id);
+    const picked: JlptMatch = {
+      word: best.word,
       level: row.level,
-      display: pick.form,
-      reading: pick.reading,
-    });
+      display: learnerSpelling(best.word, best.form, best.reading),
+      reading: best.reading,
+    };
+    report.matches.push(picked);
+    if (next && sameStrength(best, next)) {
+      report.lowConfidence.push({
+        row,
+        picked,
+        others: usable
+          .slice(1)
+          .filter((c) => sameStrength(best, c))
+          .map((c) => `${c.form}/${c.reading} (jmdict_id=${c.word.id})`),
+      });
+    }
   }
 
-  return { matches, unmatched };
+  return report;
 }
 
-const isEnglish = (g: JmdictGloss) => g.lang === 'eng' || g.lang === 'en';
+/**
+ * Kanji spellings of the word that the matched reading actually uses, minus
+ * forms JMdict marks rare / search-only / irregular / outdated (これ keeps none
+ * of 此れ, 是, 之…).
+ */
+export function standardWritingForms(
+  word: JmdictWord,
+  reading: string,
+): string[] {
+  const kana = word.kana.find((k) => k.text === reading);
+  // On a kana form, ["*"] = every kanji spelling, [] = none (e.g. ネコ).
+  const usesKanji = (text: string) =>
+    !kana ||
+    kana.appliesToKanji.includes('*') ||
+    kana.appliesToKanji.includes(text);
+  return word.kanji
+    .filter((k) => !k.tags.some((t) => NON_STANDARD_KANJI_TAGS.has(t)))
+    .filter((k) => usesKanji(k.text))
+    .map((k) => k.text);
+}
 
 export function buildVocabItem(match: JlptMatch, id: string) {
-  const { word } = match;
-  const enGlosses = word.sense
+  const { word, display, reading } = match;
+  const enGlosses = applicableSenses(word, display, reading)
     .flatMap((s) => s.gloss.filter(isEnglish).map((g) => g.text))
     .slice(0, 3);
 
@@ -222,11 +406,11 @@ export function buildVocabItem(match: JlptMatch, id: string) {
     id,
     language: 'ja',
     type: 'VOCAB' as const,
-    display: match.display,
-    reading: match.reading,
+    display,
+    reading,
     meaning: enGlosses[0] ?? null,
     data: {
-      writing_forms: word.kanji.map((k) => k.text),
+      writing_forms: standardWritingForms(word, reading),
       readings: word.kana.map((k) => k.text),
       senses: enGlosses,
       jmdict_id: word.id,
@@ -236,30 +420,41 @@ export function buildVocabItem(match: JlptMatch, id: string) {
 }
 
 /**
- * Item ids are `ja:vocab:<display>`; when two distinct JMdict words share a
- * display form (方 = かた "person" / ほう "direction"), the later one gets the
- * reading appended (`ja:vocab:方:ほう`) instead of being dropped.
+ * Order-independent ids. `ja:vocab:<display>` when the spelling is unique among
+ * the ingested words; otherwise EVERY word sharing it is qualified — by reading
+ * (方 → `ja:vocab:方:かた`, `ja:vocab:方:ほう`), and by JMdict id when spelling
+ * and reading coincide (kana homophones: `ja:vocab:そう:1006610`). Reordering or
+ * editing the list therefore never re-points an existing id at another word;
+ * at worst a newly colliding word renames ids, which leaves the old row orphaned
+ * rather than silently changing its meaning.
  */
-export function assignVocabIds(matches: JlptMatch[]): {
-  assigned: { match: JlptMatch; id: string }[];
-  dropped: JlptMatch[];
-} {
-  const used = new Set<string>();
-  const assigned: { match: JlptMatch; id: string }[] = [];
-  const dropped: JlptMatch[] = [];
-  for (const match of matches) {
-    let id = `ja:vocab:${match.display}`;
-    if (used.has(id)) id = `${id}:${match.reading}`;
-    if (used.has(id)) {
-      // Two JMdict entries with identical spelling AND reading — keep the first.
-      dropped.push(match);
-      continue;
+export function assignVocabIds(
+  matches: JlptMatch[],
+): { match: JlptMatch; id: string }[] {
+  const count = (key: (m: JlptMatch) => string) => {
+    const n = new Map<string, number>();
+    for (const m of matches) n.set(key(m), (n.get(key(m)) ?? 0) + 1);
+    return n;
+  };
+  const byDisplay = count((m) => m.display);
+  const byDisplayReading = count((m) => `${m.display}:${m.reading}`);
+
+  return matches.map((match) => {
+    const { display, reading, word } = match;
+    let id = `ja:vocab:${display}`;
+    if ((byDisplay.get(display) ?? 0) > 1) {
+      // A kana spelling *is* its reading, so qualify kana homophones by id.
+      if (display === reading) return { match, id: `${id}:${word.id}` };
+      id = `${id}:${reading}`;
+      if ((byDisplayReading.get(`${display}:${reading}`) ?? 0) > 1) {
+        id = `${id}:${word.id}`;
+      }
     }
-    used.add(id);
-    assigned.push({ match, id });
-  }
-  return { assigned, dropped };
+    return { match, id };
+  });
 }
+
+const fmtRow = (r: JlptListRow) => `${r.level} ${r.expression} / ${r.reading}`;
 
 export async function ingestVocab(
   prisma: PrismaClient,
@@ -277,21 +472,28 @@ export async function ingestVocab(
   const rows = lists.flatMap(({ level, file: listPath }) =>
     parseJlptList(fs.readFileSync(listPath, 'utf-8'), level),
   );
-  const { matches, unmatched } = matchJlptList(file.words, rows);
-  const { assigned, dropped } = assignVocabIds(matches);
-  const items = assigned.map(({ match, id }) => buildVocabItem(match, id));
+  const report = matchJlptList(file.words, rows);
+  const items = assignVocabIds(report.matches).map(({ match, id }) =>
+    buildVocabItem(match, id),
+  );
 
-  if (dropped.length) {
+  if (report.unmatched.length) {
     console.warn(
-      `ingest:items vocab — ${dropped.length} same-spelling-and-reading duplicate(s) skipped:\n  ${dropped
-        .map((m) => `${m.display} / ${m.reading} (jmdict_id=${m.word.id})`)
-        .join('\n  ')}`,
+      `ingest:items vocab — ${report.unmatched.length} list row(s) had no JMdict match (skipped):\n  ${report.unmatched.map(fmtRow).join('\n  ')}`,
     );
   }
-  if (unmatched.length) {
+  if (report.duplicates.length) {
     console.warn(
-      `ingest:items vocab — ${unmatched.length} list row(s) had no JMdict match (skipped):\n  ${unmatched
-        .map((r) => `${r.level} ${r.expression} / ${r.reading}`)
+      `ingest:items vocab — ${report.duplicates.length} list row(s) name a word an earlier row already took (skipped):\n  ${report.duplicates.map(fmtRow).join('\n  ')}`,
+    );
+  }
+  if (report.lowConfidence.length) {
+    console.warn(
+      `ingest:items vocab — ${report.lowConfidence.length} row(s) matched several JMdict words equally well; picked by common/file order — worth a look:\n  ${report.lowConfidence
+        .map(
+          ({ row, picked }) =>
+            `${fmtRow(row)} → ${picked.display}/${picked.reading} (jmdict_id=${picked.word.id}) "${buildVocabItem(picked, '').meaning ?? ''}"`,
+        )
         .join('\n  ')}`,
     );
   }
@@ -312,6 +514,6 @@ export async function ingestVocab(
   const byLevel = (l: JlptLevel) =>
     items.filter((i) => i.data.jlpt === l).length;
   console.log(
-    `ingest:items vocab — upserted ${items.length} vocab items (N5 ${byLevel('N5')}, N4 ${byLevel('N4')}) from ${rows.length} list rows; ${unmatched.length} unmatched`,
+    `ingest:items vocab — upserted ${items.length} vocab items (N5 ${byLevel('N5')}, N4 ${byLevel('N4')}) from ${rows.length} list rows; ${report.unmatched.length} unmatched, ${report.duplicates.length} duplicate, ${report.lowConfidence.length} low-confidence`,
   );
 }

@@ -36,21 +36,24 @@ pnpm --filter api ingest:items vocab --source ./data/jmdict-eng-3.6.2.json
 **Source file:** the latest `jmdict-eng-*.json.tgz` from
 <https://github.com/scriptin/jmdict-simplified/releases> (~11 MB compressed, ~113 MB JSON). Put it under `apps/api/data/` (gitignored).
 
-**JMdict has no JLPT data** — no `jlpt-*` tags exist in it. Level membership comes from the Tanos-derived lists committed at `apps/api/data/jlpt/n5-vocab.csv` / `n4-vocab.csv` (see `data/jlpt/SOURCES.md` for provenance + CC BY attribution). Each `expression,reading` row is joined to a JMdict entry on (spelling, reading):
+**JMdict has no JLPT data**: it carries no `jlpt-*` tags. Level membership comes from the Tanos-derived lists committed at `apps/api/data/jlpt/n5-vocab.csv` / `n4-vocab.csv` (see `data/jlpt/SOURCES.md` for provenance and CC BY attribution, and decisions.md §E.1.a for the rules). Each `expression,reading,meaning` row is joined to a JMdict entry on (spelling, reading):
 
-- alternatives split (`足; 脚`, `回る、回す`), affix markers stripped (`～円`), optional parts tried both ways (`パート (タイム)`), suru-verbs matched to the noun (`運動 / うんどうする`), swapped columns retried
-- ambiguous rows prefer a `common` entry; a word on both lists keeps N5
-- unmatched rows are **printed, not silently dropped** (4 of 1,386 on jmdict-eng-3.6.2 — all malformed upstream rows)
+- **Normalisation:** alternatives are split (`足; 脚`), positional pairs become separate rows (`回る、回す / まわる、まわす`), affix markers are stripped (`～円`), optional parts are tried both ways (`パート (タイム)`), suru-verbs are matched to the noun (`運動 / うんどうする`), and swapped columns are retried.
+- **Homophones:** candidates are ranked by gloss overlap with the row's *primary* meaning (text before the first `;`), then by how concentrated that overlap is (specific `点ける` beats catch-all `付ける`), then usually-kana, then `common`, then JMdict order. The meaning column is used only for this.
+- **Duplicates:** a row whose best match was already taken by an earlier row names the same word (`掛ける` then `かける`), so it's skipped. The exception is when an untaken candidate also shares its meaning (`キロ` taken → `キロメートル`). A word on both lists keeps N5.
+- **Everything skipped is printed:** unmatched rows, duplicate rows, and *low-confidence* picks (candidates tied on every signal) that are worth a look.
+- **Taught spelling:** the list's spelling (`これ`, not the rare `此れ`). The exception is a word whose primary sense is *usually kana*: it's taught in kana, with the kanji as a writing form (`居る` → `いる`, `珈琲` → `コーヒー`).
+- **Senses / writing forms:** only senses that apply to the matched reading are kept, and kanji spellings JMdict tags rare / search-only / irregular / outdated are dropped.
 
-Result on jmdict-eng-3.6.2: **1,352 items (N5 701, N4 651)**.
+Result on jmdict-eng-3.6.2: **1,358 items (N5 702, N4 656)**, 0 null meanings. 4 malformed upstream rows are unmatched, 25 duplicates are skipped, and 3 picks are flagged low-confidence.
 
-- **IDs:** `ja:vocab:<display>`, where display is the list's spelling (これ, not the rare kanji 此れ). When two JMdict words share a spelling, the later gets its reading appended: `ja:vocab:人` (にん) + `ja:vocab:人:ひと`.
+- **IDs:** `ja:vocab:<spelling>`, qualified **only when spellings collide**: by reading (`ja:vocab:方:かた`, `ja:vocab:方:ほう`), or by JMdict id for kana homophones (`ja:vocab:いる:1577980` "to be", `ja:vocab:いる:1546640` "to need"). The rule doesn't depend on list order, so editing the list can never re-point an existing id at a different word.
 - **`data` shape:**
   ```json
   {
     "writing_forms": ["猫"],
     "readings":      ["ねこ", "ネコ"],
-    "senses":        ["cat (esp. the domestic cat, Felis catus)", "feline"],
+    "senses":        ["cat (esp. the domestic cat, Felis catus)", "feline", "shamisen"],
     "jmdict_id":     "1467640",
     "jlpt":          "N5"
   }
@@ -134,9 +137,13 @@ Grammar item `meaning` fields are empty shells — filled by the AI drafter in i
 pnpm --filter api ingest:refs tatoeba --source ./data/jpn_sentences.tsv [--per-item 8]
 ```
 
-**Source file:** <https://downloads.tatoeba.org/exports/per_language/jpn/jpn_sentences.tsv.bz2> (`bunzip2` it; format `id\tjpn\ttext`). Needs `VOYAGE_API_KEY`.
+**Source file:** <https://downloads.tatoeba.org/exports/per_language/jpn/jpn_sentences.tsv.bz2> (`bunzip2` it; format `id\tjpn\ttext`). Needs `VOYAGE_API_KEY`. Tokenising the whole file takes ~10–20 s.
 
-**Run `ingest:items vocab` and `kanji` first.** The full Japanese corpus (~200k sentences) would be ~1.7 GB once embedded (1024-dim) and HNSW-indexed — over Neon free tier's 1 GiB. So the ingester keeps, for each VOCAB/KANJI item, its `--per-item` (default 8) **shortest** sentences containing it (shortest = most beginner-friendly). Verbs/adjectives also match on their kanji stem (食べ → 食べました). Expect ≤ ~10k sentences, ~90 MB, well under Voyage's free credit.
+**Run `ingest:items vocab` and `kanji` first.** The full Japanese corpus (~250k sentences) would be about 2 GB once embedded (1024-dim) and HNSW-indexed, which is over Neon free tier's 1 GiB. So for each VOCAB/KANJI item the ingester keeps its `--per-item` (default 8) **shortest** sentences (decisions.md §E.3.a). On jpn_sentences 2026-11: **~9.7k sentences, ~80 MB**, and every item gets at least one example.
+
+- **Matching is morphological** (kuromoji): a vocab item matches a run of 1–4 tokens that spells it, with the last token also tried in dictionary form. So `食べました` → `食べる` and `おいしかった` → `おいしい`, but `ある` never matches inside `あるいは` or `その` inside `そのまま`. Kanji items match the character anywhere.
+- **The ingest syncs:** it embeds only sentences not already stored (reruns cost ~nothing) and **prunes** stored `tatoeba-*` rows the selection no longer keeps, for example after lowering `--per-item`.
+- Sentences of 5–120 characters are considered, so short beginner sentences like `猫が好きです。` are kept.
 
 ---
 

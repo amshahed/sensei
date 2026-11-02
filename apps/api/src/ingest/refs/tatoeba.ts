@@ -1,47 +1,108 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import { VoyageClient } from '../../voyage/voyage-client';
+import {
+  buildTokenizer,
+  type JapaneseTokenizer,
+} from '../../common/japanese-tokenizer';
 import { upsertRefDoc } from './upsert-doc';
 
 // Tatoeba sentences.csv / jpn_sentences.tsv format: id\tlang\ttext
 // (or id\ttext when pre-filtered to Japanese).
 export type TatoebaSentence = { id: string; text: string };
 
-const MIN_LEN = 10;
+// 5 keeps genuine beginner sentences (猫が好きです。 is 7) while dropping
+// fragments; the per-item selection below prefers the shortest anyway.
+const MIN_LEN = 5;
 const MAX_LEN = 120;
 const URL_RE = /https?:\/\//;
 
-// Full Tatoeba JA is ~200k sentences ≈ 1.7 GB once embedded + HNSW-indexed —
+// Full Tatoeba JA is ~250k sentences ≈ 2 GB once embedded + HNSW-indexed —
 // over Neon free tier's 1 GiB. The drafter only needs examples for the items it
 // teaches, so keep each item's K shortest sentences (shortest = most beginner-
-// friendly). ~1.3k items × 8 ≈ ≤10k sentences ≈ ~90 MB.
+// friendly). ~1.5k items × 8 ≈ ≤12k sentences ≈ ~100 MB. See decisions.md
+// (Tatoeba corpus cap) for the trade-off and when to raise K.
 export const DEFAULT_PER_ITEM = 8;
 
-export type MatchKey = { itemId: string; needle: string };
+/** Longest word, in tokens, matched as a compound (日本語 = 日本 + 語). */
+const MAX_WINDOW = 4;
+const KANJI = /[一-鿿]/;
 
-const HAS_KANJI = /[\u4e00-\u9fff]/;
-const ENDS_IN_HIRAGANA = /[\u3040-\u309f]$/;
+export type MatchableItem = {
+  id: string;
+  type: string;
+  display: string;
+  reading?: string | null;
+  data?: unknown;
+};
+
+/** Returns the ids of the items a sentence genuinely contains. */
+export type ItemMatcher = (text: string) => Set<string>;
 
 /**
- * Substring needles per item: the item's display form, plus — for words that
- * mix kanji with trailing okurigana (食べる, 行く, 高い) — the form minus its
- * last kana, so conjugations (食べました, 高かった) still match. Stems shorter
- * than 2 chars are skipped (行 would match 銀行, 旅行, …); the kanji items
- * themselves cover single characters.
+ * Token-aligned matcher (kuromoji / IPADIC):
+ *  - VOCAB: a run of 1–4 tokens whose surfaces concatenate to one of the
+ *    item's spellings — with the last token also tried in dictionary form, so
+ *    conjugations match (食べました → 食べる, おいしかった → おいしい). Being
+ *    token-aligned, いる no longer matches inside はいる, nor その inside そのまま.
+ *  - KANJI: the character appears anywhere (any word using it is an example).
+ * Spellings: the display, standard kanji writing forms and — for words shown in
+ * kana — their kana readings (いい/よい).
  */
-export function buildMatchKeys(
-  items: { id: string; display: string }[],
-): MatchKey[] {
-  const keys: MatchKey[] = [];
-  for (const { id, display } of items) {
-    if (!display) continue;
-    keys.push({ itemId: id, needle: display });
-    if (HAS_KANJI.test(display) && ENDS_IN_HIRAGANA.test(display)) {
-      const stem = display.slice(0, -1);
-      if (stem.length >= 2) keys.push({ itemId: id, needle: stem });
+export function buildItemMatcher(
+  items: MatchableItem[],
+  tokenizer: JapaneseTokenizer,
+): ItemMatcher {
+  const vocab = new Map<string, Set<string>>();
+  const kanji = new Map<string, string>();
+  const addKey = (key: string, id: string) => {
+    if (!key) return;
+    const ids = vocab.get(key);
+    if (ids) ids.add(id);
+    else vocab.set(key, new Set([id]));
+  };
+
+  for (const item of items) {
+    if (item.type === 'KANJI') {
+      kanji.set(item.display, item.id);
+      continue;
+    }
+    const d = (item.data ?? {}) as {
+      writing_forms?: string[];
+      readings?: string[];
+    };
+    addKey(item.display, item.id);
+    for (const form of d.writing_forms ?? []) addKey(form, item.id);
+    if (!KANJI.test(item.display)) {
+      if (item.reading) addKey(item.reading, item.id);
+      for (const r of d.readings ?? []) addKey(r, item.id);
     }
   }
-  return keys;
+
+  return (text: string) => {
+    const hits = new Set<string>();
+    for (const ch of text) {
+      const id = kanji.get(ch);
+      if (id) hits.add(id);
+    }
+    const tokens = tokenizer.tokenize(text);
+    for (let i = 0; i < tokens.length; i++) {
+      let surfaces = '';
+      for (let n = 0; n < MAX_WINDOW && i + n < tokens.length; n++) {
+        const last = tokens[i + n];
+        const asWritten = surfaces + last.surface_form;
+        const asDictionary =
+          last.basic_form && last.basic_form !== '*'
+            ? surfaces + last.basic_form
+            : asWritten;
+        for (const key of [asWritten, asDictionary]) {
+          for (const id of vocab.get(key) ?? []) hits.add(id);
+        }
+        surfaces = asWritten;
+      }
+    }
+    return hits;
+  };
 }
 
 /**
@@ -50,7 +111,7 @@ export function buildMatchKeys(
  */
 export function selectForItems(
   sentences: TatoebaSentence[],
-  keys: MatchKey[],
+  match: ItemMatcher,
   perItem: number,
 ): TatoebaSentence[] {
   const sorted = [...sentences].sort(
@@ -60,19 +121,15 @@ export function selectForItems(
       a.id.localeCompare(b.id),
   );
   const counts = new Map<string, number>();
-  let active = keys;
   const kept: TatoebaSentence[] = [];
 
   for (const s of sorted) {
-    if (active.length === 0) break;
-    const hitItems = new Set<string>();
-    for (const k of active) {
-      if (s.text.includes(k.needle)) hitItems.add(k.itemId);
-    }
-    if (hitItems.size === 0) continue;
+    const wanted = [...match(s.text)].filter(
+      (id) => (counts.get(id) ?? 0) < perItem,
+    );
+    if (wanted.length === 0) continue;
     kept.push(s);
-    for (const id of hitItems) counts.set(id, (counts.get(id) ?? 0) + 1);
-    active = active.filter((k) => (counts.get(k.itemId) ?? 0) < perItem);
+    for (const id of wanted) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return kept;
 }
@@ -111,12 +168,21 @@ export function parseTatoeba(
   return result;
 }
 
+const docId = (s: TatoebaSentence) => `tatoeba-${s.id}`;
+
+/**
+ * Sync the `tatoeba` slice of ReferenceDoc to the current selection: embed and
+ * insert only sentences not already stored, and delete stored ones the
+ * selection no longer keeps (e.g. after lowering --per-item, or rows from an
+ * older uncapped run) — so the storage cap is actually enforced.
+ */
 export async function ingestTatoeba(
   prisma: PrismaClient,
   voyage: VoyageClient,
   sourcePath: string,
   preFiltered = false,
   perItem = DEFAULT_PER_ITEM,
+  tokenizer?: JapaneseTokenizer,
 ): Promise<void> {
   if (!voyage.enabled) {
     throw new Error('VOYAGE_API_KEY is required for ingest:refs tatoeba.');
@@ -137,7 +203,7 @@ export async function ingestTatoeba(
 
   const items = await prisma.item.findMany({
     where: { language: 'ja', type: { in: ['VOCAB', 'KANJI'] } },
-    select: { id: true, display: true },
+    select: { id: true, type: true, display: true, reading: true, data: true },
   });
   if (items.length === 0) {
     throw new Error(
@@ -145,29 +211,52 @@ export async function ingestTatoeba(
     );
   }
 
-  const sentences = selectForItems(parsed, buildMatchKeys(items), perItem);
+  const matcher = buildItemMatcher(
+    items,
+    tokenizer ?? (await buildTokenizer()),
+  );
+  const selected = selectForItems(parsed, matcher, perItem);
+  const keepIds = new Set(selected.map(docId));
+
+  const stored = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "ReferenceDoc" WHERE source = 'tatoeba'
+  `;
+  const storedIds = new Set(stored.map((r) => r.id));
+  const toInsert = selected.filter((s) => !storedIds.has(docId(s)));
+  const toDelete = [...storedIds].filter((id) => !keepIds.has(id));
 
   console.log(
-    `ingest:refs tatoeba — ${parsed.length} sentences after filtering; kept ${sentences.length} (≤${perItem} per item across ${items.length} items); embedding...`,
+    `ingest:refs tatoeba — ${parsed.length} sentences after filtering; selected ${selected.length} (≤${perItem} per item across ${items.length} items): ${toInsert.length} new, ${selected.length - toInsert.length} already stored, ${toDelete.length} to prune`,
   );
 
-  const texts = sentences.map((s) => s.text);
-  const { embeddings, totalTokens } = await voyage.embedAll(texts);
+  if (toInsert.length) {
+    const { embeddings, totalTokens } = await voyage.embedAll(
+      toInsert.map((s) => s.text),
+    );
+    const costUsd = (totalTokens / 1_000_000) * 0.06;
+    console.log(`  Voyage: ${totalTokens} tokens (~$${costUsd.toFixed(4)})`);
 
-  const costUsd = (totalTokens / 1_000_000) * 0.06;
-  console.log(`  Voyage: ${totalTokens} tokens (~$${costUsd.toFixed(4)})`);
-
-  for (let i = 0; i < sentences.length; i++) {
-    const s = sentences[i];
-    await upsertRefDoc(prisma, {
-      id: `tatoeba-${s.id}`,
-      source: 'tatoeba',
-      language: 'ja',
-      text: s.text,
-      embedding: embeddings[i],
-      metadata: { tatoeba_id: s.id },
-    });
+    for (let i = 0; i < toInsert.length; i++) {
+      const s = toInsert[i];
+      await upsertRefDoc(prisma, {
+        id: docId(s),
+        source: 'tatoeba',
+        language: 'ja',
+        text: s.text,
+        embedding: embeddings[i],
+        metadata: { tatoeba_id: s.id },
+      });
+    }
   }
 
-  console.log(`ingest:refs tatoeba — upserted ${sentences.length} docs`);
+  if (toDelete.length) {
+    await prisma.$executeRaw`
+      DELETE FROM "ReferenceDoc"
+      WHERE source = 'tatoeba' AND id = ANY(${toDelete}::text[])
+    `;
+  }
+
+  console.log(
+    `ingest:refs tatoeba — inserted ${toInsert.length}, pruned ${toDelete.length}; ${selected.length} docs in the corpus`,
+  );
 }

@@ -259,6 +259,26 @@ created_at, updated_at, version
 
 **Why:** Tags + prerequisites are load-bearing later (theme retrieval, lesson sequencing) and cheap now. Denser metadata up front is premature for an N5 MVP. Bare-minimum causes rework. JSONB-everything is defensible only for very-early prototypes — we're past that.
 
+### E.1.a Ingest rules surfaced by real source data (implements E.1; locked 2026-11-02)
+
+**Trigger:** run against the real jmdict-simplified 3.6.2 files, the #34 ingesters loaded 0 vocab / 0 kanji. JMdict carries **no JLPT data**, and KANJIDIC2 uses the **pre-2010 1–4 JLPT scale** (no level 5). Fixed in PR #50.
+
+**Rules (all mechanical consequences of E.1 "canonical sources" + E.2 "Tanos = authoritative per-level taxonomy"):**
+- **Level membership** = the Tanos lists, committed at `apps/api/data/jlpt/` (CC BY, attributed in `SOURCES.md`; tanos.co.uk stopped resolving in 2026, so the grammar list comes from the Internet Archive). JMdict supplies readings, senses and ids. The Tanos `meaning` column is used **only** to choose between JMdict homophones (そば "beside" vs 蕎麦 "noodles"), never stored or shown.
+- **Kanji:** KANJIDIC2 old level 4 → N5 (103 kanji), old 3 → N4.
+- **Taught spelling:** the list's spelling, except a word whose primary sense JMdict marks *usually kana* is taught in kana with the kanji kept as a writing form (居る → いる, 珈琲 → コーヒー, 下さい → ください; 122 of 1,358 words). Rationale: teach what real text uses.
+- **Item ids stay `ja:vocab:<spelling>`** (CC.1 prefix), qualified **only when the spelling collides**: by reading (`ja:vocab:方:かた` / `方:ほう`), or by JMdict id for kana homophones (`ja:vocab:いる:1577980` "to be" / `いる:1546640` "to need"). This is order-independent, so editing the list can never re-point an id at a different word (which would silently corrupt every learner's mastery state for it).
+
+### E.3.a Beta Tatoeba corpus — per-item capped (amends E.3 sizing + L.3 "tens-to-low-hundreds of thousands"; locked 2026-11-02)
+
+**Decision:** For the beta, the Tatoeba slice of the vector store is **capped per item**: each N5/N4 VOCAB/KANJI item keeps its **K = 8 shortest** example sentences (`ingest:refs tatoeba --per-item`). That's ~9.7k sentences, ~80 MB, instead of the ~250k-sentence, ~2 GB full corpus. Matching is morphological (kuromoji, so conjugations count and no matches fire inside other words). The ingest syncs: it embeds only new sentences and prunes ones the selection no longer keeps.
+
+**Why:** the full corpus would exceed the Neon free tier's **1 GiB/branch** limit (L.6 low-ops hosting; solo-bootstrap cost posture, cf. L.4.a). The drafter (F.2) needs examples *for the items it teaches*, not the whole corpus. Shortest-first also suits beginners. The founder approved capping the import when choosing the #22 kickoff (2026-11-02).
+
+**Accepted trade-off:** E.3 also planned Tatoeba for *runtime* "varied practice content" (J.1 Practice Mode). Eight sentences per item is thinner variety than the full corpus.
+
+**Revisit when:** Practice Mode needs more variety per item, or the corpus moves past the beta slice. The lever is `--per-item` (16 ≈ 160 MB still fits the free tier) or the Neon paid tier for the full corpus. No code change is needed either way.
+
 ---
 
 ## Phase F — Lesson schemas + authoring workflow
