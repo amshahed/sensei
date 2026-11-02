@@ -14,9 +14,18 @@
  */
 import { verifyToken } from '@clerk/backend';
 
-/** True when Clerk is configured and the guard should enforce real sessions. */
+/**
+ * True when Clerk is configured and the guard should enforce real sessions.
+ *
+ * Either credential is sufficient: CLERK_SECRET_KEY (JWKS-fetch verification) or
+ * CLERK_JWT_KEY (networkless verification). Keying off the secret key alone
+ * would silently drop a networkless-only deployment into dev-stub mode with
+ * auth fully bypassed — so both count.
+ */
 export function isClerkEnabled(): boolean {
-  return Boolean(process.env.CLERK_SECRET_KEY?.trim());
+  return Boolean(
+    process.env.CLERK_SECRET_KEY?.trim() || process.env.CLERK_JWT_KEY?.trim(),
+  );
 }
 
 /**

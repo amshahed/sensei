@@ -33,30 +33,47 @@ export function AuthScreen() {
   );
 }
 
-function SignInForm() {
-  const { signIn, setActive, isLoaded } = useSignIn();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+/**
+ * Shared submit scaffold for the auth forms: tracks busy/error, blocks
+ * re-entrancy, and funnels thrown errors through {@link messageFor}. Each form
+ * supplies only the Clerk calls that differ.
+ */
+function useAuthAction() {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = async () => {
-    if (!isLoaded || busy) return;
+  const run = async (action: () => Promise<void>) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const attempt = await signIn.create({ identifier: email, password });
-      if (attempt.status === 'complete') {
-        await setActive({ session: attempt.createdSessionId });
-      } else {
-        setError('Additional verification required.');
-      }
+      await action();
     } catch (e) {
       setError(messageFor(e));
     } finally {
       setBusy(false);
     }
   };
+
+  return { busy, error, run };
+}
+
+function SignInForm() {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { busy, error, run } = useAuthAction();
+
+  const submit = () =>
+    run(async () => {
+      if (!isLoaded) return;
+      const attempt = await signIn.create({ identifier: email, password });
+      if (attempt.status === 'complete') {
+        await setActive({ session: attempt.createdSessionId });
+      } else {
+        throw new Error('Additional verification required.');
+      }
+    });
 
   return (
     <View style={styles.form}>
@@ -88,41 +105,26 @@ function SignUpForm() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [pendingCode, setPendingCode] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { busy, error, run } = useAuthAction();
 
-  const startSignUp = async () => {
-    if (!isLoaded || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
+  const startSignUp = () =>
+    run(async () => {
+      if (!isLoaded) return;
       await signUp.create({ emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingCode(true);
-    } catch (e) {
-      setError(messageFor(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
-  const verify = async () => {
-    if (!isLoaded || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
+  const verify = () =>
+    run(async () => {
+      if (!isLoaded) return;
       const attempt = await signUp.attemptEmailAddressVerification({ code });
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
       } else {
-        setError('Verification incomplete. Check the code and try again.');
+        throw new Error('Verification incomplete. Check the code and try again.');
       }
-    } catch (e) {
-      setError(messageFor(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   if (pendingCode) {
     return (
@@ -180,10 +182,19 @@ function Field(props: React.ComponentProps<typeof TextInput>) {
   );
 }
 
-/** Clerk errors carry a user-friendly message in `errors[0].message`. */
+/**
+ * Clerk errors carry a user-friendly message in `errors[0].message`; our own
+ * thrown Errors (non-complete auth states) carry it on `.message`.
+ */
 function messageFor(e: unknown): string {
   const err = e as { errors?: { message?: string }[] };
-  return err?.errors?.[0]?.message ?? 'Something went wrong. Try again.';
+  if (err?.errors?.[0]?.message) {
+    return err.errors[0].message;
+  }
+  if (e instanceof Error && e.message) {
+    return e.message;
+  }
+  return 'Something went wrong. Try again.';
 }
 
 const styles = StyleSheet.create({

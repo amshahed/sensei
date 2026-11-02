@@ -14,8 +14,8 @@ import { VoyageModule } from './voyage/voyage.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
-    HealthModule,
     PrismaModule,
+    HealthModule,
     LessonsModule,
     ChecksModule,
     ReviewsModule,

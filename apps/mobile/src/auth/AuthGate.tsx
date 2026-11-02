@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   ClerkLoaded,
   ClerkProvider,
@@ -38,23 +38,27 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
 /**
  * Registers the Clerk session token with the API client and materialises the
- * user row (`GET /me`) once on sign-in, then renders the app.
+ * user row (`GET /me`) once, then renders the app. Only mounts under
+ * `<SignedIn>`, so the session is guaranteed present.
  */
 function AuthedApp({ children }: { children: React.ReactNode }) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken } = useAuth();
+  const materialised = useRef(false);
 
   useEffect(() => {
+    // Install the token provider FIRST so the /me request below is
+    // authenticated — ordering matters since `/me` is the only call that
+    // upserts the users row. A failure clears the flag so a later token
+    // change retries instead of leaving the account unmaterialised.
     setAuthTokenProvider(() => getToken());
+    if (!materialised.current) {
+      materialised.current = true;
+      void api.me().catch(() => {
+        materialised.current = false;
+      });
+    }
     return () => setAuthTokenProvider(null);
   }, [getToken]);
-
-  useEffect(() => {
-    if (isSignedIn) {
-      // Fire-and-forget: create/link the users row. Failures are non-fatal;
-      // the next authenticated call will retry the upsert path anyway.
-      void api.me().catch(() => undefined);
-    }
-  }, [isSignedIn]);
 
   return <>{children}</>;
 }
