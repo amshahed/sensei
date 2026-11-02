@@ -1,4 +1,8 @@
-import { loadItemData, generateSkeleton } from './skeleton-prompter';
+import {
+  loadItemData,
+  generateSkeleton,
+  bySourceOrder,
+} from './skeleton-prompter';
 import { SkeletonSchema } from './skeleton-schema';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { PrismaClient } from '@prisma/client';
@@ -191,5 +195,57 @@ describe('loadItemData', () => {
     expect(types).toContain('GRAMMAR');
     expect(types).toContain('VOCAB');
     expect(types).toContain('KANJI');
+  });
+
+  it('limits vocab to N5 words (not the first N inserted)', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = { item: { findMany } } as unknown as PrismaClient;
+
+    await loadItemData(prisma);
+
+    const vocabCall = (
+      findMany.mock.calls as Array<
+        [{ where: { type: string; data?: unknown }; take?: number }]
+      >
+    ).find((c) => c[0].where.type === 'VOCAB');
+    expect(vocabCall?.[0].where.data).toEqual({
+      path: ['jlpt'],
+      equals: 'N5',
+    });
+    expect(vocabCall?.[0].take).toBeGreaterThanOrEqual(800);
+  });
+
+  it('returns grammar in Tanos source order, not id order', async () => {
+    const grammar = [
+      { id: 'ja:grammar:は', display: 'は', data: { source_order: 8 } },
+      { id: 'ja:grammar:です', display: 'です', data: { source_order: 1 } },
+      { id: 'ja:grammar:x', display: 'x', data: {} },
+    ];
+    const findMany = jest
+      .fn()
+      .mockImplementation(({ where }: { where: { type: string } }) =>
+        Promise.resolve(where.type === 'GRAMMAR' ? grammar : []),
+      );
+    const prisma = { item: { findMany } } as unknown as PrismaClient;
+
+    const result = await loadItemData(prisma);
+
+    expect(result.grammar.map((g) => g.id)).toEqual([
+      'ja:grammar:です',
+      'ja:grammar:は',
+      'ja:grammar:x', // no source_order → last
+    ]);
+  });
+});
+
+describe('bySourceOrder', () => {
+  it('does not mutate its input', () => {
+    const items = [
+      { id: 'b', display: 'b', data: { source_order: 2 } },
+      { id: 'a', display: 'a', data: { source_order: 1 } },
+    ];
+    const sorted = bySourceOrder(items);
+    expect(sorted.map((i) => i.id)).toEqual(['a', 'b']);
+    expect(items.map((i) => i.id)).toEqual(['b', 'a']);
   });
 });

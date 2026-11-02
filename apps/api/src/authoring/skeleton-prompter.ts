@@ -7,7 +7,12 @@ Your task is to design a lesson skeleton for a Foundation Japanese module.
 You output ONLY valid JSON — no markdown, no explanation, no code fences.
 The JSON must conform exactly to the schema provided.`;
 
-const MAX_VOCAB_FOR_PROMPT = 200;
+// The beta targets early N5, so the skeleton sees every N5 word (~640, ~16k
+// input tokens) and picks the most useful ~150–200 itself. The cap is only a
+// cost guard; the old cap of 200 + createdAt order handed the model the first
+// 200 words in あいうえお order rather than the most frequent.
+const SKELETON_VOCAB_LEVEL = 'N5';
+const MAX_VOCAB_FOR_PROMPT = 1000;
 
 type RawItem = {
   id: string;
@@ -29,13 +34,19 @@ export async function loadItemData(prisma: PrismaClient): Promise<ItemData> {
       select: { id: true, display: true, data: true },
       orderBy: { id: 'asc' },
     }),
+    prisma.item
+      .findMany({
+        where: { language: 'ja', type: 'GRAMMAR' },
+        select: { id: true, display: true, data: true },
+        orderBy: { id: 'asc' },
+      })
+      .then(bySourceOrder),
     prisma.item.findMany({
-      where: { language: 'ja', type: 'GRAMMAR' },
-      select: { id: true, display: true, data: true },
-      orderBy: { id: 'asc' },
-    }),
-    prisma.item.findMany({
-      where: { language: 'ja', type: 'VOCAB' },
+      where: {
+        language: 'ja',
+        type: 'VOCAB',
+        data: { path: ['jlpt'], equals: SKELETON_VOCAB_LEVEL },
+      },
       select: { id: true, display: true, data: true },
       take: MAX_VOCAB_FOR_PROMPT,
       orderBy: { createdAt: 'asc' },
@@ -47,6 +58,14 @@ export async function loadItemData(prisma: PrismaClient): Promise<ItemData> {
     }),
   ]);
   return { kana, grammar, vocab, kanji };
+}
+
+/** Grammar in source-list (Tanos) order; items without one sort last by id. */
+export function bySourceOrder(items: RawItem[]): RawItem[] {
+  const order = (i: RawItem) =>
+    (i.data as { source_order?: number } | null)?.source_order ??
+    Number.POSITIVE_INFINITY;
+  return [...items].sort((a, b) => order(a) - order(b));
 }
 
 function formatKana(items: RawItem[]): string {
@@ -116,10 +135,10 @@ AVAILABLE ITEMS (${totalItems} total):
 KANA (${data.kana.length}):
   ${formatKana(data.kana)}
 
-GRAMMAR (${data.grammar.length}):
+GRAMMAR (${data.grammar.length}, in Tanos list order — a conventional teaching order; use the first ~15–20):
   ${formatGrammar(data.grammar)}
 
-VOCAB (${data.vocab.length} shown of available):
+VOCAB (all ${data.vocab.length} JLPT ${SKELETON_VOCAB_LEVEL} words, in no particular order — choose the ~150–200 most frequent and most useful for the milestone):
   ${formatVocab(data.vocab)}
 
 KANJI (${data.kanji.length}):

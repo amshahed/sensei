@@ -1,7 +1,12 @@
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseTatoeba, ingestTatoeba } from './tatoeba';
+import {
+  parseTatoeba,
+  ingestTatoeba,
+  buildMatchKeys,
+  selectForItems,
+} from './tatoeba';
 import { VoyageLike, VoyageClient } from '../../voyage/voyage-client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
@@ -71,6 +76,60 @@ describe('parseTatoeba', () => {
   });
 });
 
+describe('buildMatchKeys', () => {
+  it('adds a stem needle for kanji+okurigana words only', () => {
+    expect(
+      buildMatchKeys([
+        { id: 'v:食べる', display: '食べる' },
+        { id: 'v:行く', display: '行く' }, // stem 行 too short — skipped
+        { id: 'v:これ', display: 'これ' }, // no kanji
+        { id: 'k:日', display: '日' },
+      ]),
+    ).toEqual([
+      { itemId: 'v:食べる', needle: '食べる' },
+      { itemId: 'v:食べる', needle: '食べ' },
+      { itemId: 'v:行く', needle: '行く' },
+      { itemId: 'v:これ', needle: 'これ' },
+      { itemId: 'k:日', needle: '日' },
+    ]);
+  });
+});
+
+describe('selectForItems', () => {
+  const s = (id: string, text: string) => ({ id, text });
+
+  it("keeps each item's N shortest sentences and nothing unrelated", () => {
+    const sentences = [
+      s('1', '猫が好きです。とても好きです。'), // 猫, longer
+      s('2', '猫がいます。'), // 猫, shortest
+      s('3', '犬が走っています。'), // no item
+      s('4', '猫と日本に行きました。'), // 猫 + 日
+    ];
+    const keys = [
+      { itemId: 'cat', needle: '猫' },
+      { itemId: 'day', needle: '日' },
+    ];
+    const kept = selectForItems(sentences, keys, 1).map((x) => x.id);
+    // cat's single slot → '2' (shortest); day's → '4' (only match)
+    expect(kept.sort()).toEqual(['2', '4']);
+  });
+
+  it('matches conjugations through the stem needle', () => {
+    const kept = selectForItems(
+      [s('1', 'パンを食べました。')],
+      buildMatchKeys([{ id: 'eat', display: '食べる' }]),
+      3,
+    );
+    expect(kept).toHaveLength(1);
+  });
+
+  it('is deterministic on length ties (Tatoeba id order)', () => {
+    const sentences = [s('20', '猫がいます。'), s('10', '猫がいる。。')];
+    const kept = selectForItems(sentences, [{ itemId: 'c', needle: '猫' }], 1);
+    expect(kept.map((x) => x.id)).toEqual(['10']);
+  });
+});
+
 describe('ingestTatoeba', () => {
   it('throws when voyage not enabled', async () => {
     const voyage = new VoyageClient(fakeConfig());
@@ -96,12 +155,45 @@ describe('ingestTatoeba', () => {
     const tmp = path.join(tmpDir, 'tatoeba-test.tsv');
     fs.writeFileSync(tmp, tsv);
 
-    const { voyage } = makeFakeVoyage();
+    const { voyage, embedFn } = makeFakeVoyage();
     const executeRawMock = jest.fn().mockResolvedValue(1);
-    const prisma = { $executeRaw: executeRawMock } as unknown as PrismaClient;
+    const prisma = {
+      $executeRaw: executeRawMock,
+      item: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'ja:vocab:日本語', display: '日本語' }]),
+      },
+    } as unknown as PrismaClient;
 
     await ingestTatoeba(prisma, voyage, tmp, false);
 
-    expect(executeRawMock).toHaveBeenCalledTimes(2);
+    // only the sentence containing an ingested item is embedded + stored
+    expect(embedFn).toHaveBeenCalledWith(
+      ['日本語のテスト文章です。'],
+      expect.anything(),
+    );
+    expect(executeRawMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws when no VOCAB/KANJI items are ingested yet', async () => {
+    const tmp = path.join(tmpDir, 'tatoeba-noitems.tsv');
+    fs.writeFileSync(tmp, '1\tjpn\t日本語のテスト文章です。\n');
+    const { voyage } = makeFakeVoyage();
+    const prisma = {
+      item: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as PrismaClient;
+    await expect(ingestTatoeba(prisma, voyage, tmp)).rejects.toThrow(
+      'ingest:items vocab',
+    );
+  });
+
+  it('rejects a non-positive --per-item', async () => {
+    const tmp = path.join(tmpDir, 'tatoeba-perItem.tsv');
+    fs.writeFileSync(tmp, '1\tjpn\t日本語のテスト文章です。\n');
+    const { voyage } = makeFakeVoyage();
+    await expect(
+      ingestTatoeba({} as unknown as PrismaClient, voyage, tmp, false, 0),
+    ).rejects.toThrow('--per-item');
   });
 });

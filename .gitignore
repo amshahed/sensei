@@ -30,3 +30,8 @@ coverage/
 .DS_Store
 tools/authoring/output/*.json
 tools/authoring/published/*.json
+
+# ingest source downloads (JMdict / KANJIDIC2 / Tatoeba — large, re-downloadable);
+# the small committed JLPT level lists are the exception
+apps/api/data/*
+!apps/api/data/jlpt/

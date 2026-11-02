@@ -7,6 +7,9 @@ const KIND = process.argv[2];
 const sourceIdx = process.argv.indexOf('--source');
 const SOURCE = sourceIdx !== -1 ? process.argv[sourceIdx + 1] : undefined;
 const PRE_FILTERED = process.argv.includes('--pre-filtered');
+const perItemIdx = process.argv.indexOf('--per-item');
+const PER_ITEM =
+  perItemIdx !== -1 ? Number(process.argv[perItemIdx + 1]) : undefined;
 
 const USAGE = `
 Usage: pnpm --filter api ingest:refs <kind> [--source <path>]
@@ -15,6 +18,8 @@ Usage: pnpm --filter api ingest:refs <kind> [--source <path>]
     tatoeba     embed + upsert filtered Tatoeba JA sentences
                   --source <path>     path to sentences file (see docs/ingest.md)
                   --pre-filtered      file is id\\ttext (already filtered to JA)
+                  --per-item <n>      keep each VOCAB/KANJI item's n shortest
+                                      sentences (default 8; needs items ingested)
     grammar     generate + embed grammar reference passages via Claude Opus
                   (reads grammar items already in the DB from ingest:items grammar)
 
@@ -43,7 +48,7 @@ async function main() {
           throw new Error(
             '--source <path> is required for tatoeba ingestion\n\n' + USAGE,
           );
-        await ingestTatoeba(prisma, voyage, SOURCE, PRE_FILTERED);
+        await ingestTatoeba(prisma, voyage, SOURCE, PRE_FILTERED, PER_ITEM);
         break;
       case 'grammar':
         await ingestGrammarRefs(

@@ -1,4 +1,15 @@
-import { isN5Kanji, buildKanjiItem, Kd2Character } from './kanji';
+import * as fs from 'fs';
+import * as path from 'path';
+import { isN5Kanji, toModernJlpt, buildKanjiItem, Kd2Character } from './kanji';
+
+// Real records (日 old-JLPT 4, 同 old-JLPT 3, 鬱 none) from jmdict-simplified
+// kanjidic2-en-3.6.2. KANJIDIC2 uses the pre-2010 1–4 scale — there is no 5.
+const [NICHI, DOU, UTSU] = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, '__fixtures__/kanjidic2-real-sample.json'),
+    'utf-8',
+  ),
+) as Kd2Character[];
 
 const makeChar = (
   jlptLevel: number | undefined,
@@ -30,25 +41,32 @@ const makeChar = (
   },
 });
 
-describe('isN5Kanji', () => {
-  it('accepts jlptLevel 5', () => {
-    expect(isN5Kanji(makeChar(5))).toBe(true);
+describe('toModernJlpt', () => {
+  it('maps old 4 → N5 and old 3 → N4; nothing else', () => {
+    expect(toModernJlpt(4)).toBe('N5');
+    expect(toModernJlpt(3)).toBe('N4');
+    expect(toModernJlpt(2)).toBeUndefined();
+    expect(toModernJlpt(5)).toBeUndefined(); // does not exist in KANJIDIC2
+    expect(toModernJlpt(null)).toBeUndefined();
+    expect(toModernJlpt(undefined)).toBeUndefined();
+  });
+});
+
+describe('isN5Kanji (real KANJIDIC2 records)', () => {
+  it('accepts an old-level-4 kanji', () => {
+    expect(NICHI.misc.jlptLevel).toBe(4);
+    expect(isN5Kanji(NICHI)).toBe(true);
   });
 
-  it('rejects jlptLevel 4 and lower', () => {
-    expect(isN5Kanji(makeChar(4))).toBe(false);
-    expect(isN5Kanji(makeChar(1))).toBe(false);
-  });
-
-  it('rejects undefined jlptLevel', () => {
-    expect(isN5Kanji(makeChar(undefined))).toBe(false);
+  it('rejects old level 3 and unlevelled kanji', () => {
+    expect(isN5Kanji(DOU)).toBe(false);
+    expect(isN5Kanji(UTSU)).toBe(false);
   });
 });
 
 describe('buildKanjiItem', () => {
-  it('maps a kanjidic2 character to Item shape', () => {
-    const char = makeChar(5, '日');
-    const item = buildKanjiItem(char);
+  it('maps a real kanjidic2 character to Item shape', () => {
+    const item = buildKanjiItem(NICHI);
 
     expect(item).toMatchObject({
       id: 'ja:kanji:日',
@@ -61,7 +79,7 @@ describe('buildKanjiItem', () => {
   });
 
   it('populates data with readings and meanings (en only)', () => {
-    const char = makeChar(5, '日');
+    const char = makeChar(4, '日');
     const item = buildKanjiItem(char);
     const data = item.data;
 
@@ -75,7 +93,7 @@ describe('buildKanjiItem', () => {
   it('falls back to on-reading when no kun-reading', () => {
     const char: Kd2Character = {
       literal: '玉',
-      misc: { strokeCounts: [5], jlptLevel: 5 },
+      misc: { strokeCounts: [5], jlptLevel: 4 },
       readingMeaning: {
         groups: [
           {
@@ -92,7 +110,7 @@ describe('buildKanjiItem', () => {
   it('handles missing readingMeaning gracefully', () => {
     const char: Kd2Character = {
       literal: '？',
-      misc: { strokeCounts: [1], jlptLevel: 5 },
+      misc: { strokeCounts: [1], jlptLevel: 4 },
     };
     const item = buildKanjiItem(char);
     expect(item.reading).toBeNull();

@@ -1,0 +1,202 @@
+[
+  {
+    "pattern": "です",
+    "jlpt": "N5",
+    "order": 1
+  },
+  {
+    "pattern": "も",
+    "jlpt": "N5",
+    "order": 2
+  },
+  {
+    "pattern": "で",
+    "jlpt": "N5",
+    "order": 3
+  },
+  {
+    "pattern": "に/へ",
+    "jlpt": "N5",
+    "order": 4
+  },
+  {
+    "pattern": "に",
+    "jlpt": "N5",
+    "order": 5
+  },
+  {
+    "pattern": "を",
+    "jlpt": "N5",
+    "order": 6
+  },
+  {
+    "pattern": "～ませんか",
+    "jlpt": "N5",
+    "order": 7
+  },
+  {
+    "pattern": "は",
+    "jlpt": "N5",
+    "order": 8
+  },
+  {
+    "pattern": "～があります",
+    "jlpt": "N5",
+    "order": 9
+  },
+  {
+    "pattern": "～がいます",
+    "jlpt": "N5",
+    "order": 10
+  },
+  {
+    "pattern": "と",
+    "jlpt": "N5",
+    "order": 11
+  },
+  {
+    "pattern": "～ましょう",
+    "jlpt": "N5",
+    "order": 12
+  },
+  {
+    "pattern": "～ましょうか",
+    "jlpt": "N5",
+    "order": 13
+  },
+  {
+    "pattern": "～てください",
+    "jlpt": "N5",
+    "order": 14
+  },
+  {
+    "pattern": "～てもいいです",
+    "jlpt": "N5",
+    "order": 15
+  },
+  {
+    "pattern": "～てはいけません",
+    "jlpt": "N5",
+    "order": 16
+  },
+  {
+    "pattern": "～から",
+    "jlpt": "N5",
+    "order": 17
+  },
+  {
+    "pattern": "～ている",
+    "jlpt": "N5",
+    "order": 18
+  },
+  {
+    "pattern": "～にいく",
+    "jlpt": "N5",
+    "order": 19
+  },
+  {
+    "pattern": "ないでください",
+    "jlpt": "N5",
+    "order": 20
+  },
+  {
+    "pattern": "～のがすきです",
+    "jlpt": "N5",
+    "order": 21
+  },
+  {
+    "pattern": "～のがじょうずです",
+    "jlpt": "N5",
+    "order": 22
+  },
+  {
+    "pattern": "～のがへたです",
+    "jlpt": "N5",
+    "order": 23
+  },
+  {
+    "pattern": "まだ～ていません",
+    "jlpt": "N5",
+    "order": 24
+  },
+  {
+    "pattern": "～のほうが～より",
+    "jlpt": "N5",
+    "order": 25
+  },
+  {
+    "pattern": "～のなかで～がいちばん～",
+    "jlpt": "N5",
+    "order": 26
+  },
+  {
+    "pattern": "つもりです",
+    "jlpt": "N5",
+    "order": 27
+  },
+  {
+    "pattern": "～く/ ～になる",
+    "jlpt": "N5",
+    "order": 28
+  },
+  {
+    "pattern": "stem +たいです",
+    "jlpt": "N5",
+    "order": 29
+  },
+  {
+    "pattern": "～たり …～たりする",
+    "jlpt": "N5",
+    "order": 30
+  },
+  {
+    "pattern": "～たことがある",
+    "jlpt": "N5",
+    "order": 31
+  },
+  {
+    "pattern": "や",
+    "jlpt": "N5",
+    "order": 32
+  },
+  {
+    "pattern": "～んです",
+    "jlpt": "N5",
+    "order": 33
+  },
+  {
+    "pattern": "～すぎる",
+    "jlpt": "N5",
+    "order": 34
+  },
+  {
+    "pattern": "～ほうがいい",
+    "jlpt": "N5",
+    "order": 35
+  },
+  {
+    "pattern": "ので",
+    "jlpt": "N5",
+    "order": 36
+  },
+  {
+    "pattern": "～なくちゃいけない",
+    "jlpt": "N5",
+    "order": 37
+  },
+  {
+    "pattern": "でしょう",
+    "jlpt": "N5",
+    "order": 38
+  },
+  {
+    "pattern": "～まえに",
+    "jlpt": "N5",
+    "order": 39
+  },
+  {
+    "pattern": "～てから",
+    "jlpt": "N5",
+    "order": 40
+  }
+]

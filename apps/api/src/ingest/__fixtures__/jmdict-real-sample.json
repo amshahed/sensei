@@ -1,0 +1,157 @@
+[
+  {
+    "id": "1467640",
+    "kanji": [{ "common": true, "text": "猫", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "ねこ", "tags": [], "appliesToKanji": ["*"] },
+      { "common": false, "text": "ネコ", "tags": [], "appliesToKanji": [] }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "cat (esp. the domestic cat, Felis catus)" },
+          { "lang": "eng", "text": "feline" }
+        ],
+        "partOfSpeech": ["n"]
+      }
+    ]
+  },
+  {
+    "id": "1516925",
+    "kanji": [{ "common": true, "text": "方", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "かた", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "direction" },
+          { "lang": "eng", "text": "way" }
+        ],
+        "partOfSpeech": ["n"]
+      }
+    ]
+  },
+  {
+    "id": "1516930",
+    "kanji": [{ "common": true, "text": "方", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "ほう", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "direction" },
+          { "lang": "eng", "text": "way" }
+        ],
+        "partOfSpeech": ["n"]
+      }
+    ]
+  },
+  {
+    "id": "1628530",
+    "kanji": [
+      { "common": false, "text": "此れ", "tags": ["rK"] },
+      { "common": false, "text": "是", "tags": ["rK"] },
+      { "common": false, "text": "之", "tags": ["rK"] },
+      { "common": false, "text": "維", "tags": ["rK"] },
+      { "common": false, "text": "惟", "tags": ["rK"] },
+      { "common": false, "text": "此", "tags": ["sK"] },
+      { "common": false, "text": "是れ", "tags": ["sK"] },
+      { "common": false, "text": "之れ", "tags": ["sK"] }
+    ],
+    "kana": [
+      { "common": true, "text": "これ", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "this" },
+          { "lang": "eng", "text": "this one" }
+        ],
+        "partOfSpeech": ["pn"]
+      }
+    ]
+  },
+  {
+    "id": "1172910",
+    "kanji": [{ "common": true, "text": "運動", "tags": [] }],
+    "kana": [
+      {
+        "common": true,
+        "text": "うんどう",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "exercise" },
+          { "lang": "eng", "text": "physical training" }
+        ],
+        "partOfSpeech": ["n", "vs", "vi"]
+      }
+    ]
+  },
+  {
+    "id": "1404630",
+    "kanji": [
+      { "common": true, "text": "足", "tags": [] },
+      { "common": true, "text": "脚", "tags": [] },
+      { "common": false, "text": "肢", "tags": [] }
+    ],
+    "kana": [
+      { "common": true, "text": "あし", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "gloss": [
+          { "lang": "eng", "text": "foot" },
+          { "lang": "eng", "text": "paw" }
+        ],
+        "partOfSpeech": ["n"]
+      }
+    ]
+  },
+  {
+    "id": "1175570",
+    "kanji": [
+      { "common": true, "text": "円", "tags": [] },
+      { "common": false, "text": "圓", "tags": ["oK"] }
+    ],
+    "kana": [
+      { "common": true, "text": "えん", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "gloss": [{ "lang": "eng", "text": "yen (currency of Japan)" }],
+        "partOfSpeech": ["n"]
+      }
+    ]
+  },
+  {
+    "id": "1100830",
+    "kanji": [],
+    "kana": [
+      {
+        "common": true,
+        "text": "パートタイム",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      },
+      {
+        "common": false,
+        "text": "パート・タイム",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "gloss": [{ "lang": "eng", "text": "part-time (work)" }],
+        "partOfSpeech": ["adj-no", "n"]
+      }
+    ]
+  }
+]

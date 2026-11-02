@@ -5,11 +5,14 @@ import * as path from 'path';
 // Source file format (JSON array):
 //   [{ "pattern": "〜は〜です", "description": "Declares topic with copula", "jlpt": "N5", "prereqs": [] }]
 // "description" and "prereqs" are optional; explanation is filled by the drafter (#21d).
+// "order" is the point's position in the source list (Tanos page order — the
+// teaching-order signal the skeleton author uses, decisions.md F.1).
 export type GrammarEntry = {
   pattern: string;
   description?: string;
   jlpt?: string;
   prereqs?: string[];
+  order?: number;
 };
 
 export function slugify(pattern: string): string {
@@ -39,6 +42,7 @@ export function buildGrammarItem(entry: GrammarEntry) {
       pattern_name: entry.pattern,
       jlpt_level: jlpt,
       prereqs: entry.prereqs ?? [],
+      ...(entry.order !== undefined ? { source_order: entry.order } : {}),
     },
   };
 }
