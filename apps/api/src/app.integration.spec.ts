@@ -1,3 +1,5 @@
+// Keep first: pins secrets to '' before any provider reads them (see file).
+import './testing/hermetic-env';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -8,7 +10,10 @@ import type {
   LessonDetailDto,
   ReviewResultDto,
 } from '@sensei/types';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { isClerkEnabled } from './auth/clerk';
+import { HERMETIC_ENV_KEYS } from './testing/hermetic-env';
 import { PrismaService } from './prisma/prisma.service';
 import { DEV_USER_HEADER } from './auth/dev-user';
 
@@ -150,6 +155,15 @@ describe('API (HTTP integration)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('runs hermetically — no real auth/LLM/DB keys leak in from .env', () => {
+    // If this fails, './testing/hermetic-env' is no longer the first import.
+    expect(isClerkEnabled()).toBe(false);
+    const config = app.get(ConfigService);
+    for (const key of HERMETIC_ENV_KEYS) {
+      expect([key, config.get<string>(key) ?? '']).toEqual([key, '']);
+    }
   });
 
   it('GET /health returns ok', async () => {
