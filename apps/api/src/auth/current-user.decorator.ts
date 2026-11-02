@@ -1,18 +1,24 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import type { Request } from 'express';
-import { DEV_USER_HEADER, resolveDevUserId } from './dev-user';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { AuthedRequest } from './auth.guard';
 
 /**
  * Resolves the acting user's id for a request.
  *
- * Issue #3 will replace the body of this with a real Clerk-verified identity.
- * For now it reads the `x-dev-user-id` header if present, otherwise falls back
- * to the single dev user — so controllers can already depend on the final shape
- * (`@CurrentUserId() userId: string`) and won't change when auth lands.
+ * The id is populated by the global {@link AuthGuard} (Clerk-verified in
+ * production, dev-stub locally) as `req.userId`. Controllers depend only on the
+ * final shape (`@CurrentUserId() userId: string`); the guard owns how it's
+ * derived. If it's missing the guard didn't run — treat as unauthenticated.
  */
 export const CurrentUserId = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): string => {
-    const req = ctx.switchToHttp().getRequest<Request>();
-    return resolveDevUserId(req.header(DEV_USER_HEADER));
+    const req = ctx.switchToHttp().getRequest<AuthedRequest>();
+    if (!req.userId) {
+      throw new UnauthorizedException();
+    }
+    return req.userId;
   },
 );

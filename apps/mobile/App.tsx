@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { AuthGate } from './src/auth/AuthGate';
 import { HomeScreen } from './src/home/HomeScreen';
 import { LessonPlayer } from './src/lesson/LessonPlayer';
 import { ReviewSession } from './src/review/ReviewSession';
@@ -17,18 +18,20 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {route === 'home' && (
-        <HomeScreen
-          onStartLesson={() => setRoute('lesson')}
-          onStartReview={() => setRoute('review')}
-          onShowProgress={() => setRoute('progress')}
-        />
-      )}
-      {route === 'lesson' && (
-        <LessonPlayer slug="the-five-vowels" onExit={home} />
-      )}
-      {route === 'review' && <ReviewSession onExit={home} />}
-      {route === 'progress' && <ProgressScreen onBack={home} />}
+      <AuthGate>
+        {route === 'home' && (
+          <HomeScreen
+            onStartLesson={() => setRoute('lesson')}
+            onStartReview={() => setRoute('review')}
+            onShowProgress={() => setRoute('progress')}
+          />
+        )}
+        {route === 'lesson' && (
+          <LessonPlayer slug="the-five-vowels" onExit={home} />
+        )}
+        {route === 'review' && <ReviewSession onExit={home} />}
+        {route === 'progress' && <ProgressScreen onBack={home} />}
+      </AuthGate>
       <StatusBar style="auto" />
     </SafeAreaView>
   );

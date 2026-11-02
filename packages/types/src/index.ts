@@ -9,6 +9,19 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+/* ---- Auth / current user (issue #3 / decision L.6 — Clerk) ---- */
+
+/**
+ * The authenticated user, returned by `GET /me`. `id` is the Clerk user id
+ * (the dev-user id in dev-stub mode). The row is created on first authenticated
+ * request if it doesn't exist yet.
+ */
+export interface MeDto {
+  id: string;
+  /** ISO-8601 timestamp of when the user row was first created. */
+  createdAt: string;
+}
+
 /* ---------------------------------------------------------------------------
  * Curriculum / lesson DTOs (mirror the Prisma schema; kept Prisma-free here so
  * both the API and the mobile client can share them). See decisions D.1, D.2,

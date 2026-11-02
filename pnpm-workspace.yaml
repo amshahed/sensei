@@ -2,10 +2,15 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@clerk/shared': false
   '@prisma/client': true
   '@prisma/engines': true
+  browser-tabs-lock: false
+  bufferutil: false
+  core-js: false
   prisma: true
   unrs-resolver: true
+  utf-8-validate: false
 minimumReleaseAgeExclude:
   - '@expo/cli@56.1.15'
   - '@expo/log-box@56.0.13'
