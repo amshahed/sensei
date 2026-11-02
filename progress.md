@@ -129,7 +129,7 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 Design grilling COMPLETE (all phases A–M locked). **Implementing** against the GitHub issues (epic #1, children #2–#22). The core learning loop is merged to `main`, each via a high-reviewed, CI-green PR.
 
-### Implementation status (as of 2026-06-13)
+### Implementation status (as of 2026-11-02)
 
 | Issue | Scope | Status |
 |---|---|---|
@@ -149,12 +149,15 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #9 | Writing eval service (H.2) — wanakana + kuromoji + rule-based + AI fallback | ✅ merged |
 | #12 | Reading lessons (H.4) — LessonPlayer teach beat + kana/text/example blocks; normaliseTeach publisher | ✅ merged |
 | #16 | Progress Dashboard (J.2) — `GET /progress` API + ProgressScreen | ✅ merged |
+| #3 | Auth (Clerk, L.6) — global `AuthGuard` (Clerk JWT verify) + dev-stub fallback, `@Public()`, `GET /me` + users row create-on-sign-in; mobile ClerkProvider + sign-in/up screen + Bearer token | ✅ merged (code-complete; live keys = founder HITL) |
 
-**The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews), behind a dev-user stub.
+**The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews). Auth is wired (#3): runs in dev-stub mode without keys, flips to live Clerk purely via env.
 
-**All remaining open issues are HITL** — every next issue requires founder input (Azure speech keys, Clerk keys, sub-decision locks). The autonomous queue is exhausted until unblocked.
+**All remaining open issues are HITL** — every next issue requires founder input (Azure speech keys, sub-decision locks). The no-key chain next up is **#13 signup + placement** → #14 Curriculum Outline → #15 skip-test.
 
-**HITL still pending from the founder:** provision Neon · Clerk · Railway · Azure · R2; set `ANTHROPIC_API_KEY` + `VOYAGE_API_KEY` (for #21b) + `GEMINI_API_KEY` (for grading per L.4.a); run live `prisma migrate deploy` + `db:seed`; device walkthrough via EAS.
+**HITL still pending from the founder:**
+- **Clerk (to activate #3 on device):** provision a Clerk app; set `CLERK_SECRET_KEY` (api) + `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` (mobile); verify sign-up/sign-in via EAS.
+- provision Neon · Railway · Azure · R2; set `ANTHROPIC_API_KEY` + `VOYAGE_API_KEY` (for #21b) + `GEMINI_API_KEY` (for grading per L.4.a); run live `prisma migrate deploy` + `db:seed`.
 
 ---
 
