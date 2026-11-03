@@ -193,6 +193,7 @@ describe('MasteryService', () => {
             display: 'あ',
             reading: 'あ',
             meaning: null,
+            data: { romaji: 'a' },
           },
         },
         {
@@ -208,6 +209,7 @@ describe('MasteryService', () => {
             display: 'い',
             reading: 'い',
             meaning: null,
+            data: { romaji: 'i' },
           },
         },
       ]);
@@ -218,6 +220,29 @@ describe('MasteryService', () => {
       // Lowest retention first.
       expect(due[0].retrievability).toBeLessThanOrEqual(due[1].retrievability);
       expect(due[0].weakestModality).toBe('recall'); // 0 < recognition
+      expect(due.map((d) => d.prompt)).toContain('Type the rōmaji for 「あ」');
+    });
+
+    it('skips due items with no quizzable question yet (e.g. a grammar shell)', async () => {
+      stateFindMany.mockResolvedValue([
+        {
+          itemId: 'ja:grammar:です',
+          mastery: 0,
+          recognition: 0,
+          recall: 0,
+          production: 0,
+          fsrs: {},
+          due: NOW,
+          item: {
+            type: 'GRAMMAR',
+            display: 'です',
+            reading: null,
+            meaning: null,
+            data: {},
+          },
+        },
+      ]);
+      expect(await service.getDue('dev-user', NOW)).toEqual([]);
     });
 
     it('returns an empty queue when nothing is due', async () => {

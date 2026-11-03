@@ -10,6 +10,7 @@ import { CurriculumService } from '../curriculum/curriculum.service';
 import { GradingService } from '../grading/grading.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RecallGraderService } from '../recall/recall-grader.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import {
   ASSESSMENT_RANDOM,
@@ -138,6 +139,7 @@ describe('AssessmentsService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         AssessmentsService,
+        RecallGraderService, // real grader over the mocked AI + normaliser
         { provide: ASSESSMENT_RANDOM, useValue: () => 0.5 },
         { provide: CurriculumService, useValue: { getState } },
         {

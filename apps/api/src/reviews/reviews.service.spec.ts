@@ -1,8 +1,15 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ReviewsService, REVIEW_SESSION_CAP } from './reviews.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
+import { GradingService } from '../grading/grading.service';
+import { RecallGraderService } from '../recall/recall-grader.service';
+import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import type { DueReviewItemDto } from '@sensei/types';
 
 function dueItem(itemId: string): DueReviewItemDto {
@@ -25,11 +32,13 @@ describe('ReviewsService', () => {
   let itemFindUnique: jest.Mock;
   let getDue: jest.Mock;
   let recordCheckResult: jest.Mock;
+  let gradeOpen: jest.Mock;
 
   beforeEach(async () => {
     itemFindUnique = jest.fn();
     getDue = jest.fn();
     recordCheckResult = jest.fn().mockResolvedValue({ mastery: 0.25 });
+    gradeOpen = jest.fn();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -39,6 +48,12 @@ describe('ReviewsService', () => {
           useValue: { item: { findUnique: itemFindUnique } },
         },
         { provide: MasteryService, useValue: { getDue, recordCheckResult } },
+        RecallGraderService, // real shared grader over mocked AI + normaliser
+        { provide: GradingService, useValue: { gradeOpen } },
+        {
+          provide: WritingEvalService,
+          useValue: { exactMatch: (a: string, b: string) => a === b },
+        },
       ],
     }).compile();
     service = moduleRef.get(ReviewsService);
@@ -87,6 +102,7 @@ describe('ReviewsService', () => {
         itemId: 'ja:kana:a',
         format: 'TYPED',
         correct: true,
+        rating: undefined,
       });
     });
 
@@ -99,6 +115,80 @@ describe('ReviewsService', () => {
       expect(recordCheckResult).toHaveBeenCalledWith(
         expect.objectContaining({ correct: false }),
       );
+    });
+
+    it('kanji: any on/kun reading counts (KANJIDIC2 markers resolved)', async () => {
+      itemFindUnique.mockResolvedValue({
+        id: 'ja:kanji:一',
+        type: 'KANJI',
+        display: '一',
+        reading: 'ひと-',
+        meaning: 'one',
+        data: { on_readings: ['イチ'], kun_readings: ['ひと-', 'ひと.つ'] },
+      });
+      const result = await service.grade('dev-user', 'ja:kanji:一', 'ひとつ');
+      expect(result).toMatchObject({
+        correct: true,
+        correctAnswer: 'イチ・ひと・ひと(つ)',
+      });
+    });
+
+    it('meaning answers are AI-graded and the rating flows into FSRS', async () => {
+      itemFindUnique.mockResolvedValue({
+        id: 'ja:vocab:すし',
+        type: 'VOCAB',
+        display: 'すし',
+        reading: 'すし',
+        meaning: 'sushi',
+        data: {},
+      });
+      gradeOpen.mockResolvedValue({
+        rating: 'Easy',
+        correct: true,
+        gradedBy: 'ai',
+        scored: true,
+      });
+      const result = await service.grade('dev-user', 'ja:vocab:すし', 'sushi');
+      expect(result.correct).toBe(true);
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ correct: true, rating: 4 }),
+      );
+    });
+
+    it('503s without recording when the grader is down and its fallback says wrong', async () => {
+      itemFindUnique.mockResolvedValue({
+        id: 'ja:vocab:すし',
+        type: 'VOCAB',
+        display: 'すし',
+        reading: 'すし',
+        meaning: 'sushi',
+        data: {},
+      });
+      gradeOpen.mockResolvedValue({
+        rating: 'Again',
+        correct: false,
+        gradedBy: 'fallback',
+        scored: true,
+      });
+      await expect(
+        service.grade('dev-user', 'ja:vocab:すし', 'raw fish rice'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expect(recordCheckResult).not.toHaveBeenCalled();
+    });
+
+    it('400s for an item with nothing to check against (e.g. a grammar shell)', async () => {
+      itemFindUnique.mockResolvedValue({
+        id: 'ja:grammar:です',
+        type: 'GRAMMAR',
+        display: 'です',
+        reading: null,
+        meaning: null,
+        data: {},
+      });
+      await expect(
+        service.grade('dev-user', 'ja:grammar:です', 'is'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(recordCheckResult).not.toHaveBeenCalled();
     });
 
     it('throws NotFound for an unknown item', async () => {

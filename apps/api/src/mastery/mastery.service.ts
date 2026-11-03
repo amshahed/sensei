@@ -8,7 +8,7 @@ import type {
 } from '@sensei/types';
 import { type Grade, Rating } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
-import { reviewQuestionFor } from '../reviews/review-question';
+import { recallQuestionFor } from '../recall/recall-question';
 import {
   applyRating,
   emptyCard,
@@ -166,8 +166,12 @@ export class MasteryService {
       include: { item: true },
     });
 
+    // Items with no quizzable question yet (e.g. a grammar shell without a
+    // meaning) stay scheduled but aren't surfaced until their content exists.
     return states
-      .map((s) => {
+      .flatMap((s) => {
+        const question = recallQuestionFor(s.item);
+        if (!question) return [];
         const card = reviveCard(s.fsrs);
         return {
           itemId: s.itemId,
@@ -179,7 +183,7 @@ export class MasteryService {
           retrievability: card ? retrievability(card, now) : 0,
           due: (s.due ?? now).toISOString(),
           weakestModality: weakestModality(s),
-          prompt: reviewQuestionFor(s.item).prompt,
+          prompt: question.prompt,
         };
       })
       .sort((a, b) => a.retrievability - b.retrievability);

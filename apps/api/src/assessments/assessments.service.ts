@@ -16,19 +16,17 @@ import type {
   AssessmentStartDto,
   AssessmentSubmitRequest,
 } from '@sensei/types';
+import type { Grade } from 'ts-fsrs';
 import { mapLimit } from '../common/map-limit';
-import { exactMatch } from '../common/normalize-answer';
 import { CurriculumService } from '../curriculum/curriculum.service';
-import { GradingService } from '../grading/grading.service';
-import { ratingFromLabel } from '../mastery/fsrs';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { WritingEvalService } from '../writing-eval/writing-eval.service';
+import { RecallGraderService } from '../recall/recall-grader.service';
 import {
-  type AssessmentQuestion,
-  assessmentQuestionFor,
-  sampleAcrossGroups,
-} from './assessment-question';
+  type RecallQuestion,
+  recallQuestionFor,
+} from '../recall/recall-question';
+import { sampleAcrossGroups } from './assessment-sample';
 
 /** ~5 minutes of typed recall (decisions.md I.4.d.a). */
 export const ASSESSMENT_SAMPLE_SIZE = 20;
@@ -54,7 +52,7 @@ type GradedResult = AssessmentItemResultDto & {
   /** False when the answer couldn't be fairly judged — excluded from the score + FSRS. */
   scored: boolean;
   /** AI rating, when the meaning grader produced one. */
-  rating?: ReturnType<typeof ratingFromLabel>;
+  rating?: Grade;
 };
 
 /** What `AssessmentAttempt.results` stores, so a repeat submit can replay it. */
@@ -80,8 +78,7 @@ export class AssessmentsService {
     private readonly prisma: PrismaService,
     private readonly curriculum: CurriculumService,
     private readonly mastery: MasteryService,
-    private readonly grading: GradingService,
-    private readonly writingEval: WritingEvalService,
+    private readonly recall: RecallGraderService,
     @Inject(ASSESSMENT_RANDOM) private readonly random: () => number,
   ) {}
 
@@ -108,7 +105,7 @@ export class AssessmentsService {
       items.flatMap((item) => {
         if (seen.has(item.id)) return [];
         seen.add(item.id);
-        const question = assessmentQuestionFor(item);
+        const question = recallQuestionFor(item);
         return question ? [{ itemId: item.id, prompt: question.prompt }] : [];
       }),
     );
@@ -213,7 +210,7 @@ export class AssessmentsService {
       CONCURRENCY,
       async (itemId): Promise<GradedResult> => {
         const item = itemsById.get(itemId);
-        const question = item ? assessmentQuestionFor(item) : null;
+        const question = item ? recallQuestionFor(item) : null;
         const answer = (answers.get(itemId) ?? '').trim();
         if (!question) {
           // The item was deleted or changed since the attempt started.
@@ -317,43 +314,15 @@ export class AssessmentsService {
   }
 
   private async grade(
-    question: AssessmentQuestion,
+    question: RecallQuestion,
     answer: string,
   ): Promise<Omit<GradedResult, 'itemId' | 'answer'>> {
-    const base = { prompt: question.prompt, correctAnswer: question.expected };
-    if (!answer) return { ...base, correct: false, scored: true };
-    switch (question.check) {
-      case 'romaji':
-        return {
-          ...base,
-          correct: question.accepted.some((a) => exactMatch(answer, a)),
-          scored: true,
-        };
-      case 'reading':
-        return {
-          ...base,
-          correct: question.accepted.some((a) =>
-            this.writingEval.exactMatch(answer, a),
-          ),
-          scored: true,
-        };
-      case 'meaning': {
-        const r = await this.grading.gradeOpen({
-          prompt: question.prompt,
-          answer,
-          exemplar: question.expected,
-        });
-        // The fallback is a word-for-word match against the gloss: trust a
-        // match, but never fail a learner on it — our outage isn't their miss.
-        const fallbackMiss = r.gradedBy === 'fallback' && !r.correct;
-        return {
-          ...base,
-          correct: r.correct,
-          scored: r.scored && !fallbackMiss,
-          rating: ratingFromLabel(r.rating),
-        };
-      }
-    }
+    const graded = await this.recall.grade(question, answer);
+    return {
+      prompt: question.prompt,
+      correctAnswer: question.expected,
+      ...graded,
+    };
   }
 
   /**
