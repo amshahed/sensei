@@ -7,7 +7,7 @@ import type {
   CurriculumDto,
   CurriculumKeyItemDto,
   CurriculumNextDto,
-  NextLessonDto,
+  NextStepDto,
 } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -35,16 +35,16 @@ export class CurriculumService {
   /** The full outline, with each lesson's key items. */
   async getCurriculum(userId: string): Promise<CurriculumDto> {
     const [{ modules, state }, keyItems] = await Promise.all([
-      this.snapshot(userId),
+      this.getState(userId),
       this.loadKeyItems(),
     ]);
     return toDto(modules, state, keyItems);
   }
 
-  /** Just the lesson "Continue" should open — Home needs nothing else. */
+  /** Just what "Continue" should open — Home needs nothing else. */
   async getNext(userId: string): Promise<CurriculumNextDto> {
-    const { modules, state } = await this.snapshot(userId);
-    return { nextLesson: nextLessonOf(modules, state) };
+    const { modules, state } = await this.getState(userId);
+    return { next: nextStepOf(modules, state) };
   }
 
   /**
@@ -80,11 +80,12 @@ export class CurriculumService {
   }
 
   /**
-   * Load + derive. A stored pointer that is no longer honoured (its chapter
-   * has since been learned, hidden or deleted) is cleared, so it can't spring
-   * back to life if that chapter later gains new lessons.
+   * The learner's derived curriculum state (also used by the Assessment
+   * engine). A stored pointer that is no longer honoured (its chapter has
+   * since been learned, hidden or deleted) is cleared, so it can't spring back
+   * to life if that chapter later gains new lessons.
    */
-  private async snapshot(userId: string) {
+  async getState(userId: string) {
     const data = await this.loadData(userId);
     const state = derive(data, data.pointer);
     if (data.pointer !== null && !state.relocated) {
@@ -98,7 +99,7 @@ export class CurriculumService {
   }
 
   private async loadData(userId: string) {
-    const [allModules, completions, marks, user] = await Promise.all([
+    const [allModules, completions, skips, marks, user] = await Promise.all([
       this.prisma.module.findMany({
         where: { language: LANGUAGE },
         orderBy: { position: 'asc' },
@@ -133,6 +134,10 @@ export class CurriculumService {
         where: { userId },
         select: { lessonId: true },
       }),
+      this.prisma.userLessonSkip.findMany({
+        where: { userId },
+        select: { lessonId: true },
+      }),
       this.prisma.userChapterMark.findMany({
         where: { userId },
         select: { chapterId: true, kind: true },
@@ -155,6 +160,7 @@ export class CurriculumService {
     return {
       modules,
       completedLessonIds: new Set(completions.map((c) => c.lessonId)),
+      skippedLessonIds: new Set(skips.map((x) => x.lessonId)),
       marks: new Map(marks.map((m) => [m.chapterId, m.kind] as const)),
       pointer: user?.currentChapterId ?? null,
     };
@@ -194,20 +200,39 @@ function derive(data: CurriculumData, pointer: string | null): CurriculumState {
       })),
     ),
     completedLessonIds: data.completedLessonIds,
+    skippedLessonIds: data.skippedLessonIds,
     marks: data.marks,
     relocatedChapterId: pointer,
   });
 }
 
-function nextLessonOf(
+function nextStepOf(
   modules: ModuleRow[],
   state: CurriculumState,
-): NextLessonDto | null {
-  if (!state.nextLessonId) return null;
+): NextStepDto | null {
+  const next = state.next;
+  if (!next) return null;
   for (const m of modules) {
     for (const c of m.chapters) {
-      const l = c.lessons.find((x) => x.id === state.nextLessonId);
-      if (l) return { slug: l.slug, title: l.title };
+      if (next.kind === 'assessment' && c.id === next.chapterId) {
+        return { kind: 'assessment', chapterId: c.id, chapterTitle: c.title };
+      }
+      if (next.kind === 'lesson') {
+        const l = c.lessons.find((x) => x.id === next.lessonId);
+        if (l) {
+          return {
+            kind: 'lesson',
+            slug: l.slug,
+            title: l.title,
+            chapterId: c.id,
+            chapterTitle: c.title,
+            chapterStart: c.lessons.every((x) => {
+              const st = state.lessonStates.get(x.id);
+              return st !== 'completed' && st !== 'skipped';
+            }),
+          };
+        }
+      }
     }
   }
   return null;
@@ -221,7 +246,7 @@ function toDto(
   return {
     currentChapterId: state.currentChapterId,
     relocated: state.relocated,
-    nextLesson: nextLessonOf(modules, state),
+    next: nextStepOf(modules, state),
     modules: modules.map((m) => ({
       id: m.id,
       slug: m.slug,

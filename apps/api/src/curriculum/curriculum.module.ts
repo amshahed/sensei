@@ -7,5 +7,6 @@ import { CurriculumService } from './curriculum.service';
   imports: [PrismaModule],
   controllers: [CurriculumController],
   providers: [CurriculumService],
+  exports: [CurriculumService],
 })
 export class CurriculumModule {}

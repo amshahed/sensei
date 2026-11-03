@@ -98,10 +98,11 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  module          Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module          Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   lessons         Lesson[]
   marks           UserChapterMark[]
-  currentForUsers User[]            @relation("UserCurrentChapter")
+  currentForUsers User[]              @relation("UserCurrentChapter")
+  assessments     AssessmentAttempt[]
 
   @@index([moduleId, position])
 }
@@ -122,6 +123,7 @@ model Lesson {
   items       LessonItem[]
   checks      Check[]
   completions LessonCompletion[]
+  skips       UserLessonSkip[]
 
   @@index([chapterId, position])
 }
@@ -187,15 +189,18 @@ model User {
   currentChapterId String?
   currentChapter   Chapter? @relation("UserCurrentChapter", fields: [currentChapterId], references: [id], onDelete: SetNull)
 
-  masteryStates ItemMasteryState[]
-  completions   LessonCompletion[]
-  chapterMarks  UserChapterMark[]
+  masteryStates      ItemMasteryState[]
+  completions        LessonCompletion[]
+  chapterMarks       UserChapterMark[]
+  lessonSkips        UserLessonSkip[]
+  assessmentAttempts AssessmentAttempt[]
 }
 
-/// Chapter outcomes not derivable from lesson completions.
+/// How a chapter was passed (I.4.e.a / I.4.d.a). Lesson completions alone
+/// never pass a chapter — the Assessment is its last step.
 enum ChapterMarkKind {
   SKIPPED_VIA_PLACEMENT // placement inferred the chapter as known (I.4.c, #13)
-  PASSED_SKIP_TEST // learner passed the chapter's skip-test (I.4.d, #15)
+  PASSED_ASSESSMENT // learner passed the chapter Assessment — skip-test or exit (I.4.d.a)
 }
 
 /// One mark per (user, chapter) — written by placement (#13) and skip-test (#15),
@@ -210,6 +215,55 @@ model UserChapterMark {
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@id([userId, chapterId])
+  @@index([chapterId])
+}
+
+/// A lesson collapsed by a partial skip-test pass: every one of its TARGET
+/// items was sampled and answered correctly (I.4.d.a). Snapshotted, so mastery
+/// decay never un-skips it.
+model UserLessonSkip {
+  userId    String
+  lessonId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lessonId])
+  @@index([lessonId])
+}
+
+/// SKIP = taken before the chapter's lessons were all done; EXIT = after.
+enum AssessmentKind {
+  SKIP
+  EXIT
+}
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  PASSED
+  FAILED
+}
+
+/// One chapter Assessment attempt (I.4.d.a). The sampled items are fixed
+/// server-side at start; the learner submits all answers once.
+model AssessmentAttempt {
+  id           String           @id @default(cuid())
+  userId       String
+  chapterId    String
+  kind         AssessmentKind
+  status       AssessmentStatus @default(IN_PROGRESS)
+  itemIds      String[]
+  correctCount Int?
+  /// Per-item grading, written on submit: [{ itemId, answer, correct, correctAnswer }]
+  results      Json?
+  createdAt    DateTime         @default(now())
+  submittedAt  DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([userId, chapterId])
   @@index([chapterId])
 }
 

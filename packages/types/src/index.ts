@@ -223,7 +223,10 @@ export type ChapterState =
   | "available"
   | "locked";
 
-/** Lesson state within a chapter. `skipped` = its chapter was skipped (placement or skip-test). */
+/**
+ * Lesson state within a chapter. `skipped` = its chapter was passed without it
+ * (placement / Assessment), or a partial skip-test pass collapsed it (I.4.d.a).
+ */
 export type LessonState = "completed" | "current" | "not_started" | "skipped";
 
 export interface CurriculumKeyItemDto {
@@ -249,8 +252,12 @@ export interface CurriculumLessonDto {
 export interface CurriculumChapterActionsDto {
   /** "Relocate position here": go back and learn a chapter that was skipped. */
   relocate: boolean;
-  /** Skip-test offered (I.4.d) — wired up by #15. */
-  skipTest: boolean;
+  /**
+   * The chapter Assessment can be taken (I.4.d.a): a skip-test on `current` /
+   * `available` chapters, or the exit Assessment once the current chapter's
+   * lessons are all done (`CurriculumDto.next.kind === 'assessment'`).
+   */
+  assessment: boolean;
   /** Review this chapter's items. */
   review: boolean;
 }
@@ -276,15 +283,26 @@ export interface CurriculumModuleDto {
   chapters: CurriculumChapterDto[];
 }
 
-export interface NextLessonDto {
-  slug: string;
-  title: string;
-}
+/** What "Continue" opens: the next lesson, or the chapter's exit Assessment. */
+export type NextStepDto =
+  | {
+      kind: "lesson";
+      slug: string;
+      title: string;
+      chapterId: string;
+      chapterTitle: string;
+      /**
+       * Nothing in the chapter is done yet — the chapter-entry moment where
+       * the skip-test is offered (I.4.d).
+       */
+      chapterStart: boolean;
+    }
+  | { kind: "assessment"; chapterId: string; chapterTitle: string };
 
 /** `GET /curriculum/next` — just what Home's "Continue" needs. */
 export interface CurriculumNextDto {
-  /** The lesson "Continue" should open (null when nothing is left). */
-  nextLesson: NextLessonDto | null;
+  /** Null when nothing is left. */
+  next: NextStepDto | null;
 }
 
 export interface CurriculumDto extends CurriculumNextDto {
@@ -301,4 +319,51 @@ export interface CurriculumDto extends CurriculumNextDto {
 export interface RelocateRequest {
   /** A skipped chapter to go back to, or null to return to the furthest point. */
   chapterId: string | null;
+}
+
+// ---------------- Chapter Assessment (I.4.d.a) ----------------
+
+/** SKIP = taken before the chapter's lessons were all done; EXIT = after. */
+export type AssessmentKind = "SKIP" | "EXIT";
+
+export interface AssessmentQuestionDto {
+  itemId: string;
+  prompt: string;
+}
+
+/** `POST /chapters/:chapterId/assessment` — a fresh attempt (answers stay server-side). */
+export interface AssessmentStartDto {
+  attemptId: string;
+  chapterId: string;
+  chapterTitle: string;
+  kind: AssessmentKind;
+  /** Fraction correct needed to pass (0.8). */
+  passThreshold: number;
+  questions: AssessmentQuestionDto[];
+}
+
+/** `POST /assessments/:attemptId/submit` — every answer at once (test-style). */
+export interface AssessmentSubmitRequest {
+  answers: { itemId: string; answer: string }[];
+}
+
+export interface AssessmentItemResultDto {
+  itemId: string;
+  prompt: string;
+  answer: string;
+  correct: boolean;
+  correctAnswer: string;
+}
+
+export interface AssessmentResultDto {
+  attemptId: string;
+  chapterId: string;
+  kind: AssessmentKind;
+  passed: boolean;
+  correct: number;
+  total: number;
+  passThreshold: number;
+  results: AssessmentItemResultDto[];
+  /** Lessons a failed skip-test collapsed (every key item tested + correct). */
+  skippedLessonIds: string[];
 }

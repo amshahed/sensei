@@ -28,6 +28,7 @@ describe('MasteryService', () => {
   let stateFindUnique: jest.Mock;
   let stateUpsert: jest.Mock;
   let stateFindMany: jest.Mock;
+  let stateCreateMany: jest.Mock;
 
   beforeEach(async () => {
     userUpsert = jest.fn().mockResolvedValue({});
@@ -49,6 +50,11 @@ describe('MasteryService', () => {
         }),
       );
     stateFindMany = jest.fn();
+    stateCreateMany = jest
+      .fn()
+      .mockImplementation((arg: { data: unknown[] }) => ({
+        count: arg.data.length,
+      }));
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -61,6 +67,7 @@ describe('MasteryService', () => {
               findUnique: stateFindUnique,
               upsert: stateUpsert,
               findMany: stateFindMany,
+              createMany: stateCreateMany,
             },
           },
         },
@@ -216,6 +223,47 @@ describe('MasteryService', () => {
     it('returns an empty queue when nothing is due', async () => {
       stateFindMany.mockResolvedValue([]);
       expect(await service.getDue('dev-user', NOW)).toEqual([]);
+    });
+  });
+
+  describe('seedInferred (I.4.c tier 2 via a passed Assessment)', () => {
+    it('seeds only items without state, at moderate (Hard) confidence', async () => {
+      stateFindMany.mockResolvedValue([{ itemId: 'known' }]);
+      const n = await service.seedInferred(
+        'u1',
+        ['known', 'new1', 'new2', 'new1'],
+        NOW,
+      );
+      expect(n).toBe(2);
+      const [[{ data, skipDuplicates }]] = stateCreateMany.mock.calls as [
+        [
+          {
+            data: { itemId: string; mastery: number; due: Date }[];
+            skipDuplicates: boolean;
+          },
+        ],
+      ];
+      expect(skipDuplicates).toBe(true);
+      expect(data.map((d) => d.itemId)).toEqual(['new1', 'new2']);
+      // Hard → shorter first interval than a Good review: confirmed early.
+      const good = await service.recordCheckResult({
+        userId: 'u1',
+        itemId: 'x',
+        format: 'TYPED',
+        correct: true,
+        reviewedAt: NOW,
+      });
+      expect(data[0].due.getTime()).toBeLessThanOrEqual(
+        new Date(good.due!).getTime(),
+      );
+      expect(data[0].mastery).toBeLessThanOrEqual(good.mastery);
+    });
+
+    it('writes nothing when every item already has state (inference never overrides evidence)', async () => {
+      stateFindMany.mockResolvedValue([{ itemId: 'a' }]);
+      expect(await service.seedInferred('u1', ['a'], NOW)).toBe(0);
+      expect(await service.seedInferred('u1', [], NOW)).toBe(0);
+      expect(stateCreateMany).not.toHaveBeenCalled();
     });
   });
 });
