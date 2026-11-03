@@ -10,6 +10,12 @@ import { ChapterIntro } from './src/assessment/ChapterIntro';
 import { LessonPlayer } from './src/lesson/LessonPlayer';
 import { ReviewSession } from './src/review/ReviewSession';
 import { ProgressScreen } from './src/progress/ProgressScreen';
+import {
+  type PracticeLaunch,
+  PracticeScreen,
+} from './src/practice/PracticeScreen';
+import { PracticeSession } from './src/practice/PracticeSession';
+import { TYPE_LABELS } from './src/practice/practice';
 import { type Tab, TabBar } from './src/TabBar';
 
 type LessonStep = Extract<NextStepDto, { kind: 'lesson' }>;
@@ -20,11 +26,13 @@ type Flow =
   | { kind: 'chapterIntro'; step: LessonStep }
   | { kind: 'assessment'; chapterId: string }
   | { kind: 'review' }
+  | { kind: 'practice'; launch: PracticeLaunch }
   | null;
 
-// State-routed shell for the beta slice: three tabs (Home · Curriculum ·
-// Progress) plus full-screen flows (lesson, chapter intro, Assessment,
-// review) that return to the tab they were launched from.
+// State-routed shell for the beta slice: four tabs (Home · Curriculum ·
+// Practice · Progress) plus full-screen flows (lesson, chapter intro,
+// Assessment, review, practice drill) that return to the tab they were
+// launched from.
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
   // While a flow runs the tab screens are unmounted, so ending it remounts the
@@ -34,6 +42,8 @@ export default function App() {
   const endFlow = () => setFlow(null);
   const startAssessment = (chapterId: string) =>
     setFlow({ kind: 'assessment', chapterId });
+  const startPractice = (launch: PracticeLaunch) =>
+    setFlow({ kind: 'practice', launch });
 
   /** "Continue": the next lesson — via the chapter-entry skip-test offer (I.4.d) — or the exit Assessment. */
   const continueWith = (step: NextStepDto) => {
@@ -62,6 +72,12 @@ export default function App() {
           />
         ) : flow?.kind === 'review' ? (
           <ReviewSession onExit={endFlow} />
+        ) : flow?.kind === 'practice' ? (
+          <PracticeSession
+            request={flow.launch.request}
+            title={flow.launch.title}
+            onExit={endFlow}
+          />
         ) : (
           <>
             <View style={styles.container}>
@@ -75,9 +91,26 @@ export default function App() {
                 <CurriculumScreen
                   onContinue={continueWith}
                   onAssessment={startAssessment}
+                  onPractice={(chapterId, title) =>
+                    startPractice({
+                      request: { scope: { kind: 'chapter', id: chapterId } },
+                      title,
+                    })
+                  }
                 />
               )}
-              {tab === 'progress' && <ProgressScreen />}
+              {tab === 'practice' && <PracticeScreen onStart={startPractice} />}
+              {tab === 'progress' && (
+                <ProgressScreen
+                  // J.2.b: a weak item type links straight to a drill of it.
+                  onPractice={(type) =>
+                    startPractice({
+                      request: { scope: { kind: 'weakest' }, types: [type] },
+                      title: `${TYPE_LABELS[type]} practice`,
+                    })
+                  }
+                />
+              )}
             </View>
             <TabBar active={tab} onSelect={setTab} />
           </>

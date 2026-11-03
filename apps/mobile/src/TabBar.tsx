@@ -1,16 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-export type Tab = 'home' | 'curriculum' | 'progress';
+export type Tab = 'home' | 'curriculum' | 'practice' | 'progress';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'home', label: 'Home' },
   { id: 'curriculum', label: 'Curriculum' },
+  { id: 'practice', label: 'Practice' },
   { id: 'progress', label: 'Progress' },
 ];
 
 /**
  * Bottom tab bar for the main nav (I.4.e: the Curriculum tab is always
- * reachable). Hand-rolled to keep the beta free of a navigation dependency;
+ * reachable; J.1.a: Practice is its own destination). Hand-rolled to keep the beta free of a navigation dependency;
  * full-screen flows (lesson player, review session) hide it.
  */
 export function TabBar({
