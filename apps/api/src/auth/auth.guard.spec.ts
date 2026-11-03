@@ -2,7 +2,7 @@ import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { AuthGuard, type AuthedRequest } from './auth.guard';
 import * as clerk from './clerk';
-import { DEV_USER_ID } from './dev-user';
+import { DEFAULT_DEV_USER_ID } from './dev-user';
 
 jest.mock('./clerk');
 
@@ -47,7 +47,7 @@ describe('AuthGuard', () => {
       const guard = guardWith(false);
       const [ctx, req] = contextFor({});
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
-      expect(req.userId).toBe(DEV_USER_ID);
+      expect(req.userId).toBe(DEFAULT_DEV_USER_ID);
       expect(mockedClerk.verifyClerkToken).not.toHaveBeenCalled();
     });
 
