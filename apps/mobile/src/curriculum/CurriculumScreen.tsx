@@ -12,6 +12,7 @@ import type {
   CurriculumDto,
   CurriculumLessonDto,
   LessonState,
+  NextStepDto,
 } from '@sensei/types';
 import { api } from '../api';
 import { PrimaryButton, Screen, ui } from '../ui';
@@ -38,15 +39,17 @@ const LESSON_STATE = {
  * Curriculum Outline (I.4.e): the Module → Chapter → Lesson tree with state
  * indicators. Read-only by design — lessons can be inspected but not opened
  * out of order (no mid-chapter jumping); the only way into a lesson is
- * "Continue", which plays the learner's next lesson. Chapter actions:
- * relocate position (skipped chapters → learn them properly), undone from the
- * "revisiting" banner. Skip-test (#15) and Review (#17) consume the same
- * `actions` flags.
+ * "Continue", which opens the learner's next step. Chapter actions: the
+ * Assessment (skip-test ahead, or the exit Assessment once the lessons are
+ * done, I.4.d.a) and relocate position (skipped chapters → learn them
+ * properly), undone from the "revisiting" banner. Review arrives with #17.
  */
 export function CurriculumScreen({
   onContinue,
+  onAssessment,
 }: {
-  onContinue: (slug: string) => void;
+  onContinue: (step: NextStepDto) => void;
+  onAssessment: (chapterId: string) => void;
 }) {
   const [data, setData] = useState<CurriculumDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,14 +117,17 @@ export function CurriculumScreen({
     );
   }
 
-  const next = data.nextLesson;
+  const next = data.next;
+  const exitChapterId = next?.kind === 'assessment' ? next.chapterId : null;
   return (
     <Screen
       footer={
         next ? (
           <PrimaryButton
-            label={`Continue: ${next.title}`}
-            onPress={() => onContinue(next.slug)}
+            label={`Continue: ${
+              next.kind === 'assessment' ? 'Chapter assessment' : next.title
+            }`}
+            onPress={() => onContinue(next)}
           />
         ) : null
       }
@@ -168,6 +174,12 @@ export function CurriculumScreen({
               relocating={relocating === c.id}
               relocateDisabled={relocating !== null}
               onRelocate={() => relocate(c.id)}
+              assessmentLabel={
+                c.id === exitChapterId
+                  ? 'Take the chapter assessment'
+                  : 'Already know this? Take the skip test'
+              }
+              onAssessment={() => onAssessment(c.id)}
             />
           ))}
         </View>
@@ -191,6 +203,8 @@ function ChapterRow({
   relocating,
   relocateDisabled,
   onRelocate,
+  assessmentLabel,
+  onAssessment,
 }: {
   chapter: CurriculumChapterDto;
   open: boolean;
@@ -198,6 +212,8 @@ function ChapterRow({
   relocating: boolean;
   relocateDisabled: boolean;
   onRelocate: () => void;
+  assessmentLabel: string;
+  onAssessment: () => void;
 }) {
   const st = CHAPTER_STATE[c.state];
   const locked = c.state === 'locked';
@@ -230,6 +246,15 @@ function ChapterRow({
           {c.lessons.map((l) => (
             <LessonRow key={l.id} lesson={l} />
           ))}
+          {c.actions.assessment ? (
+            <Pressable
+              style={styles.action}
+              onPress={onAssessment}
+              accessibilityRole="button"
+            >
+              <Text style={styles.actionText}>{assessmentLabel}</Text>
+            </Pressable>
+          ) : null}
           {c.actions.relocate ? (
             <Pressable
               style={[styles.action, relocateDisabled && styles.dim]}

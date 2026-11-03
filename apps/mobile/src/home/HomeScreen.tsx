@@ -1,26 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CurriculumNextDto } from '@sensei/types';
+import type { CurriculumNextDto, NextStepDto } from '@sensei/types';
 import { api } from '../api';
 import { ui } from '../ui';
 
-type NextLesson = CurriculumNextDto['nextLesson'];
+type Next = CurriculumNextDto['next'];
 
 /**
- * Home / launcher: "Continue" plays the learner's next lesson (from the
- * Curriculum Outline, I.4.e) and the Reviews tile shows the live due count
+ * Home / launcher: "Continue" opens the learner's next step from the
+ * Curriculum Outline (I.4.e) — a lesson, or a chapter's exit Assessment
+ * (I.4.d.a) — and the Reviews tile shows the live due count
  * (G.4 entry point). Curriculum and Progress live in their own tabs.
  */
 export function HomeScreen({
   onContinue,
   onStartReview,
 }: {
-  onContinue: (slug: string) => void;
+  onContinue: (step: NextStepDto) => void;
   onStartReview: () => void;
 }) {
   const [dueCount, setDueCount] = useState<number | null>(null);
   // undefined = loading; null = nothing left; 'error' = fetch failed.
-  const [next, setNext] = useState<NextLesson | undefined | 'error'>(undefined);
+  const [next, setNext] = useState<Next | undefined | 'error'>(undefined);
 
   const refresh = useCallback(() => {
     let active = true;
@@ -31,7 +32,7 @@ export function HomeScreen({
     setNext(undefined);
     api
       .curriculumNext()
-      .then((c) => active && setNext(c.nextLesson))
+      .then((c) => active && setNext(c.next))
       .catch(() => active && setNext('error'));
     return () => {
       active = false;
@@ -40,25 +41,18 @@ export function HomeScreen({
 
   useEffect(refresh, [refresh]);
 
-  const lesson = next && next !== 'error' ? next : null;
+  const step = next && next !== 'error' ? next : null;
 
   return (
     <View style={[ui.screen, styles.pad]}>
       <Text style={styles.brand}>先生 Sensei</Text>
 
       <Pressable
-        style={[
-          styles.tile,
-          !lesson && next !== 'error' && styles.tileDisabled,
-        ]}
+        style={[styles.tile, !step && next !== 'error' && styles.tileDisabled]}
         onPress={
-          lesson
-            ? () => onContinue(lesson.slug)
-            : next === 'error'
-              ? refresh
-              : undefined
+          step ? () => onContinue(step) : next === 'error' ? refresh : undefined
         }
-        disabled={!lesson && next !== 'error'}
+        disabled={!step && next !== 'error'}
         accessibilityRole="button"
       >
         <Text style={styles.tileTitle}>Continue</Text>
@@ -69,7 +63,9 @@ export function HomeScreen({
               ? 'Couldn’t load your next lesson — tap to retry'
               : next === null
                 ? "You're through everything published so far"
-                : next.title}
+                : next.kind === 'assessment'
+                  ? `Chapter assessment: ${next.chapterTitle}`
+                  : next.title}
         </Text>
       </Pressable>
 
