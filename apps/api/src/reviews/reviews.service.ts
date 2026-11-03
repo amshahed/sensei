@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { DueReviewItemDto, ReviewResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -50,12 +49,22 @@ export class ReviewsService {
     }
 
     const graded = await this.recall.grade(question, answer);
+    const base = {
+      itemId,
+      correct: graded.correct,
+      correctAnswer: question.expected,
+      scored: graded.scored,
+      ...(graded.feedback ? { feedback: graded.feedback } : {}),
+    };
     if (!graded.scored) {
-      // AI grader down and its fallback said "wrong": don't record a miss
-      // that may not be one — let the learner retry.
-      throw new ServiceUnavailableException(
-        'Grading is unavailable right now — please try again shortly.',
-      );
+      // AI grader down and its fallback said "wrong": show the answer and
+      // move on, but don't record a miss that may not be one (same as
+      // lesson Checks).
+      const current = await this.prisma.itemMasteryState.findUnique({
+        where: { userId_itemId: { userId, itemId } },
+        select: { mastery: true },
+      });
+      return { ...base, mastery: current?.mastery ?? 0 };
     }
 
     const state = await this.mastery.recordCheckResult({
@@ -65,12 +74,6 @@ export class ReviewsService {
       correct: graded.correct,
       rating: graded.rating,
     });
-
-    return {
-      itemId,
-      correct: graded.correct,
-      correctAnswer: question.expected,
-      mastery: state.mastery,
-    };
+    return { ...base, mastery: state.mastery };
   }
 }

@@ -16,6 +16,8 @@ export interface RecallGrade {
   scored: boolean;
   /** AI rating for meaning answers; undefined → derive from `correct`. */
   rating?: Grade;
+  /** The AI grader's explanation (meaning answers). */
+  feedback?: string;
 }
 
 /** Grades a typed answer to a {@link RecallQuestion} (one rule set for every surface). */
@@ -56,6 +58,7 @@ export class RecallGraderService {
           correct: r.correct,
           scored: r.scored && !fallbackMiss,
           rating: ratingFromLabel(r.rating),
+          ...(r.feedback ? { feedback: r.feedback } : {}),
         };
       }
     }

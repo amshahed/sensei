@@ -374,6 +374,27 @@ describe('AssessmentsService', () => {
       expect(skipCreateMany).not.toHaveBeenCalled();
     });
 
+    it('pass never seeds untested items that cannot be quizzed', async () => {
+      attemptFindUnique.mockResolvedValue(
+        attempt({ itemIds: ['k1', 'k2', 'k3'] }),
+      );
+      itemFindMany.mockResolvedValue([kana(1), kana(2), kana(3)]);
+      lessonItemFindMany.mockResolvedValue([
+        ...targets,
+        { lessonId: 'l2', item: { ...grammar, id: 'g2', meaning: null } },
+      ]);
+      await service.submit(
+        'u1',
+        'att-1',
+        answers({ k1: 'ka1', k2: 'ka2', k3: 'ka3' }),
+      );
+      expect(seedInferred).toHaveBeenCalledWith(
+        'u1',
+        ['g1'], // g2 is a meaning-less shell → skipped
+        expect.any(Date),
+      );
+    });
+
     it('grades meaning answers with the AI grader and skips it for blank answers', async () => {
       attemptFindUnique.mockResolvedValue(attempt());
       const res = await service.submit(

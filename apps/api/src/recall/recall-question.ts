@@ -51,7 +51,8 @@ function dataStrings(data: unknown, key: string): string[] {
 /**
  * Readings a learner may give for a kanji: every on'yomi and kun'yomi, with
  * KANJIDIC2's markers resolved — "-" marks a prefix/suffix use (ひと- → ひと),
- * "." separates the stem from okurigana (ひと.つ → ひとつ or ひと).
+ * "." separates the stem from okurigana (ひと.つ → ひとつ). The bare stem of a
+ * "." reading is NOT accepted: for 生 (い.きる) it would let a lone い pass.
  */
 export function kanjiReadings(item: RecallableItem): {
   accepted: string[];
@@ -67,8 +68,7 @@ export function kanjiReadings(item: RecallableItem): {
     const bare = r.replace(/-/g, '').trim();
     if (!bare) continue;
     const [stem, okurigana] = bare.split('.');
-    accepted.add(stem);
-    if (okurigana) accepted.add(stem + okurigana);
+    accepted.add(okurigana ? stem + okurigana : stem);
     const label = okurigana ? `${stem}(${okurigana})` : stem;
     if (!shown.includes(label)) shown.push(label);
   }

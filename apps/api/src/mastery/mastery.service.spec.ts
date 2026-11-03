@@ -223,6 +223,17 @@ describe('MasteryService', () => {
       expect(due.map((d) => d.prompt)).toContain('Type the rōmaji for 「あ」');
     });
 
+    it('keeps meaning-less grammar shells out of the query itself', async () => {
+      stateFindMany.mockResolvedValue([]);
+      await service.getDue('dev-user', NOW);
+      const [[args]] = stateFindMany.mock.calls as [
+        [{ where: Record<string, unknown> }],
+      ];
+      expect(args.where.NOT).toEqual({
+        item: { type: 'GRAMMAR', meaning: null },
+      });
+    });
+
     it('skips due items with no quizzable question yet (e.g. a grammar shell)', async () => {
       stateFindMany.mockResolvedValue([
         {

@@ -383,9 +383,16 @@ export class AssessmentsService {
   ): Promise<void> {
     try {
       const tested = new Set(testedItemIds);
-      const untested = (await this.chapterTargets(chapterId))
-        .map((t) => t.itemId)
-        .filter((id) => !tested.has(id));
+      // Only items Reviews can actually quiz — a seeded non-quizzable item
+      // would sit due forever with nothing to ask.
+      const rows = await this.prisma.lessonItem.findMany({
+        where: { role: 'TARGET', lesson: { chapterId } },
+        select: { item: { select: ITEM_SELECT } },
+      });
+      const untested = rows
+        .map((r) => r.item)
+        .filter((item) => !tested.has(item.id) && recallQuestionFor(item))
+        .map((item) => item.id);
       await this.mastery.seedInferred(userId, untested, now);
     } catch (err) {
       this.logger.error(

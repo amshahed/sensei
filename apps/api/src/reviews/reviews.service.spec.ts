@@ -1,9 +1,5 @@
 import { Test } from '@nestjs/testing';
-import {
-  BadRequestException,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReviewsService, REVIEW_SESSION_CAP } from './reviews.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
@@ -17,8 +13,6 @@ function dueItem(itemId: string): DueReviewItemDto {
     itemId,
     type: 'KANA',
     display: 'あ',
-    reading: 'あ',
-    meaning: null,
     mastery: 0.1,
     retrievability: 0.5,
     due: '2026-06-13T00:00:00.000Z',
@@ -33,19 +27,24 @@ describe('ReviewsService', () => {
   let getDue: jest.Mock;
   let recordCheckResult: jest.Mock;
   let gradeOpen: jest.Mock;
+  let stateFindUnique: jest.Mock;
 
   beforeEach(async () => {
     itemFindUnique = jest.fn();
     getDue = jest.fn();
     recordCheckResult = jest.fn().mockResolvedValue({ mastery: 0.25 });
     gradeOpen = jest.fn();
+    stateFindUnique = jest.fn().mockResolvedValue({ mastery: 0.4 });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         ReviewsService,
         {
           provide: PrismaService,
-          useValue: { item: { findUnique: itemFindUnique } },
+          useValue: {
+            item: { findUnique: itemFindUnique },
+            itemMasteryState: { findUnique: stateFindUnique },
+          },
         },
         { provide: MasteryService, useValue: { getDue, recordCheckResult } },
         RecallGraderService, // real shared grader over mocked AI + normaliser
@@ -96,6 +95,7 @@ describe('ReviewsService', () => {
         correct: true,
         correctAnswer: 'a',
         mastery: 0.25,
+        scored: true,
       });
       expect(recordCheckResult).toHaveBeenCalledWith({
         userId: 'dev-user',
@@ -147,15 +147,16 @@ describe('ReviewsService', () => {
         correct: true,
         gradedBy: 'ai',
         scored: true,
+        feedback: 'Exactly.',
       });
       const result = await service.grade('dev-user', 'ja:vocab:すし', 'sushi');
-      expect(result.correct).toBe(true);
+      expect(result).toMatchObject({ correct: true, feedback: 'Exactly.' });
       expect(recordCheckResult).toHaveBeenCalledWith(
         expect.objectContaining({ correct: true, rating: 4 }),
       );
     });
 
-    it('503s without recording when the grader is down and its fallback says wrong', async () => {
+    it('grader down and fallback says wrong: shows the answer, records nothing, learner moves on', async () => {
       itemFindUnique.mockResolvedValue({
         id: 'ja:vocab:すし',
         type: 'VOCAB',
@@ -170,9 +171,18 @@ describe('ReviewsService', () => {
         gradedBy: 'fallback',
         scored: true,
       });
-      await expect(
-        service.grade('dev-user', 'ja:vocab:すし', 'raw fish rice'),
-      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      const result = await service.grade(
+        'dev-user',
+        'ja:vocab:すし',
+        'raw fish rice',
+      );
+      expect(result).toEqual({
+        itemId: 'ja:vocab:すし',
+        correct: false,
+        correctAnswer: 'sushi',
+        scored: false,
+        mastery: 0.4, // unchanged, read back
+      });
       expect(recordCheckResult).not.toHaveBeenCalled();
     });
 

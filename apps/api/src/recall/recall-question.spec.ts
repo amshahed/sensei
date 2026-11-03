@@ -92,10 +92,23 @@ describe('kanji readings (KANJIDIC2 markers)', () => {
     data: { on_readings: ['イチ', 'イツ'], kun_readings: ['ひと-', 'ひと.つ'] },
   });
 
-  it('accepts every on/kun reading, with "-" dropped and "." resolved both ways', () => {
+  it('accepts every on/kun reading, with "-" dropped and "." joined to its okurigana', () => {
     expect(kanjiReadings(ichi)).toEqual({
       accepted: ['イチ', 'イツ', 'ひと', 'ひとつ'],
       shown: 'イチ・イツ・ひと・ひと(つ)',
+    });
+  });
+
+  it('never accepts the bare stem of an okurigana reading (生: い.きる ≠ い)', () => {
+    const sei = item({
+      type: 'KANJI',
+      display: '生',
+      reading: 'い.きる',
+      data: { on_readings: ['セイ'], kun_readings: ['い.きる', 'う.まれる'] },
+    });
+    expect(kanjiReadings(sei)).toEqual({
+      accepted: ['セイ', 'いきる', 'うまれる'],
+      shown: 'セイ・い(きる)・う(まれる)',
     });
   });
 

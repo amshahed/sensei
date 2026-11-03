@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import type { DueReviewItemDto, ReviewResultDto } from '@sensei/types';
-import { api } from '../api';
+import { api, isPermanent } from '../api';
 import { PrimaryButton, Screen, ui } from '../ui';
 
 /**
@@ -20,7 +20,12 @@ type Phase =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'empty' }
-  | { kind: 'review'; queue: DueReviewItemDto[]; index: number; correct: number }
+  | {
+      kind: 'review';
+      queue: DueReviewItemDto[];
+      index: number;
+      correct: number;
+    }
   | { kind: 'done'; correct: number; total: number };
 
 export function ReviewSession({ onExit }: { onExit?: () => void }) {
@@ -69,7 +74,9 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
         <Text style={styles.emoji}>✅</Text>
         <Text style={ui.title}>All caught up</Text>
         <Text style={ui.body}>Nothing is due right now — you’re on track.</Text>
-        {onExit ? <PrimaryButton label="Back to home" onPress={onExit} /> : null}
+        {onExit ? (
+          <PrimaryButton label="Back to home" onPress={onExit} />
+        ) : null}
       </View>
     );
   }
@@ -82,7 +89,9 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
         <Text style={ui.body}>
           You got {phase.correct} of {phase.total} right.
         </Text>
-        {onExit ? <PrimaryButton label="Back to home" onPress={onExit} /> : null}
+        {onExit ? (
+          <PrimaryButton label="Back to home" onPress={onExit} />
+        ) : null}
       </View>
     );
   }
@@ -99,7 +108,12 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
         const nextCorrect = correct + (wasCorrect ? 1 : 0);
         const next = index + 1;
         if (next < queue.length) {
-          setPhase({ kind: 'review', queue, index: next, correct: nextCorrect });
+          setPhase({
+            kind: 'review',
+            queue,
+            index: next,
+            correct: nextCorrect,
+          });
         } else {
           setPhase({ kind: 'done', correct: nextCorrect, total: queue.length });
         }
@@ -122,18 +136,20 @@ function ReviewCard({
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState<ReviewResultDto | null>(null);
   const [grading, setGrading] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // 'retry': a blip — don't score it, let the learner retry.
+  // 'skip': the server says this item can't be reviewed (4xx) — retrying
+  // won't help, so let them move on.
+  const [failed, setFailed] = useState<'retry' | 'skip' | null>(null);
 
   async function submit() {
     if (result || grading || answer.trim().length === 0) return;
     setGrading(true);
-    setFailed(false);
+    setFailed(null);
     try {
       const r = await api.gradeReview(item.itemId, answer);
       setResult(r);
-    } catch {
-      // Don't score a network blip as a wrong answer — let the learner retry.
-      setFailed(true);
+    } catch (err) {
+      setFailed(isPermanent(err) ? 'skip' : 'retry');
     } finally {
       setGrading(false);
     }
@@ -142,14 +158,20 @@ function ReviewCard({
   return (
     <Screen
       footer={
-        result ? (
+        result || failed === 'skip' ? (
           <PrimaryButton
-            label={index + 1 < total ? 'Next →' : 'Finish'}
-            onPress={() => onNext(result.correct)}
+            label={
+              failed === 'skip'
+                ? 'Skip'
+                : index + 1 < total
+                  ? 'Next →'
+                  : 'Finish'
+            }
+            onPress={() => onNext(!!result?.correct && result.scored)}
           />
         ) : (
           <PrimaryButton
-            label={failed ? 'Retry' : 'Check'}
+            label={failed === 'retry' ? 'Retry' : 'Check'}
             onPress={submit}
             disabled={grading || answer.trim().length === 0}
           />
@@ -173,17 +195,26 @@ function ReviewCard({
         onSubmitEditing={submit}
       />
 
-      {failed ? (
+      {failed === 'retry' ? (
         <Text style={ui.err}>Couldn’t reach the grader — tap Retry.</Text>
       ) : null}
+      {failed === 'skip' ? (
+        <Text style={ui.err}>This item can’t be reviewed right now.</Text>
+      ) : null}
 
-      {result ? (
+      {result && !result.scored ? (
+        <Text style={ui.hint}>
+          Couldn’t grade that right now, so it doesn’t count. Answer:{' '}
+          {result.correctAnswer || '—'}
+        </Text>
+      ) : result ? (
         <Text style={result.correct ? ui.ok : ui.err}>
           {result.correct
             ? 'Correct!'
             : `Answer: ${result.correctAnswer || '—'}`}
         </Text>
       ) : null}
+      {result?.feedback ? <Text style={ui.hint}>{result.feedback}</Text> : null}
     </Screen>
   );
 }

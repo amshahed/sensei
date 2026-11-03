@@ -59,19 +59,25 @@ describe('RecallGraderService', () => {
     expect(normalisedMatch).toHaveBeenCalledWith('ひと', 'イチ');
   });
 
-  it('meaning: AI rating flows through', async () => {
+  it('meaning: AI rating and feedback flow through', async () => {
     gradeOpen.mockResolvedValue({
       rating: 'Easy',
       correct: true,
       gradedBy: 'ai',
       scored: true,
+      feedback: 'Spot on.',
     });
     await expect(
       grader.grade(
         q({ check: 'meaning', prompt: 'What?', expected: 'cat' }),
         'a cat',
       ),
-    ).resolves.toEqual({ correct: true, scored: true, rating: Rating.Easy });
+    ).resolves.toEqual({
+      correct: true,
+      scored: true,
+      rating: Rating.Easy,
+      feedback: 'Spot on.',
+    });
     expect(gradeOpen).toHaveBeenCalledWith({
       prompt: 'What?',
       answer: 'a cat',
