@@ -129,7 +129,7 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 Design grilling COMPLETE (all phases A–M locked). **Implementing** against the GitHub issues (epic #1, children #2–#22). The core learning loop is merged to `main`, each via a high-reviewed, CI-green PR.
 
-### Implementation status (as of 2026-11-02)
+### Implementation status (as of 2026-11-03)
 
 | Issue | Scope | Status |
 |---|---|---|
@@ -150,18 +150,26 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | #12 | Reading lessons (H.4) — LessonPlayer teach beat + kana/text/example blocks; normaliseTeach publisher | ✅ merged |
 | #16 | Progress Dashboard (J.2) — `GET /progress` API + ProgressScreen | ✅ merged |
 | #3 | Auth (Clerk, L.6) — global `AuthGuard` (Clerk JWT verify) + dev-stub fallback, `@Public()`, `GET /me` + users row create-on-sign-in; mobile ClerkProvider + sign-in/up screen + Bearer token | ✅ merged + **verified live** (real Clerk token → `GET /me` → 200, users row created in Neon; idempotent) |
+| #34 fix (PR #50) | Ingest against **real** source data — JLPT list-driven vocab join (E.1.a), KANJIDIC2 old-scale mapping, Tatoeba per-item cap K=8 (E.3.a) | ✅ merged |
+| PR #51 | Hermetic tests — `apps/api/.env` kept out of every Jest run (Prisma's implicit .env load); `DEV_USER_ID` read per call | ✅ merged |
+| #14 | Curriculum Outline (I.4.e, I.4.e.a) — `GET /curriculum`, `GET /curriculum/next`, `POST /curriculum/relocate` (incl. `null` = back to furthest point); next-chapter lookahead gating; mobile Home · Curriculum · Progress tab bar + outline screen | ✅ merged (PR #52) |
+| #15 | Chapter Assessment engine (I.4.d, I.4.d.a) — one engine for skip-test + exit gate; ~20 sampled per-item typed-recall Qs, ≥80%; partial-pass lesson collapse; inferred mastery on pass; chapter-intro skip-test offer; idempotent submit | ✅ merged (PR #53) |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews). Auth is wired (#3) and **verified against live infra**: real Clerk session → `GET /me` → 200 with a `users` row created in the live DB.
 
 **Live infra provisioned (2026-11-02):**
 - **Clerk** — dev instance `ins_3LZBi0bt…`; keys set in `apps/api/.env` (`CLERK_SECRET_KEY`) + `apps/mobile/.env` (`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`).
-- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; all 3 Prisma migrations applied + seeded (the-five-vowels). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
+- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; the first 3 Prisma migrations applied + seeded (the-five-vowels). **Not yet deployed:** `20261103120000_curriculum_position` (#14) + `20261103180000_chapter_assessment` (#15) — the pair was verified on a throwaway branch (`migration-test-15`). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
+- **Item + reference data in Neon (2026-11-03):** 92 kana · 1,358 vocab (N5 702 / N4 656) · 103 N5 kanji · 40 grammar shells · 9,694 Tatoeba sentences embedded (Voyage, ~72k tokens ≈ $0.004). Voyage is on its no-payment-method tier (3 RPM): every batch hit a 429 and got through on the last retry.
 
-**Remaining open issues are HITL.** The no-key chain next up is **#13 signup + placement** → #14 Curriculum Outline → #15 skip-test (these now have a live DB to write to).
+**Next AFK issue: #17 Practice Mode** (J.1) — its "pick what to drill" scope reuses the Curriculum Outline (#14). #13 signup + placement (HITL) will write `SKIPPED_VIA_PLACEMENT` marks the outline already renders.
 
 **HITL still pending from the founder:**
 - **#3 last-mile (optional):** drive sign-up/sign-in through the mobile UI on a device/simulator via EAS (the token→API path is already verified; only the on-device UI walkthrough is unexercised).
-- provision Railway · Azure · R2; set `ANTHROPIC_API_KEY` + `VOYAGE_API_KEY` (for #21b) + `GEMINI_API_KEY` (for grading per L.4.a).
+- **#22 skeleton blocked on Anthropic credits:** `authoring:skeleton` failed with "credit balance is too low". Top up console.anthropic.com → Plans & Billing, then rerun `pnpm authoring:skeleton` from `apps/api` (the item data it reads is already in Neon).
+- **Optional — Voyage payment method:** lifts the 3 RPM / 10K TPM cap. The free token allowance still applies. It only matters for re-ingests and retrieval at authoring scale.
+- **Deploy the #14 + #15 migrations to Neon** (`pnpm prisma:deploy` from `apps/api`), then delete the `migration-test-15` branch.
+- provision Railway · Azure · R2 (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `GEMINI_API_KEY` are set).
 
 ---
 
