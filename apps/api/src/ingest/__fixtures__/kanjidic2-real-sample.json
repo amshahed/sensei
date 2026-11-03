@@ -1,0 +1,89 @@
+[
+  {
+    "literal": "日",
+    "misc": { "grade": 1, "strokeCounts": [4], "frequency": 1, "jlptLevel": 4 },
+    "readingMeaning": {
+      "groups": [
+        {
+          "readings": [
+            { "type": "pinyin", "value": "ri4" },
+            { "type": "korean_r", "value": "il" },
+            { "type": "korean_h", "value": "일" },
+            { "type": "vietnam", "value": "Nhật" },
+            { "type": "ja_on", "value": "ニチ" },
+            { "type": "ja_on", "value": "ジツ" },
+            { "type": "ja_kun", "value": "ひ" },
+            { "type": "ja_kun", "value": "-び" },
+            { "type": "ja_kun", "value": "-か" }
+          ],
+          "meanings": [
+            { "lang": "en", "value": "day" },
+            { "lang": "en", "value": "sun" },
+            { "lang": "en", "value": "Japan" },
+            { "lang": "en", "value": "counter for days" }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "literal": "同",
+    "misc": {
+      "grade": 2,
+      "strokeCounts": [6],
+      "frequency": 15,
+      "jlptLevel": 3
+    },
+    "readingMeaning": {
+      "groups": [
+        {
+          "readings": [
+            { "type": "pinyin", "value": "tong2" },
+            { "type": "pinyin", "value": "tong4" },
+            { "type": "korean_r", "value": "dong" },
+            { "type": "korean_h", "value": "동" },
+            { "type": "vietnam", "value": "Đồng" },
+            { "type": "ja_on", "value": "ドウ" },
+            { "type": "ja_kun", "value": "おな.じ" }
+          ],
+          "meanings": [
+            { "lang": "en", "value": "same" },
+            { "lang": "en", "value": "agree" },
+            { "lang": "en", "value": "equal" }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "literal": "鬱",
+    "misc": {
+      "grade": 8,
+      "strokeCounts": [29],
+      "frequency": null,
+      "jlptLevel": null
+    },
+    "readingMeaning": {
+      "groups": [
+        {
+          "readings": [
+            { "type": "pinyin", "value": "yu4" },
+            { "type": "korean_r", "value": "ul" },
+            { "type": "korean_h", "value": "울" },
+            { "type": "vietnam", "value": "Uất" },
+            { "type": "ja_on", "value": "ウツ" },
+            { "type": "ja_kun", "value": "うっ.する" },
+            { "type": "ja_kun", "value": "ふさ.ぐ" },
+            { "type": "ja_kun", "value": "しげ.る" }
+          ],
+          "meanings": [
+            { "lang": "en", "value": "gloom" },
+            { "lang": "en", "value": "depression" },
+            { "lang": "en", "value": "melancholy" },
+            { "lang": "en", "value": "luxuriant" }
+          ]
+        }
+      ]
+    }
+  }
+]

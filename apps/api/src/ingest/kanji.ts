@@ -8,7 +8,9 @@ export type Kd2Meaning = { lang: string; value: string };
 export type Kd2Group = { readings: Kd2Reading[]; meanings: Kd2Meaning[] };
 export type Kd2Misc = {
   strokeCounts: number[];
-  jlptLevel?: number; // 1–5, where 5 = N5
+  // KANJIDIC2 carries the *pre-2010* JLPT level: 1–4, where 4 is the easiest.
+  // There is no 5. Map to modern levels with toModernJlpt().
+  jlptLevel?: number | null;
   grade?: number;
   frequency?: number;
 };
@@ -19,8 +21,21 @@ export type Kd2Character = {
 };
 export type Kd2File = { characters: Kd2Character[] };
 
+/**
+ * Old JLPT (1–4) → modern (N1–N5). The 2010 reform inserted N3 between old 2
+ * and old 3, so only the easy end maps cleanly: old 4 ≈ N5 (~100 kanji), old 3 ≈ N4.
+ * Harder levels have no clean equivalent and are not ingested.
+ */
+export function toModernJlpt(
+  old: number | null | undefined,
+): 'N5' | 'N4' | undefined {
+  if (old === 4) return 'N5';
+  if (old === 3) return 'N4';
+  return undefined;
+}
+
 export function isN5Kanji(char: Kd2Character): boolean {
-  return char.misc.jlptLevel === 5;
+  return toModernJlpt(char.misc.jlptLevel) === 'N5';
 }
 
 export function buildKanjiItem(char: Kd2Character) {
@@ -54,7 +69,7 @@ export function buildKanjiItem(char: Kd2Character) {
       on_readings: onReadings,
       kun_readings: kunReadings,
       stroke_count: strokeCount,
-      jlpt: 'N5',
+      jlpt: toModernJlpt(char.misc.jlptLevel) ?? null,
     },
   };
 }

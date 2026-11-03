@@ -1,23 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import kuromoji from 'kuromoji';
 import { toHiragana } from 'wanakana';
-import { resolve, dirname } from 'path';
-
-// Resolve via the package itself so the path works regardless of __dirname
-// (mono-repo hoisting, compiled dist/, Jest source runs all point here).
-const DICT_PATH = resolve(dirname(require.resolve('kuromoji')), '../dict');
-
-/** Surface the kuromoji builder as a promise once so it can be awaited. */
-function buildTokenizer(): Promise<
-  kuromoji.Tokenizer<kuromoji.IpadicFeatures>
-> {
-  return new Promise((ok, fail) => {
-    kuromoji.builder({ dicPath: DICT_PATH }).build((err, tokenizer) => {
-      if (err) fail(err);
-      else ok(tokenizer);
-    });
-  });
-}
+import {
+  buildTokenizer,
+  type JapaneseTokenizer,
+} from '../common/japanese-tokenizer';
 
 /**
  * Japanese writing-answer evaluation (H.2).
@@ -33,7 +19,7 @@ function buildTokenizer(): Promise<
 @Injectable()
 export class WritingEvalService implements OnModuleInit {
   private readonly logger = new Logger(WritingEvalService.name);
-  private tokenizer: kuromoji.Tokenizer<kuromoji.IpadicFeatures> | null = null;
+  private tokenizer: JapaneseTokenizer | null = null;
 
   async onModuleInit() {
     try {

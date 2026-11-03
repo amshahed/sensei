@@ -25,6 +25,8 @@ const TOP_K_PASSAGES = 5;
 export type RawItem = {
   id: string;
   display: string;
+  /** The reading the item was matched on (何 → なん), not JMdict's first kana. */
+  reading?: string | null;
   type: string;
   data: unknown;
 };
@@ -36,7 +38,7 @@ export async function loadLessonItems(
 ): Promise<RawItem[]> {
   return prisma.item.findMany({
     where: { id: { in: itemIds } },
-    select: { id: true, display: true, type: true, data: true },
+    select: { id: true, display: true, reading: true, type: true, data: true },
   });
 }
 
@@ -50,7 +52,7 @@ function formatItemsForPrompt(items: RawItem[]): string {
       }
       if (item.type === 'VOCAB') {
         const d = item.data as { readings?: string[]; senses?: string[] };
-        const reading = d.readings?.[0] ?? '';
+        const reading = item.reading ?? d.readings?.[0] ?? '';
         const gloss = d.senses?.[0] ?? '';
         return `${item.id}(${item.display}・${reading}・${gloss})`;
       }

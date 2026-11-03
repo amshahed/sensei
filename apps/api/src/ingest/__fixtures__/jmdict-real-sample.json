@@ -1,0 +1,1040 @@
+[
+  {
+    "id": "1467640",
+    "kanji": [{ "common": true, "text": "猫", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "ねこ", "tags": [], "appliesToKanji": ["*"] },
+      { "common": false, "text": "ネコ", "tags": [], "appliesToKanji": [] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "cat (esp. the domestic cat, Felis catus)" },
+          { "lang": "eng", "text": "feline" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "shamisen" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "geisha" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["abbr"],
+        "gloss": [{ "lang": "eng", "text": "wheelbarrow" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["abbr"],
+        "gloss": [{ "lang": "eng", "text": "clay bed-warmer" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk", "sl"],
+        "gloss": [
+          {
+            "lang": "eng",
+            "text": "bottom (submissive partner of a homosexual relationship)"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1516925",
+    "kanji": [{ "common": true, "text": "方", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "かた", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "direction" },
+          { "lang": "eng", "text": "way" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["hon"],
+        "gloss": [
+          { "lang": "eng", "text": "person" },
+          { "lang": "eng", "text": "lady" },
+          { "lang": "eng", "text": "gentleman" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n", "n-suf"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "method of" },
+          { "lang": "eng", "text": "manner of" },
+          { "lang": "eng", "text": "way of" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n-suf"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "care of ..." }]
+      },
+      {
+        "partOfSpeech": ["n-suf"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "person in charge of ..." }]
+      },
+      {
+        "partOfSpeech": ["n-suf"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "side (e.g. \"on my mother's side\")" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1516930",
+    "kanji": [{ "common": true, "text": "方", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "ほう", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "direction" },
+          { "lang": "eng", "text": "way" },
+          { "lang": "eng", "text": "side" },
+          { "lang": "eng", "text": "area (in a particular direction)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "side (of an argument, etc.)" },
+          { "lang": "eng", "text": "one's part" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "type" },
+          { "lang": "eng", "text": "category" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "field (of study, etc.)" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "indicates one side of a comparison" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "way" },
+          { "lang": "eng", "text": "method" },
+          { "lang": "eng", "text": "manner" },
+          { "lang": "eng", "text": "means" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "length (of each side of a square)" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1628530",
+    "kanji": [
+      { "common": false, "text": "此れ", "tags": ["rK"] },
+      { "common": false, "text": "是", "tags": ["rK"] },
+      { "common": false, "text": "之", "tags": ["rK"] },
+      { "common": false, "text": "維", "tags": ["rK"] },
+      { "common": false, "text": "惟", "tags": ["rK"] },
+      { "common": false, "text": "此", "tags": ["sK"] },
+      { "common": false, "text": "是れ", "tags": ["sK"] },
+      { "common": false, "text": "之れ", "tags": ["sK"] }
+    ],
+    "kana": [
+      { "common": true, "text": "これ", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["pn"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "this" },
+          { "lang": "eng", "text": "this one" }
+        ]
+      },
+      {
+        "partOfSpeech": ["pn"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "this person" }]
+      },
+      {
+        "partOfSpeech": ["pn"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "now" },
+          { "lang": "eng", "text": "this point (in time)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["pn"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["dated", "uk"],
+        "gloss": [{ "lang": "eng", "text": "here" }]
+      },
+      {
+        "partOfSpeech": ["adv"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["form", "uk"],
+        "gloss": [
+          { "lang": "eng", "text": "used to stress the subject of a sentence" }
+        ]
+      },
+      {
+        "partOfSpeech": ["pn"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["arch"],
+        "gloss": [
+          { "lang": "eng", "text": "I" },
+          { "lang": "eng", "text": "me" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1172910",
+    "kanji": [{ "common": true, "text": "運動", "tags": [] }],
+    "kana": [
+      {
+        "common": true,
+        "text": "うんどう",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n", "vs", "vi"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "exercise" },
+          { "lang": "eng", "text": "physical training" },
+          { "lang": "eng", "text": "workout" },
+          { "lang": "eng", "text": "sports" },
+          { "lang": "eng", "text": "athletics" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n", "vs", "vi"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "appeal" },
+          { "lang": "eng", "text": "campaign" },
+          { "lang": "eng", "text": "drive" },
+          { "lang": "eng", "text": "crusade" },
+          { "lang": "eng", "text": "movement" },
+          { "lang": "eng", "text": "lobbying" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n", "vs", "vi"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "motion" },
+          { "lang": "eng", "text": "movement" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1404630",
+    "kanji": [
+      { "common": true, "text": "足", "tags": [] },
+      { "common": true, "text": "脚", "tags": [] },
+      { "common": false, "text": "肢", "tags": [] }
+    ],
+    "kana": [
+      { "common": true, "text": "あし", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "foot" },
+          { "lang": "eng", "text": "paw" },
+          { "lang": "eng", "text": "arm (of an octopus, squid, etc.)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "leg" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "gait" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "pace" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "lower radical of a kanji" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["足"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [
+          { "lang": "eng", "text": "means of transportation" },
+          { "lang": "eng", "text": "(one's) ride" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["col"],
+        "gloss": [
+          { "lang": "eng", "text": "money" },
+          { "lang": "eng", "text": "coin" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1175570",
+    "kanji": [
+      { "common": true, "text": "円", "tags": [] },
+      { "common": false, "text": "圓", "tags": ["oK"] }
+    ],
+    "kana": [
+      { "common": true, "text": "えん", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "yen (currency of Japan)" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "circle" }]
+      }
+    ]
+  },
+  {
+    "id": "1100830",
+    "kanji": [],
+    "kana": [
+      {
+        "common": true,
+        "text": "パートタイム",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      },
+      {
+        "common": false,
+        "text": "パート・タイム",
+        "tags": [],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["adj-no", "n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": [],
+        "gloss": [{ "lang": "eng", "text": "part-time (work)" }]
+      }
+    ]
+  },
+  {
+    "id": "1238460",
+    "kanji": [{ "common": true, "text": "蕎麦", "tags": [] }],
+    "kana": [
+      {
+        "common": true,
+        "text": "そば",
+        "tags": ["gikun"],
+        "appliesToKanji": ["*"]
+      },
+      {
+        "common": false,
+        "text": "そばむぎ",
+        "tags": ["ok"],
+        "appliesToKanji": ["*"]
+      },
+      {
+        "common": false,
+        "text": "そまむぎ",
+        "tags": ["ok"],
+        "appliesToKanji": ["*"]
+      },
+      {
+        "common": false,
+        "text": "ソバ",
+        "tags": ["sk"],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "buckwheat (Fagopyrum esculentum)" }]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["そば"],
+        "misc": ["uk", "abbr"],
+        "gloss": [
+          { "lang": "eng", "text": "soba" },
+          { "lang": "eng", "text": "Japanese buckwheat noodles" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["そば"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "Chinese-style wheat noodles" }]
+      }
+    ]
+  },
+  {
+    "id": "1403830",
+    "kanji": [
+      { "common": true, "text": "側", "tags": [] },
+      { "common": false, "text": "傍", "tags": [] }
+    ],
+    "kana": [
+      { "common": true, "text": "そば", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "(place) near by" },
+          { "lang": "eng", "text": "(place) close by" },
+          { "lang": "eng", "text": "(place) right next to" },
+          { "lang": "eng", "text": "the side (of something)" },
+          { "lang": "eng", "text": "beside" },
+          { "lang": "eng", "text": "vicinity" },
+          { "lang": "eng", "text": "proximity" },
+          { "lang": "eng", "text": "neighbourhood (neighborhood)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["n"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "as soon as" },
+          { "lang": "eng", "text": "right after" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1495770",
+    "kanji": [
+      { "common": true, "text": "付ける", "tags": [] },
+      { "common": true, "text": "着ける", "tags": [] },
+      { "common": false, "text": "附ける", "tags": ["rK"] }
+    ],
+    "kana": [
+      { "common": true, "text": "つける", "tags": [], "appliesToKanji": ["*"] },
+      {
+        "common": false,
+        "text": "ツケる",
+        "tags": ["sk"],
+        "appliesToKanji": ["*"]
+      }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to attach" },
+          { "lang": "eng", "text": "to join" },
+          { "lang": "eng", "text": "to connect" },
+          { "lang": "eng", "text": "to add" },
+          { "lang": "eng", "text": "to append" },
+          { "lang": "eng", "text": "to affix" },
+          { "lang": "eng", "text": "to stick" },
+          { "lang": "eng", "text": "to glue" },
+          { "lang": "eng", "text": "to fasten" },
+          { "lang": "eng", "text": "to sew on" },
+          { "lang": "eng", "text": "to apply (ointment)" },
+          { "lang": "eng", "text": "to put against" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to furnish (a house with)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to wear" },
+          { "lang": "eng", "text": "to put on" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to keep a diary" },
+          { "lang": "eng", "text": "to make an entry" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to appraise" },
+          { "lang": "eng", "text": "to set (a price)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to allot" },
+          { "lang": "eng", "text": "to budget" },
+          { "lang": "eng", "text": "to assign" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to bring alongside" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to place (under guard or doctor)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to follow (someone)" },
+          { "lang": "eng", "text": "to shadow" },
+          { "lang": "eng", "text": "to tail" },
+          { "lang": "eng", "text": "to stalk" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to load" },
+          { "lang": "eng", "text": "to give (courage to)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to keep (an eye on)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to establish (relations or understanding)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to turn on (a light)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to produce flowers (of a plant)" },
+          { "lang": "eng", "text": "to produce fruit" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to attach" },
+          { "lang": "eng", "text": "to play an attachment" }
+        ]
+      },
+      {
+        "partOfSpeech": ["suf", "v1"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to do intensely" },
+          { "lang": "eng", "text": "to do fiercely" },
+          { "lang": "eng", "text": "to do strongly" }
+        ]
+      },
+      {
+        "partOfSpeech": ["suf", "v1"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to be used to (doing)" },
+          { "lang": "eng", "text": "to be accustomed to" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1610400",
+    "kanji": [{ "common": true, "text": "点ける", "tags": [] }],
+    "kana": [
+      { "common": true, "text": "つける", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to turn on" },
+          { "lang": "eng", "text": "to switch on" },
+          { "lang": "eng", "text": "to light up" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1207610",
+    "kanji": [
+      { "common": true, "text": "掛ける", "tags": [] },
+      { "common": false, "text": "懸ける", "tags": [] }
+    ],
+    "kana": [
+      { "common": true, "text": "かける", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          {
+            "lang": "eng",
+            "text": "to hang up (e.g. a coat, a picture on the wall)"
+          },
+          { "lang": "eng", "text": "to let hang" },
+          { "lang": "eng", "text": "to suspend (from)" },
+          { "lang": "eng", "text": "to hoist (e.g. sail)" },
+          { "lang": "eng", "text": "to raise (e.g. flag)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to put on (e.g. a blanket)" },
+          { "lang": "eng", "text": "to put on top of" },
+          { "lang": "eng", "text": "to cover" },
+          { "lang": "eng", "text": "to lay" },
+          { "lang": "eng", "text": "to spread" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to put on (glasses, etc.)" },
+          { "lang": "eng", "text": "to wear (a necklace, etc.)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to make (a call)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to spend (time, money)" },
+          { "lang": "eng", "text": "to expend" },
+          { "lang": "eng", "text": "to use" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to pour (liquid) onto" },
+          { "lang": "eng", "text": "to sprinkle (powder or spices) onto" },
+          { "lang": "eng", "text": "to splash" },
+          { "lang": "eng", "text": "to throw (e.g. water) onto" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to turn on (an engine, radio, etc.)" },
+          { "lang": "eng", "text": "to set (a dial, alarm clock, etc.)" },
+          { "lang": "eng", "text": "to put on (a DVD, song, etc.)" },
+          { "lang": "eng", "text": "to use (a device, implement, etc.)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          {
+            "lang": "eng",
+            "text": "to cause (someone inconvenience, trouble, etc.)"
+          },
+          { "lang": "eng", "text": "to burden (someone)" },
+          { "lang": "eng", "text": "to impose" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to multiply (arithmetic operation)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to secure (e.g. lock)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to take a seat" },
+          { "lang": "eng", "text": "to sit" },
+          { "lang": "eng", "text": "to rest (something on something else)" },
+          { "lang": "eng", "text": "to support (something on something else)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to bind" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to wager" },
+          { "lang": "eng", "text": "to bet" },
+          { "lang": "eng", "text": "to risk" },
+          { "lang": "eng", "text": "to stake" },
+          { "lang": "eng", "text": "to gamble" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          {
+            "lang": "eng",
+            "text": "to put an effect (spell, anaesthetic, etc.) on"
+          }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to hold (a play, festival, etc.)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to hold an emotion for (pity, hope, etc.)" }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to argue (in court)" },
+          { "lang": "eng", "text": "to deliberate (in a meeting)" },
+          {
+            "lang": "eng",
+            "text": "to present (e.g. idea to a conference, etc.)"
+          }
+        ]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to increase further" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to catch (in a trap, etc.)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to set atop" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to erect (a makeshift building)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [{ "lang": "eng", "text": "to apply (insurance)" }]
+      },
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to pun (on a word)" },
+          { "lang": "eng", "text": "to use (a word) as a pivot word" },
+          { "lang": "eng", "text": "to play on words" }
+        ]
+      },
+      {
+        "partOfSpeech": ["suf", "v1"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to be partway doing ..." },
+          { "lang": "eng", "text": "to begin (but not complete) ..." },
+          { "lang": "eng", "text": "to be about to ..." }
+        ]
+      },
+      {
+        "partOfSpeech": ["suf", "v1"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to address (someone)" },
+          { "lang": "eng", "text": "to direct (something, to someone)" },
+          { "lang": "eng", "text": "to do (something, to someone)" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "2208960",
+    "kanji": [{ "common": false, "text": "架ける", "tags": [] }],
+    "kana": [
+      { "common": false, "text": "かける", "tags": [], "appliesToKanji": ["*"] }
+    ],
+    "sense": [
+      {
+        "partOfSpeech": ["v1", "vt"],
+        "appliesToKanji": ["*"],
+        "appliesToKana": ["*"],
+        "misc": ["uk"],
+        "gloss": [
+          { "lang": "eng", "text": "to suspend between two points" },
+          { "lang": "eng", "text": "to build (a bridge, etc.)" },
+          {
+            "lang": "eng",
+            "text": "to put up on something (e.g. legs up on table)"
+          }
+        ]
+      }
+    ]
+  }
+]
