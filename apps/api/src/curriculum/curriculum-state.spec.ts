@@ -228,6 +228,13 @@ describe('deriveCurriculumState — actions', () => {
     ).toBe(true);
   });
 
+  it('a relocated chapter (already passed) offers no Assessment', () => {
+    const s = derive({ marks: placed(1), relocated: 'c1' });
+    expect(s.chapterStates.get('c1')).toBe('current');
+    expect(s.chapterActions.get('c1')?.assessment).toBe(false);
+    expect(s.chapterActions.get('c2')?.assessment).toBe(true); // the frontier
+  });
+
   it('while relocated, the frontier is not a relocate target (relocated flag + relocate(null) instead)', () => {
     const s = derive({ marks: placed(1), relocated: 'c1' });
     expect(s.relocated).toBe(true);

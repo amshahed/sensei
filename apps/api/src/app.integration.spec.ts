@@ -81,7 +81,9 @@ function fakePrisma() {
   }> = [];
   const marks = new Map<string, { chapterId: string; kind: string }>();
   const attempts = new Map<string, Record<string, unknown>>();
-  return {
+  const fake: Record<string, unknown> = {
+    // Interactive transactions run against the same in-memory fake.
+    $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(fake),
     module: {
       findMany: () =>
         Promise.resolve([
@@ -147,7 +149,14 @@ function fakePrisma() {
     assessmentAttempt: {
       create: ({ data }: { data: Record<string, unknown> }) => {
         const id = `att-${attempts.size + 1}`;
-        attempts.set(id, { id, status: 'IN_PROGRESS', ...data });
+        attempts.set(id, {
+          id,
+          status: 'IN_PROGRESS',
+          createdAt: new Date(),
+          correctCount: null,
+          results: null,
+          ...data,
+        });
         return Promise.resolve({ id });
       },
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
@@ -229,6 +238,7 @@ function fakePrisma() {
       findMany: () => Promise.resolve([]),
     },
   };
+  return fake;
 }
 
 describe('API (HTTP integration)', () => {
@@ -510,12 +520,17 @@ describe('API (HTTP integration)', () => {
       expect(body.next).toBeNull();
     });
 
-    it('a second submit is rejected; the passed chapter offers no new Assessment', async () => {
-      await request(app.getHttpServer())
+    it('a repeat submit replays the result; the passed chapter offers no new Assessment', async () => {
+      const res = await request(app.getHttpServer())
         .post(`/assessments/${attemptId}/submit`)
         .set(DEV_USER_HEADER, user)
-        .send({ answers: [{ itemId: 'ja:kana:a', answer: 'a' }] })
-        .expect(409);
+        .send({ answers: [{ itemId: 'ja:kana:a', answer: 'wrong now' }] })
+        .expect(201);
+      expect(res.body as AssessmentResultDto).toMatchObject({
+        passed: true,
+        correct: 1,
+        results: [{ itemId: 'ja:kana:a', answer: 'a', correct: true }],
+      });
       await startIt().expect(400);
     });
   });

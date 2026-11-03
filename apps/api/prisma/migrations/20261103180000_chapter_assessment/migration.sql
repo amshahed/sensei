@@ -55,3 +55,14 @@ ALTER TABLE "AssessmentAttempt" ADD CONSTRAINT "AssessmentAttempt_userId_fkey" F
 -- AddForeignKey
 ALTER TABLE "AssessmentAttempt" ADD CONSTRAINT "AssessmentAttempt_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- Backfill (decisions.md I.4.d.a): until now a chapter whose lessons were all
+-- completed counted as passed. Lessons alone no longer pass a chapter, so
+-- grandfather those as PASSED_ASSESSMENT — nobody loses their place.
+INSERT INTO "UserChapterMark" ("userId", "chapterId", "kind")
+SELECT lc."userId", l."chapterId", 'PASSED_ASSESSMENT'::"ChapterMarkKind"
+FROM "LessonCompletion" lc
+JOIN "Lesson" l ON l."id" = lc."lessonId"
+GROUP BY lc."userId", l."chapterId"
+HAVING COUNT(DISTINCT lc."lessonId") =
+  (SELECT COUNT(*) FROM "Lesson" l2 WHERE l2."chapterId" = l."chapterId")
+ON CONFLICT ("userId", "chapterId") DO NOTHING;

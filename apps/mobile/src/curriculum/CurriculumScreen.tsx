@@ -118,7 +118,6 @@ export function CurriculumScreen({
   }
 
   const next = data.next;
-  const exitChapterId = next?.kind === 'assessment' ? next.chapterId : null;
   return (
     <Screen
       footer={
@@ -175,7 +174,11 @@ export function CurriculumScreen({
               relocateDisabled={relocating !== null}
               onRelocate={() => relocate(c.id)}
               assessmentLabel={
-                c.id === exitChapterId
+                // Mirrors the server: lessons all done → EXIT (misses count
+                // in reviews); otherwise a no-penalty skip-test.
+                c.lessons.every(
+                  (l) => l.state === 'completed' || l.state === 'skipped',
+                )
                   ? 'Take the chapter assessment'
                   : 'Already know this? Take the skip test'
               }

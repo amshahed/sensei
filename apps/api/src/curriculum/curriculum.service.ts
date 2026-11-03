@@ -226,10 +226,14 @@ function nextStepOf(
             title: l.title,
             chapterId: c.id,
             chapterTitle: c.title,
-            chapterStart: c.lessons.every((x) => {
-              const st = state.lessonStates.get(x.id);
-              return st !== 'completed' && st !== 'skipped';
-            }),
+            // Only where a skip-test is on offer — not on a chapter the
+            // learner relocated back to (already passed).
+            chapterStart:
+              !!state.chapterActions.get(c.id)?.assessment &&
+              c.lessons.every((x) => {
+                const st = state.lessonStates.get(x.id);
+                return st !== 'completed' && st !== 'skipped';
+              }),
           };
         }
       }

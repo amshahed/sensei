@@ -128,7 +128,10 @@ export function deriveCurriculumState(
         passed(chapter) &&
         !done &&
         (frontierIdx === -1 || i < frontierIdx),
-      assessment: state === 'current' || state === 'available',
+      // Not on a relocated chapter: it is already passed (the learner went
+      // back to learn it), so there is nothing to skip or exit.
+      assessment:
+        (state === 'current' && !passed(chapter)) || state === 'available',
       review: state === 'completed' || state === 'skipped_via_placement',
     });
 

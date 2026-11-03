@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -35,6 +35,9 @@ export function AssessmentScreen({
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState('');
+  // Keyboard "done" and the Submit button can both fire before a re-render;
+  // only the first may submit. (The server replays a repeat submit anyway.)
+  const submitted = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +55,7 @@ export function AssessmentScreen({
 
   const submit = useCallback(
     (test: AssessmentStartDto, all: Record<string, string>) => {
+      submitted.current = true;
       setPhase({ kind: 'submitting', test });
       api
         .submitAssessment(
@@ -106,6 +110,20 @@ export function AssessmentScreen({
   const skip = test.kind === 'SKIP';
   const pct = Math.round(test.passThreshold * 100);
 
+  if (phase.kind === 'intro' && test.autoPassed) {
+    return (
+      <Screen footer={<PrimaryButton label="Done" onPress={onExit} />}>
+        <Text style={ui.kicker}>Chapter assessment</Text>
+        <Text style={ui.title}>{test.chapterTitle}</Text>
+        <Text style={ui.ok}>Chapter complete.</Text>
+        <Text style={ui.body}>
+          There’s nothing in this chapter to test yet, so finishing its lessons
+          completes it.
+        </Text>
+      </Screen>
+    );
+  }
+
   if (phase.kind === 'intro') {
     return (
       <Screen
@@ -144,6 +162,7 @@ export function AssessmentScreen({
     const q = test.questions[phase.index];
     const last = phase.index === test.questions.length - 1;
     const next = () => {
+      if (last && submitted.current) return;
       const all = { ...answers, [q.itemId]: draft.trim() };
       setAnswers(all);
       setDraft('');

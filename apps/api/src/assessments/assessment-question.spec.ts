@@ -1,6 +1,7 @@
 import type { ReviewableItem } from '../reviews/review-question';
 import {
   assessmentQuestionFor,
+  kanjiReadings,
   sampleAcrossGroups,
 } from './assessment-question';
 
@@ -27,6 +28,7 @@ describe('assessmentQuestionFor', () => {
     ).toEqual({
       prompt: 'Type the rōmaji for 「あ」',
       expected: 'a',
+      accepted: ['a'],
       check: 'romaji',
     });
   });
@@ -47,6 +49,7 @@ describe('assessmentQuestionFor', () => {
     ).toEqual({
       prompt: 'What does 「すし」 mean?',
       expected: 'sushi',
+      accepted: ['sushi'],
       check: 'meaning',
     });
     expect(
@@ -71,6 +74,40 @@ describe('assessmentQuestionFor', () => {
         item({ type: 'KANJI', display: '日', reading: null }),
       ),
     ).toBeNull();
+  });
+});
+
+describe('kanji readings (KANJIDIC2 markers)', () => {
+  const ichi = item({
+    type: 'KANJI',
+    display: '一',
+    reading: 'ひと-',
+    meaning: 'one',
+    data: { on_readings: ['イチ', 'イツ'], kun_readings: ['ひと-', 'ひと.つ'] },
+  });
+
+  it('accepts every on/kun reading, with "-" dropped and "." resolved both ways', () => {
+    expect(kanjiReadings(ichi)).toEqual({
+      accepted: ['イチ', 'イツ', 'ひと', 'ひとつ'],
+      shown: 'イチ・イツ・ひと・ひと(つ)',
+    });
+  });
+
+  it('asks for "a reading" and accepts any of them', () => {
+    expect(assessmentQuestionFor(ichi)).toEqual({
+      prompt: 'Type a reading for 「一」',
+      expected: 'イチ・イツ・ひと・ひと(つ)',
+      accepted: ['イチ', 'イツ', 'ひと', 'ひとつ'],
+      check: 'reading',
+    });
+  });
+
+  it('falls back to the item reading when the data has none', () => {
+    expect(
+      assessmentQuestionFor(
+        item({ type: 'KANJI', display: '日', reading: 'ひ' }),
+      ),
+    ).toMatchObject({ accepted: ['ひ'], expected: 'ひ' });
   });
 });
 

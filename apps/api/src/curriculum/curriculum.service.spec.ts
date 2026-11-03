@@ -244,6 +244,8 @@ describe('CurriculumService', () => {
       userFindUnique.mockResolvedValue({ currentChapterId: 'c1' });
       const dto = await service.getCurriculum('u1');
       expect(dto).toMatchObject({ currentChapterId: 'c1', relocated: true });
+      // Already passed: no skip-test offer on entering it again.
+      expect(dto.next).toMatchObject({ kind: 'lesson', chapterStart: false });
       expect(userUpdateMany).not.toHaveBeenCalled();
     });
 

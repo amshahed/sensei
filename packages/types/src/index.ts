@@ -340,6 +340,11 @@ export interface AssessmentStartDto {
   /** Fraction correct needed to pass (0.8). */
   passThreshold: number;
   questions: AssessmentQuestionDto[];
+  /**
+   * The chapter's lessons are done and none of its items can be turned into a
+   * question, so the exit Assessment passed without one (no questions).
+   */
+  autoPassed: boolean;
 }
 
 /** `POST /assessments/:attemptId/submit` — every answer at once (test-style). */
