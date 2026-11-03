@@ -34,6 +34,22 @@ export function setAuthTokenProvider(
   authTokenProvider = provider;
 }
 
+/** A non-2xx response; `status` lets screens tell a retryable failure from a permanent one. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/** True for a 4xx: retrying the same request won't help. */
+export function isPermanent(err: unknown): boolean {
+  return err instanceof ApiError && err.status >= 400 && err.status < 500;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -49,7 +65,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
     });
     if (!res.ok) {
-      throw new Error(`${init?.method ?? 'GET'} ${path} → ${res.status}`);
+      throw new ApiError(
+        `${init?.method ?? 'GET'} ${path} → ${res.status}`,
+        res.status,
+      );
     }
     return (await res.json()) as T;
   } finally {

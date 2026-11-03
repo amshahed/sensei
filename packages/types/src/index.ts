@@ -140,13 +140,15 @@ export interface ItemMasteryDto {
   due: string | null;
 }
 
-/** One item surfaced in the due-review queue (G.4 selection). */
+/**
+ * One item surfaced in the due-review queue (G.4 selection). Carries no
+ * reading / meaning: either can be the expected answer, which is revealed
+ * only in the grading response.
+ */
 export interface DueReviewItemDto {
   itemId: string;
   type: ItemType;
   display: string;
-  reading: string | null;
-  meaning: string | null;
   mastery: number;
   /** FSRS-predicted probability of recall now; lower = more urgent. */
   retrievability: number;
@@ -204,8 +206,15 @@ export interface ReviewResultDto {
   correct: boolean;
   /** Revealed only in the grading response. */
   correctAnswer: string;
-  /** Updated 0–1 mastery after this review. */
+  /** 0–1 mastery after this review (unchanged when not scored). */
   mastery: number;
+  /**
+   * False when the answer couldn't be fairly judged (AI grader unavailable and
+   * its word-for-word fallback said "wrong"): nothing was recorded.
+   */
+  scored: boolean;
+  /** The AI grader's explanation, for meaning answers. */
+  feedback?: string;
 }
 
 // ---------------- Curriculum Outline (#14, I.4.e) ----------------

@@ -1,20 +1,13 @@
 import { Module } from '@nestjs/common';
 import { CurriculumModule } from '../curriculum/curriculum.module';
-import { GradingModule } from '../grading/grading.module';
 import { MasteryModule } from '../mastery/mastery.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { WritingEvalModule } from '../writing-eval/writing-eval.module';
+import { RecallModule } from '../recall/recall.module';
 import { AssessmentsController } from './assessments.controller';
 import { ASSESSMENT_RANDOM, AssessmentsService } from './assessments.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    CurriculumModule,
-    MasteryModule,
-    GradingModule,
-    WritingEvalModule,
-  ],
+  imports: [PrismaModule, CurriculumModule, MasteryModule, RecallModule],
   controllers: [AssessmentsController],
   providers: [
     AssessmentsService,

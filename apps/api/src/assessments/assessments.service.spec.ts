@@ -10,6 +10,7 @@ import { CurriculumService } from '../curriculum/curriculum.service';
 import { GradingService } from '../grading/grading.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RecallGraderService } from '../recall/recall-grader.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import {
   ASSESSMENT_RANDOM,
@@ -138,6 +139,7 @@ describe('AssessmentsService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         AssessmentsService,
+        RecallGraderService, // real grader over the mocked AI + normaliser
         { provide: ASSESSMENT_RANDOM, useValue: () => 0.5 },
         { provide: CurriculumService, useValue: { getState } },
         {
@@ -370,6 +372,27 @@ describe('AssessmentsService', () => {
       expect(recordCheckResult).toHaveBeenCalledTimes(3);
       expect(seedInferred).toHaveBeenCalledWith('u1', ['g1'], expect.any(Date));
       expect(skipCreateMany).not.toHaveBeenCalled();
+    });
+
+    it('pass never seeds untested items that cannot be quizzed', async () => {
+      attemptFindUnique.mockResolvedValue(
+        attempt({ itemIds: ['k1', 'k2', 'k3'] }),
+      );
+      itemFindMany.mockResolvedValue([kana(1), kana(2), kana(3)]);
+      lessonItemFindMany.mockResolvedValue([
+        ...targets,
+        { lessonId: 'l2', item: { ...grammar, id: 'g2', meaning: null } },
+      ]);
+      await service.submit(
+        'u1',
+        'att-1',
+        answers({ k1: 'ka1', k2: 'ka2', k3: 'ka3' }),
+      );
+      expect(seedInferred).toHaveBeenCalledWith(
+        'u1',
+        ['g1'], // g2 is a meaning-less shell → skipped
+        expect.any(Date),
+      );
     });
 
     it('grades meaning answers with the AI grader and skips it for blank answers', async () => {

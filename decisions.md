@@ -409,6 +409,17 @@ If <10 items are due, session is short — signal the learner is on track, not a
 
 **Rejected:** FSRS-due + near-due recency-weighted (wastes review time on items not at risk); all-items-in-recent-chapter (misses forgetting curve); random sample (no retention optimization).
 
+### G.4.a One recall question + grader for every surface (extends I.4.d.a's rules to Reviews; 2026-11-03)
+
+**Decision:** Reviews, chapter Assessments and Practice share one typed-recall question builder and grader (`src/recall`). The I.4.d.a rules apply to all of them:
+- **No question answers itself.** Kana → rōmaji. Vocab → reading, or meaning when the word is kana-only. Kanji → any on/kun reading (KANJIDIC2 `-` dropped; `.` readings only as stem + okurigana, so 生 doesn't accept a lone い). Grammar → meaning. An item with nothing to check against (e.g. a Tanos grammar shell with no meaning) is not quizzable. Reviews don't surface it: it stays scheduled and appears once its content exists.
+- **Our grader outage isn't the learner's miss.** If the AI grader is unavailable and its word-for-word fallback says "wrong", the answer is **not scored**: the learner sees the answer and moves on, and nothing is written to FSRS. This matches lesson Checks. AI ratings and feedback flow through for meaning answers.
+- **Answers never travel before grading.** The due queue carries the prompt, not the item's reading or meaning.
+
+**Why:** found in review of #15. Reviews still used the old builder, so every kanji review was unanswerable (graded against a raw `ひと-`) and kana-only vocab echoed the prompt. One shared rule set keeps Practice ("voluntary reviews", J.1.c) consistent too.
+
+**Open gap (content, not code):** grammar items carry no meaning from ingestion, so they can't be reviewed until authoring fills one in. #22 / F.2 should write a short learner-facing meaning for each grammar item it teaches.
+
 ---
 
 ## Phase H — Per-modality evaluation (complete)
