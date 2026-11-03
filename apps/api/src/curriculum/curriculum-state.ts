@@ -29,6 +29,8 @@ export type CurriculumState = {
   frontierChapterId: string | null;
   /** Where the learner is working: a valid relocation, else the frontier. */
   currentChapterId: string | null;
+  /** The relocation pointer is honoured (false when unset, lapsed or invalid). */
+  relocated: boolean;
   /** First unfinished lesson of the current chapter. */
   nextLessonId: string | null;
 };
@@ -44,7 +46,8 @@ export type CurriculumState = {
  *  - Relocation (I.4.e "relocate position here") is honoured only for a passed
  *    but not-learned chapter before the frontier — i.e. one the learner skipped
  *    and wants to learn properly. It lapses on its own once that chapter's
- *    lessons are all completed (the pointer then falls back to the frontier).
+ *    lessons are all completed (the pointer then falls back to the frontier;
+ *    `relocated: false` tells the caller to clear the stored pointer).
  *  - "Prerequisites met" = next-chapter lookahead (decisions.md I.4.e.a): the
  *    frontier (when not current) and the next unpassed chapter after it are
  *    `available`; later unpassed chapters are `locked`. Passing a skip-test on
@@ -92,16 +95,16 @@ export function deriveCurriculumState(
     else state = 'locked';
     chapterStates.set(chapter.id, state);
 
-    // Relocate: back to a skipped (passed, not learned) chapter — or, while
-    // relocated, forward to the frontier again.
+    // Relocate: back to a skipped (passed, not learned) chapter. Returning to
+    // the frontier is the top-level `relocated` flag + relocate(null), which
+    // also works when every chapter is passed and there is no frontier.
     const skippedBehind =
       i !== currentIdx &&
       passed(chapter) &&
       !learned(chapter) &&
       (frontierIdx === -1 || i < frontierIdx);
-    const returnToFrontier = relocationValid && i === frontierIdx;
     chapterActions.set(chapter.id, {
-      relocate: skippedBehind || returnToFrontier,
+      relocate: skippedBehind,
       skipTest: state === 'current' || state === 'available',
       review: state === 'completed' || state === 'skipped_via_placement',
     });
@@ -126,6 +129,7 @@ export function deriveCurriculumState(
     lessonStates,
     frontierChapterId: frontierIdx === -1 ? null : chapters[frontierIdx].id,
     currentChapterId: currentIdx === -1 ? null : chapters[currentIdx].id,
+    relocated: relocationValid,
     nextLessonId,
   };
 }

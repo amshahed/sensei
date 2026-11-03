@@ -141,12 +141,28 @@ describe('deriveCurriculumState — relocation ("relocate position here")', () =
     expect(s.chapterStates.get('c1')).toBe('completed');
   });
 
-  it('is ignored for chapters at/after the frontier, already learned, or unknown', () => {
-    expect(derive({ relocated: 'c4' }).currentChapterId).toBe('c1');
-    expect(
-      derive({ completed: done(1), relocated: 'c1' }).currentChapterId,
-    ).toBe('c2');
-    expect(derive({ relocated: 'nope' }).currentChapterId).toBe('c1');
+  it('is ignored (relocated: false) for chapters at/after the frontier, already learned, or unknown', () => {
+    for (const [s, current] of [
+      [derive({ relocated: 'c4' }), 'c1'],
+      [derive({ completed: done(1), relocated: 'c1' }), 'c2'],
+      [derive({ relocated: 'nope' }), 'c1'],
+    ] as const) {
+      expect(s.currentChapterId).toBe(current);
+      expect(s.relocated).toBe(false);
+    }
+    expect(derive().relocated).toBe(false);
+  });
+
+  it('still works when every chapter is passed (no frontier to return to)', () => {
+    const marks = Object.fromEntries(
+      chapters.map((c) => [c.id, 'PASSED_SKIP_TEST' as const]),
+    );
+    expect(derive({ marks }).currentChapterId).toBeNull();
+    const s = derive({ marks, relocated: 'c2' });
+    expect(s.relocated).toBe(true);
+    expect(s.currentChapterId).toBe('c2');
+    expect(s.nextLessonId).toBe('c2l1');
+    expect(s.chapterActions.get('c3')?.relocate).toBe(true);
   });
 });
 
@@ -162,12 +178,13 @@ describe('deriveCurriculumState — actions', () => {
     expect(s.chapterActions.get('c4')?.relocate).toBe(false);
   });
 
-  it('while relocated, the frontier offers "relocate" to go back to it', () => {
+  it('while relocated, the frontier is not a relocate target (relocated flag + relocate(null) instead)', () => {
     const s = derive({
       marks: { c1: 'SKIPPED_VIA_PLACEMENT' },
       relocated: 'c1',
     });
-    expect(s.chapterActions.get('c2')?.relocate).toBe(true);
+    expect(s.relocated).toBe(true);
+    expect(s.chapterActions.get('c2')?.relocate).toBe(false);
   });
 
   it('skip-test on current + available only; review on completed + skipped only', () => {

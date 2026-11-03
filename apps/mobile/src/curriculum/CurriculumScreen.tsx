@@ -39,8 +39,9 @@ const LESSON_STATE = {
  * indicators. Read-only by design — lessons can be inspected but not opened
  * out of order (no mid-chapter jumping); the only way into a lesson is
  * "Continue", which plays the learner's next lesson. Chapter actions:
- * relocate position (skipped chapters → learn them properly). Skip-test (#15)
- * and Review (#17) consume the same `actions` flags.
+ * relocate position (skipped chapters → learn them properly), undone from the
+ * "revisiting" banner. Skip-test (#15) and Review (#17) consume the same
+ * `actions` flags.
  */
 export function CurriculumScreen({
   onContinue,
@@ -84,8 +85,9 @@ export function CurriculumScreen({
       return next;
     });
 
-  const relocate = (chapterId: string) => {
-    setRelocating(chapterId);
+  /** A skipped chapter to go back to, or null to return to the furthest point. */
+  const relocate = (chapterId: string | null) => {
+    setRelocating(chapterId ?? 'return');
     setActionError(null);
     api
       .relocate(chapterId)
@@ -132,6 +134,27 @@ export function CurriculumScreen({
         <Text style={ui.ok}>You've finished everything published so far.</Text>
       ) : null}
       {actionError ? <Text style={ui.err}>{actionError}</Text> : null}
+      {data.relocated ? (
+        <View style={styles.banner}>
+          <Text style={ui.body}>
+            You’re revisiting{' '}
+            <Text style={styles.bold}>{currentTitle(data)}</Text>. Your furthest
+            point is kept.
+          </Text>
+          <Pressable
+            style={[styles.action, relocating !== null && styles.dim]}
+            onPress={() => relocate(null)}
+            disabled={relocating !== null}
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionText}>
+              {relocating === 'return'
+                ? 'Moving…'
+                : 'Return to your furthest point'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {data.modules.map((m) => (
         <View key={m.id} style={styles.module}>
@@ -144,11 +167,6 @@ export function CurriculumScreen({
               onToggle={() => toggle(c.id)}
               relocating={relocating === c.id}
               relocateDisabled={relocating !== null}
-              relocateLabel={
-                c.state === 'available'
-                  ? 'Return to your furthest point'
-                  : 'Go back and learn this chapter'
-              }
               onRelocate={() => relocate(c.id)}
             />
           ))}
@@ -158,13 +176,20 @@ export function CurriculumScreen({
   );
 }
 
+function currentTitle(d: CurriculumDto): string {
+  for (const m of d.modules) {
+    const c = m.chapters.find((x) => x.id === d.currentChapterId);
+    if (c) return c.title;
+  }
+  return 'an earlier chapter';
+}
+
 function ChapterRow({
   chapter: c,
   open,
   onToggle,
   relocating,
   relocateDisabled,
-  relocateLabel,
   onRelocate,
 }: {
   chapter: CurriculumChapterDto;
@@ -172,7 +197,6 @@ function ChapterRow({
   onToggle: () => void;
   relocating: boolean;
   relocateDisabled: boolean;
-  relocateLabel: string;
   onRelocate: () => void;
 }) {
   const st = CHAPTER_STATE[c.state];
@@ -214,7 +238,7 @@ function ChapterRow({
               accessibilityRole="button"
             >
               <Text style={styles.actionText}>
-                {relocating ? 'Moving…' : relocateLabel}
+                {relocating ? 'Moving…' : 'Go back and learn this chapter'}
               </Text>
             </Pressable>
           ) : null}
@@ -264,6 +288,15 @@ function LessonRow({ lesson: l }: { lesson: CurriculumLessonDto }) {
 
 const styles = StyleSheet.create({
   module: { gap: 8, marginTop: 8 },
+  banner: {
+    borderWidth: 1,
+    borderColor: '#9A6700',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    backgroundColor: '#FFF8E5',
+  },
+  bold: { fontWeight: '700' },
   chapter: {
     borderWidth: 1,
     borderColor: '#eee',

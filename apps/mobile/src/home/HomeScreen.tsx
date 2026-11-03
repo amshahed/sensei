@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CurriculumDto } from '@sensei/types';
+import type { CurriculumNextDto } from '@sensei/types';
 import { api } from '../api';
 import { ui } from '../ui';
 
-type NextLesson = CurriculumDto['nextLesson'];
+type NextLesson = CurriculumNextDto['nextLesson'];
 
 /**
  * Home / launcher: "Continue" plays the learner's next lesson (from the
@@ -28,8 +28,9 @@ export function HomeScreen({
       .dueReviews()
       .then((q) => active && setDueCount(q.length))
       .catch(() => active && setDueCount(null));
+    setNext(undefined);
     api
-      .curriculum()
+      .curriculumNext()
       .then((c) => active && setNext(c.nextLesson))
       .catch(() => active && setNext('error'));
     return () => {
@@ -46,9 +47,18 @@ export function HomeScreen({
       <Text style={styles.brand}>先生 Sensei</Text>
 
       <Pressable
-        style={[styles.tile, !lesson && styles.tileDisabled]}
-        onPress={lesson ? () => onContinue(lesson.slug) : undefined}
-        disabled={!lesson}
+        style={[
+          styles.tile,
+          !lesson && next !== 'error' && styles.tileDisabled,
+        ]}
+        onPress={
+          lesson
+            ? () => onContinue(lesson.slug)
+            : next === 'error'
+              ? refresh
+              : undefined
+        }
+        disabled={!lesson && next !== 'error'}
         accessibilityRole="button"
       >
         <Text style={styles.tileTitle}>Continue</Text>
@@ -56,7 +66,7 @@ export function HomeScreen({
           {next === undefined
             ? 'Loading…'
             : next === 'error'
-              ? 'Next lesson unavailable'
+              ? 'Couldn’t load your next lesson — tap to retry'
               : next === null
                 ? "You're through everything published so far"
                 : next.title}

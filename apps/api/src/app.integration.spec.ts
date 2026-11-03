@@ -100,13 +100,18 @@ function fakePrisma() {
                     type: lessonRow.type,
                     position: lessonRow.position,
                     estimatedMinutes: lessonRow.estimatedMinutes,
-                    items: lessonRow.items.map(({ item }) => ({ item })),
                   },
                 ],
               },
             ],
           },
         ]),
+    },
+    lessonItem: {
+      findMany: () =>
+        Promise.resolve(
+          lessonRow.items.map(({ item }) => ({ lessonId: lessonRow.id, item })),
+        ),
     },
     userChapterMark: {
       findMany: () => Promise.resolve([]),
@@ -126,6 +131,7 @@ function fakePrisma() {
       upsert: ({ create }: { create: { id: string } }) =>
         Promise.resolve(create),
       findUnique: () => Promise.resolve(null),
+      updateMany: () => Promise.resolve({ count: 0 }),
     },
     lessonCompletion: {
       findMany: ({ where: { userId } }: { where: { userId: string } }) =>
@@ -263,13 +269,41 @@ describe('API (HTTP integration)', () => {
       state: 'current',
       keyItems: [{ id: 'ja:kana:a', display: 'あ' }],
     });
+    expect(body.relocated).toBe(false);
   });
 
-  it('POST /curriculum/relocate 400s without a chapterId', async () => {
-    await request(app.getHttpServer())
+  it('GET /curriculum/next returns just the next lesson', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/curriculum/next')
+      .set(DEV_USER_HEADER, 'user_curriculum_new')
+      .expect(200);
+    expect(res.body).toEqual({
+      nextLesson: {
+        slug: 'the-five-vowels',
+        title: 'The Five Vowels あいうえお',
+      },
+    });
+  });
+
+  it('POST /curriculum/relocate with chapterId null returns to the furthest point', async () => {
+    const res = await request(app.getHttpServer())
       .post('/curriculum/relocate')
-      .send({})
-      .expect(400);
+      .set(DEV_USER_HEADER, 'user_curriculum_new')
+      .send({ chapterId: null })
+      .expect(201);
+    expect(res.body).toMatchObject({
+      currentChapterId: 'ch-1',
+      relocated: false,
+    });
+  });
+
+  it('POST /curriculum/relocate 400s without a valid chapterId', async () => {
+    for (const body of [{}, { chapterId: '' }, { chapterId: 42 }]) {
+      await request(app.getHttpServer())
+        .post('/curriculum/relocate')
+        .send(body)
+        .expect(400);
+    }
   });
 
   it('POST /curriculum/relocate 404s for an unknown chapter', async () => {

@@ -17,16 +17,13 @@ type Flow = { kind: 'lesson'; slug: string } | { kind: 'review' } | null;
 // they were launched from.
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
+  // While a flow runs the tab screens are unmounted, so ending it remounts the
+  // tab and it refetches (completions, due counts and curriculum state all
+  // change during a lesson or review).
   const [flow, setFlow] = useState<Flow>(null);
-  // Bumped when a flow ends so the tab remounts and refetches (completions,
-  // due counts, curriculum state all change during a lesson or review).
-  const [epoch, setEpoch] = useState(0);
 
   const startLesson = (slug: string) => setFlow({ kind: 'lesson', slug });
-  const endFlow = () => {
-    setFlow(null);
-    setEpoch((e) => e + 1);
-  };
+  const endFlow = () => setFlow(null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,7 +34,7 @@ export default function App() {
           <ReviewSession onExit={endFlow} />
         ) : (
           <>
-            <View style={styles.container} key={`${tab}:${epoch}`}>
+            <View style={styles.container}>
               {tab === 'home' && (
                 <HomeScreen
                   onContinue={startLesson}

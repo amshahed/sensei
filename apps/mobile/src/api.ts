@@ -1,6 +1,7 @@
 import type {
   CheckResultDto,
   CurriculumDto,
+  CurriculumNextDto,
   DueReviewItemDto,
   HealthResponse,
   LessonCompletionDto,
@@ -107,8 +108,16 @@ export const api = {
     return request<CurriculumDto>('/curriculum');
   },
 
-  /** "Relocate position here" — returns the updated outline. */
-  relocate(chapterId: string): Promise<CurriculumDto> {
+  /** Just the lesson Home's "Continue" should open. */
+  curriculumNext(): Promise<CurriculumNextDto> {
+    return request<CurriculumNextDto>('/curriculum/next');
+  },
+
+  /**
+   * "Relocate position here": a skipped chapter to go back to, or null to
+   * return to the furthest point. Returns the updated outline.
+   */
+  relocate(chapterId: string | null): Promise<CurriculumDto> {
     const body: RelocateRequest = { chapterId };
     return request<CurriculumDto>('/curriculum/relocate', {
       method: 'POST',

@@ -247,7 +247,7 @@ export interface CurriculumLessonDto {
 }
 
 export interface CurriculumChapterActionsDto {
-  /** Move the position pointer here (past skipped chapters; or back to the frontier). */
+  /** "Relocate position here": go back and learn a chapter that was skipped. */
   relocate: boolean;
   /** Skip-test offered (I.4.d) — wired up by #15. */
   skipTest: boolean;
@@ -276,14 +276,29 @@ export interface CurriculumModuleDto {
   chapters: CurriculumChapterDto[];
 }
 
-export interface CurriculumDto {
+export interface NextLessonDto {
+  slug: string;
+  title: string;
+}
+
+/** `GET /curriculum/next` — just what Home's "Continue" needs. */
+export interface CurriculumNextDto {
+  /** The lesson "Continue" should open (null when nothing is left). */
+  nextLesson: NextLessonDto | null;
+}
+
+export interface CurriculumDto extends CurriculumNextDto {
   modules: CurriculumModuleDto[];
   /** The chapter the learner is working in (null when everything is done). */
   currentChapterId: string | null;
-  /** The lesson "Continue" should open (null when nothing is left). */
-  nextLesson: { slug: string; title: string } | null;
+  /**
+   * True while the learner has relocated back to a skipped chapter; relocating
+   * with `chapterId: null` returns them to their furthest point.
+   */
+  relocated: boolean;
 }
 
 export interface RelocateRequest {
-  chapterId: string;
+  /** A skipped chapter to go back to, or null to return to the furthest point. */
+  chapterId: string | null;
 }

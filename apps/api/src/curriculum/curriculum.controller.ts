@@ -5,7 +5,11 @@ import {
   Get,
   Post,
 } from '@nestjs/common';
-import type { CurriculumDto, RelocateRequest } from '@sensei/types';
+import type {
+  CurriculumDto,
+  CurriculumNextDto,
+  RelocateRequest,
+} from '@sensei/types';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import { CurriculumService } from './curriculum.service';
 
@@ -19,15 +23,29 @@ export class CurriculumController {
     return this.curriculum.getCurriculum(userId);
   }
 
-  /** "Relocate position here" — returns the updated outline. */
+  /** Just the next lesson — what Home's "Continue" needs. */
+  @Get('next')
+  next(@CurrentUserId() userId: string): Promise<CurriculumNextDto> {
+    return this.curriculum.getNext(userId);
+  }
+
+  /**
+   * "Relocate position here" — `{ chapterId }` goes back to a skipped chapter,
+   * `{ chapterId: null }` returns to the furthest point. Returns the outline.
+   */
   @Post('relocate')
   relocate(
     @Body() body: Partial<RelocateRequest> | undefined,
     @CurrentUserId() userId: string,
   ): Promise<CurriculumDto> {
     const chapterId = body?.chapterId;
-    if (typeof chapterId !== 'string' || !chapterId.trim()) {
-      throw new BadRequestException('Body must be { "chapterId": string }.');
+    const valid =
+      chapterId === null ||
+      (typeof chapterId === 'string' && chapterId.trim() !== '');
+    if (!valid) {
+      throw new BadRequestException(
+        'Body must be { "chapterId": string | null }.',
+      );
     }
     return this.curriculum.relocate(userId, chapterId);
   }
