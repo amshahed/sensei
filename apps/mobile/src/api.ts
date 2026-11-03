@@ -1,11 +1,14 @@
 import type {
   CheckResultDto,
+  CurriculumDto,
+  CurriculumNextDto,
   DueReviewItemDto,
   HealthResponse,
   LessonCompletionDto,
   LessonDetailDto,
   MeDto,
   ProgressDto,
+  RelocateRequest,
   ReviewResultDto,
 } from '@sensei/types';
 
@@ -98,5 +101,27 @@ export const api = {
 
   progress(): Promise<ProgressDto> {
     return request<ProgressDto>('/progress');
+  },
+
+  /** Curriculum Outline (I.4.e): Module → Chapter → Lesson with states. */
+  curriculum(): Promise<CurriculumDto> {
+    return request<CurriculumDto>('/curriculum');
+  },
+
+  /** Just the lesson Home's "Continue" should open. */
+  curriculumNext(): Promise<CurriculumNextDto> {
+    return request<CurriculumNextDto>('/curriculum/next');
+  },
+
+  /**
+   * "Relocate position here": a skipped chapter to go back to, or null to
+   * return to the furthest point. Returns the updated outline.
+   */
+  relocate(chapterId: string | null): Promise<CurriculumDto> {
+    const body: RelocateRequest = { chapterId };
+    return request<CurriculumDto>('/curriculum/relocate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -102,6 +102,7 @@ export function LessonPlayer({
     if (!check) {
       return (
         <DoneScreen
+          slug={lesson.slug}
           correct={score}
           total={lesson.checks.length}
           onExit={onExit}
@@ -121,7 +122,6 @@ export function LessonPlayer({
           if (next < lesson.checks.length) {
             setPhase({ kind: 'check', lesson, index: next });
           } else {
-            void api.completeLesson(lesson.slug).catch(() => undefined);
             setPhase({
               kind: 'done',
               lesson,
@@ -135,7 +135,12 @@ export function LessonPlayer({
   }
 
   return (
-    <DoneScreen correct={phase.correct} total={phase.total} onExit={onExit} />
+    <DoneScreen
+      slug={phase.lesson.slug}
+      correct={phase.correct}
+      total={phase.total}
+      onExit={onExit}
+    />
   );
 }
 
@@ -270,7 +275,11 @@ function CheckBeat({
     setFailed(false);
     try {
       // The guess flag only applies to multiple-choice (K.1).
-      const r = await api.gradeCheck(check.id, answer, isMultipleChoice && guessed);
+      const r = await api.gradeCheck(
+        check.id,
+        answer,
+        isMultipleChoice && guessed,
+      );
       setResult(r);
     } catch {
       // Don't score a network blip as a wrong answer — let the learner retry.
@@ -365,15 +374,39 @@ function CheckBeat({
   );
 }
 
+/**
+ * End of lesson. Owns the completion write, which is what advances the
+ * curriculum (the outline and Home's "Continue" read it), so every path that
+ * reaches here records it, including lessons with no checks. Leaving waits for
+ * the write; a failure is shown with Retry rather than silently dropped.
+ */
 function DoneScreen({
+  slug,
   correct,
   total,
   onExit,
 }: {
+  slug: string;
   correct: number;
   total: number;
   onExit?: () => void;
 }) {
+  const [save, setSave] = useState<'saving' | 'saved' | 'failed'>('saving');
+
+  const complete = useCallback(() => {
+    let active = true;
+    setSave('saving');
+    api
+      .completeLesson(slug)
+      .then(() => active && setSave('saved'))
+      .catch(() => active && setSave('failed'));
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
+  useEffect(complete, [complete]);
+
   return (
     <View style={ui.center}>
       <Text style={styles.celebrate}>🎉</Text>
@@ -383,7 +416,23 @@ function DoneScreen({
           ? 'Nice work — you finished the lesson.'
           : `You got ${correct} of ${total} right.`}
       </Text>
-      {onExit ? <PrimaryButton label="Back to home" onPress={onExit} /> : null}
+      {save === 'failed' ? (
+        <>
+          <Text style={ui.err}>Couldn’t save your progress.</Text>
+          <PrimaryButton label="Retry" onPress={complete} />
+          {onExit ? (
+            <Pressable onPress={onExit} accessibilityRole="button">
+              <Text style={ui.hint}>Leave without saving</Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : onExit ? (
+        <PrimaryButton
+          label={save === 'saving' ? 'Saving…' : 'Done'}
+          onPress={onExit}
+          disabled={save === 'saving'}
+        />
+      ) : null}
     </View>
   );
 }

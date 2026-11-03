@@ -98,8 +98,10 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  module  Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lessons Lesson[]
+  module          Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessons         Lesson[]
+  marks           UserChapterMark[]
+  currentForUsers User[]            @relation("UserCurrentChapter")
 
   @@index([moduleId, position])
 }
@@ -162,13 +164,13 @@ model Check {
 /// Embedded reference passage for RAG-grounded authoring (E.3).
 /// Insertions go via $executeRaw because the vector column is Unsupported.
 model ReferenceDoc {
-  id        String                      @id @default(cuid())
+  id        String                       @id @default(cuid())
   source    String // "tatoeba", "grammar-ref"
   language  String // "ja"
   text      String
   embedding Unsupported("vector(1024)")?
-  metadata  Json                        @default("{}")
-  createdAt DateTime                    @default(now())
+  metadata  Json                         @default("{}")
+  createdAt DateTime                     @default(now())
 
   @@index([source, language])
 }
@@ -180,8 +182,35 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Curriculum position override — "relocate position here" (I.4.e). Null =
+  /// the learner's frontier: the first chapter not yet completed or skipped.
+  currentChapterId String?
+  currentChapter   Chapter? @relation("UserCurrentChapter", fields: [currentChapterId], references: [id], onDelete: SetNull)
+
   masteryStates ItemMasteryState[]
   completions   LessonCompletion[]
+  chapterMarks  UserChapterMark[]
+}
+
+/// Chapter outcomes not derivable from lesson completions.
+enum ChapterMarkKind {
+  SKIPPED_VIA_PLACEMENT // placement inferred the chapter as known (I.4.c, #13)
+  PASSED_SKIP_TEST // learner passed the chapter's skip-test (I.4.d, #15)
+}
+
+/// One mark per (user, chapter) — written by placement (#13) and skip-test (#15),
+/// read by the Curriculum Outline (#14, I.4.e).
+model UserChapterMark {
+  userId    String
+  chapterId String
+  kind      ChapterMarkKind
+  createdAt DateTime        @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@id([userId, chapterId])
+  @@index([chapterId])
 }
 
 /// Records that a user finished a lesson (the Check beat all the way through).

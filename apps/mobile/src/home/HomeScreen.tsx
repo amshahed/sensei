@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { CurriculumNextDto } from '@sensei/types';
 import { api } from '../api';
 import { ui } from '../ui';
 
+type NextLesson = CurriculumNextDto['nextLesson'];
+
 /**
- * Minimal home / launcher (#7): a Start-lesson tile and a Reviews tile that
- * shows the live due count (G.4 entry point). Real navigation + curriculum
- * outline arrive in #14; this is a deliberately tiny state-routed shell.
+ * Home / launcher: "Continue" plays the learner's next lesson (from the
+ * Curriculum Outline, I.4.e) and the Reviews tile shows the live due count
+ * (G.4 entry point). Curriculum and Progress live in their own tabs.
  */
 export function HomeScreen({
-  onStartLesson,
+  onContinue,
   onStartReview,
-  onShowProgress,
 }: {
-  onStartLesson: () => void;
+  onContinue: (slug: string) => void;
   onStartReview: () => void;
-  onShowProgress: () => void;
 }) {
   const [dueCount, setDueCount] = useState<number | null>(null);
+  // undefined = loading; null = nothing left; 'error' = fetch failed.
+  const [next, setNext] = useState<NextLesson | undefined | 'error'>(undefined);
 
   const refresh = useCallback(() => {
     let active = true;
@@ -25,6 +28,11 @@ export function HomeScreen({
       .dueReviews()
       .then((q) => active && setDueCount(q.length))
       .catch(() => active && setDueCount(null));
+    setNext(undefined);
+    api
+      .curriculumNext()
+      .then((c) => active && setNext(c.nextLesson))
+      .catch(() => active && setNext('error'));
     return () => {
       active = false;
     };
@@ -32,13 +40,37 @@ export function HomeScreen({
 
   useEffect(refresh, [refresh]);
 
+  const lesson = next && next !== 'error' ? next : null;
+
   return (
     <View style={[ui.screen, styles.pad]}>
       <Text style={styles.brand}>先生 Sensei</Text>
 
-      <Pressable style={styles.tile} onPress={onStartLesson}>
-        <Text style={styles.tileTitle}>Start lesson</Text>
-        <Text style={ui.hint}>The Five Vowels あいうえお</Text>
+      <Pressable
+        style={[
+          styles.tile,
+          !lesson && next !== 'error' && styles.tileDisabled,
+        ]}
+        onPress={
+          lesson
+            ? () => onContinue(lesson.slug)
+            : next === 'error'
+              ? refresh
+              : undefined
+        }
+        disabled={!lesson && next !== 'error'}
+        accessibilityRole="button"
+      >
+        <Text style={styles.tileTitle}>Continue</Text>
+        <Text style={ui.hint}>
+          {next === undefined
+            ? 'Loading…'
+            : next === 'error'
+              ? 'Couldn’t load your next lesson — tap to retry'
+              : next === null
+                ? "You're through everything published so far"
+                : next.title}
+        </Text>
       </Pressable>
 
       <Pressable style={styles.tile} onPress={onStartReview}>
@@ -58,11 +90,6 @@ export function HomeScreen({
               : `${dueCount} item${dueCount === 1 ? '' : 's'} due now`}
         </Text>
       </Pressable>
-
-      <Pressable style={styles.tile} onPress={onShowProgress}>
-        <Text style={styles.tileTitle}>Progress</Text>
-        <Text style={ui.hint}>View your mastery dashboard</Text>
-      </Pressable>
     </View>
   );
 }
@@ -78,6 +105,7 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#fafafa',
   },
+  tileDisabled: { opacity: 0.6 },
   tileRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   tileTitle: { fontSize: 20, fontWeight: '600' },
   badge: {

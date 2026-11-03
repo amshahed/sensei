@@ -4,6 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import type {
   CheckResultDto,
+  CurriculumDto,
   LessonCompletionDto,
   LessonDetailDto,
   ReviewResultDto,
@@ -77,6 +78,44 @@ function fakePrisma() {
     completedAt: Date;
   }> = [];
   return {
+    module: {
+      findMany: () =>
+        Promise.resolve([
+          {
+            id: lessonRow.chapter.module.id,
+            slug: 'foundation-ja',
+            title: lessonRow.chapter.module.title,
+            position: 1,
+            chapters: [
+              {
+                id: lessonRow.chapter.id,
+                slug: 'hiragana-vowels',
+                title: lessonRow.chapter.title,
+                position: 1,
+                lessons: [
+                  {
+                    id: lessonRow.id,
+                    slug: lessonRow.slug,
+                    title: lessonRow.title,
+                    type: lessonRow.type,
+                    position: lessonRow.position,
+                    estimatedMinutes: lessonRow.estimatedMinutes,
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+    },
+    lessonItem: {
+      findMany: () =>
+        Promise.resolve(
+          lessonRow.items.map(({ item }) => ({ lessonId: lessonRow.id, item })),
+        ),
+    },
+    userChapterMark: {
+      findMany: () => Promise.resolve([]),
+    },
     lesson: {
       findFirst: () => Promise.resolve(lessonRow),
     },
@@ -91,8 +130,16 @@ function fakePrisma() {
     user: {
       upsert: ({ create }: { create: { id: string } }) =>
         Promise.resolve(create),
+      findUnique: () => Promise.resolve(null),
+      updateMany: () => Promise.resolve({ count: 0 }),
     },
     lessonCompletion: {
+      findMany: ({ where: { userId } }: { where: { userId: string } }) =>
+        Promise.resolve(
+          completions
+            .filter((c) => c.userId === userId)
+            .map(({ lessonId }) => ({ lessonId })),
+        ),
       upsert: ({
         where,
       }: {
@@ -204,6 +251,75 @@ describe('API (HTTP integration)', () => {
       .expect(404);
   });
 
+  it('GET /curriculum returns the outline with the next lesson for a new learner', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/curriculum')
+      .set(DEV_USER_HEADER, 'user_curriculum_new')
+      .expect(200);
+    const body = res.body as CurriculumDto;
+
+    expect(body.currentChapterId).toBe('ch-1');
+    expect(body.nextLesson).toEqual({
+      slug: 'the-five-vowels',
+      title: 'The Five Vowels あいうえお',
+    });
+    const chapter = body.modules[0].chapters[0];
+    expect(chapter).toMatchObject({ state: 'current', lessonCount: 1 });
+    expect(chapter.lessons[0]).toMatchObject({
+      state: 'current',
+      keyItems: [{ id: 'ja:kana:a', display: 'あ' }],
+    });
+    expect(body.relocated).toBe(false);
+  });
+
+  it('GET /curriculum/next returns just the next lesson', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/curriculum/next')
+      .set(DEV_USER_HEADER, 'user_curriculum_new')
+      .expect(200);
+    expect(res.body).toEqual({
+      nextLesson: {
+        slug: 'the-five-vowels',
+        title: 'The Five Vowels あいうえお',
+      },
+    });
+  });
+
+  it('POST /curriculum/relocate with chapterId null returns to the furthest point', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/curriculum/relocate')
+      .set(DEV_USER_HEADER, 'user_curriculum_new')
+      .send({ chapterId: null })
+      .expect(201);
+    expect(res.body).toMatchObject({
+      currentChapterId: 'ch-1',
+      relocated: false,
+    });
+  });
+
+  it('POST /curriculum/relocate 400s without a valid chapterId', async () => {
+    for (const body of [{}, { chapterId: '' }, { chapterId: 42 }]) {
+      await request(app.getHttpServer())
+        .post('/curriculum/relocate')
+        .send(body)
+        .expect(400);
+    }
+  });
+
+  it('POST /curriculum/relocate 404s for an unknown chapter', async () => {
+    await request(app.getHttpServer())
+      .post('/curriculum/relocate')
+      .send({ chapterId: 'nope' })
+      .expect(404);
+  });
+
+  it('POST /curriculum/relocate 400s for a chapter that was never skipped', async () => {
+    await request(app.getHttpServer())
+      .post('/curriculum/relocate')
+      .send({ chapterId: 'ch-1' })
+      .expect(400);
+  });
+
   it('GET /reviews/due returns the (empty) due queue', async () => {
     const res = await request(app.getHttpServer())
       .get('/reviews/due')
@@ -243,5 +359,17 @@ describe('API (HTTP integration)', () => {
     expect(body.completed).toBe(true);
     // ISO-8601 timestamp.
     expect(() => new Date(body.completedAt).toISOString()).not.toThrow();
+  });
+
+  it('GET /curriculum reflects that completion (chapter completed, nothing next)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/curriculum')
+      .set(DEV_USER_HEADER, 'user_int_test')
+      .expect(200);
+    const body = res.body as CurriculumDto;
+
+    expect(body.modules[0].chapters[0].state).toBe('completed');
+    expect(body.modules[0].chapters[0].lessons[0].state).toBe('completed');
+    expect(body.nextLesson).toBeNull();
   });
 });
