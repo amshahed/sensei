@@ -1,4 +1,7 @@
 import type {
+  AssessmentResultDto,
+  AssessmentStartDto,
+  AssessmentSubmitRequest,
   CheckResultDto,
   CurriculumDto,
   CurriculumNextDto,
@@ -108,7 +111,7 @@ export const api = {
     return request<CurriculumDto>('/curriculum');
   },
 
-  /** Just the lesson Home's "Continue" should open. */
+  /** Just what Home's "Continue" should open. */
   curriculumNext(): Promise<CurriculumNextDto> {
     return request<CurriculumNextDto>('/curriculum/next');
   },
@@ -123,5 +126,25 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     });
+  },
+
+  /** Start a chapter Assessment — skip-test or exit (I.4.d.a). */
+  startAssessment(chapterId: string): Promise<AssessmentStartDto> {
+    return request<AssessmentStartDto>(
+      `/chapters/${encodeURIComponent(chapterId)}/assessment`,
+      { method: 'POST' },
+    );
+  },
+
+  /** Submit every answer once; returns the score and corrections. */
+  submitAssessment(
+    attemptId: string,
+    answers: AssessmentSubmitRequest['answers'],
+  ): Promise<AssessmentResultDto> {
+    const body: AssessmentSubmitRequest = { answers };
+    return request<AssessmentResultDto>(
+      `/assessments/${encodeURIComponent(attemptId)}/submit`,
+      { method: 'POST', body: JSON.stringify(body) },
+    );
   },
 };

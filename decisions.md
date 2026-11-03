@@ -834,6 +834,37 @@ If learner takes the skip-test:
 - Module-level skip-test in MVP — adds infrastructure for edge case already mostly covered by chapter-level.
 - Mandatory skip-test on chapter entry (learner can't opt out) — forces friction on every chapter even when learner clearly hasn't seen the content.
 
+### I.4.d.a Chapter Assessment engine — how skip-tests and exit Assessments run (implements I.4.d + B.3 Assessment; locked 2026-11-03)
+
+**Decision (four parts, all founder-chosen 2026-11-03):**
+1. **Questions are generated per item, not authored.** One typed-recall question per item, built from item data the way Reviews are (G.4): kana → rōmaji, vocab/kanji → kana reading (exact match), grammar → meaning (graded by the existing AI open-answer grader). There is no ASSESSMENT lesson to author, and the bar is identical in both directions.
+2. **~20 items are sampled per attempt**, spread round-robin across the chapter's lessons. **Pass = ≥80% correct.** A chapter teaches 50–200 items, so testing all of them would blow I.4.d's ~5-minute promise.
+3. **The Assessment is the chapter's last step.** After the last lesson, "Continue" offers the chapter Assessment. A chapter is `completed` only once an Assessment passes (I.4.e). A failed exit Assessment can be retaken any time (no cooldown, I.4.d). The chapter stays current until it passes.
+4. **Partial pass collapses only fully-tested lessons.** A skip-test that fails still records every lesson whose key (TARGET) items were *all* sampled *and* all answered correctly as skipped for that learner. This is snapshotted at test time, so mastery decay never un-skips a lesson. With sampling this is rare, so in practice a partial pass mostly gives the correct items a mastery head start.
+
+**Build rules:**
+- **One engine, two kinds.** An attempt is `SKIP` when started before the chapter's lessons are all done (completed or skipped), and `EXIT` after. The sampled items are stored server-side when the attempt starts. The learner answers everything and submits once: test-style, with the score and corrections at the end (J.1 leaves test-style to Assessments). An attempt can be submitted only once.
+- **FSRS write-back:**
+  - Correct answers are recorded as normal reviews (Good).
+  - Wrong answers are recorded as Again, **except on a failed skip-test**, which applies no penalty (I.4.d).
+  - On pass, chapter items that weren't sampled and have no mastery state yet are seeded with a Hard rating: moderate confidence, so Reviews confirm them early (the I.4.c inferred tier). Items the learner already has state for are never touched by inference.
+- **No question may answer itself.** A kana-only word asks for its meaning, because its reading *is* the prompt. An item whose expected answer is empty or identical to what's shown is left out. Kana answers use plain exact match (normalisation would accept the kana shown). Readings accept rōmaji or katakana (H.2 normalisation). Answers the AI grader couldn't score are excluded from the score and from FSRS.
+- **Kanji accept any reading.** The prompt asks for "a reading". Any on'yomi or kun'yomi counts, with KANJIDIC2's markers resolved: `ひと-` → ひと, and `ひと.つ` → ひとつ or ひと.
+- **The gate never strands a learner.** If a chapter's lessons are done and none of its items can be turned into a question (e.g. grammar shells with no meaning yet), the exit Assessment auto-passes. A skip-test on such a chapter is refused, so the learner takes the lessons instead.
+- **Our grader outage isn't the learner's miss.** A meaning answer judged wrong by the deterministic fallback (AI unavailable) is excluded from the score and from FSRS. If nothing in an attempt could be graded, submit returns 503 and the attempt stays open. Grading runs at most 4 calls at a time.
+- **Submits are safe to repeat.** A repeat submit replays the stored result instead of failing. Claiming the attempt, the chapter mark, the relocation clear and the lesson skips are written in one transaction. FSRS writes follow on a best-effort basis. Attempts expire 60 minutes after start, and submit re-checks that the chapter still takes an Assessment.
+- **Migration backfill:** chapters a learner had already completed lesson by lesson (passed under the old rule) are grandfathered as `PASSED_ASSESSMENT`.
+- **No Assessment on a relocated chapter.** It is already passed: the learner went back to learn it, not to skip it.
+- **Chapter entry:** "Continue" on a chapter where nothing is done yet first shows the I.4.d chapter intro: "Already know this? Take the skip test" or "Start chapter". It is never forced. The outline also offers the skip-test on `available` chapters.
+- **A pass writes chapter mark `PASSED_ASSESSMENT`** (renames #14's `PASSED_SKIP_TEST`; one engine, so one mark). It replaces a placement mark on that chapter. If the learner had relocated to that chapter, the pass returns them to their furthest point.
+- **Amends I.4.e.a:** a chapter is passed only by an Assessment pass or a placement skip. Finishing its lessons no longer passes it. A placement-skipped chapter whose lessons are later all done shows `completed`. `actions.skipTest` becomes `actions.assessment` (offered on `current` + `available`; on the current chapter with all lessons done it is the exit Assessment). `nextLesson` becomes a `next` step: a lesson, or the current chapter's Assessment.
+
+**Why:** generated questions need no extra authoring from a non-expert founder, and they reuse the deterministic Review grading that already exists. Sampling keeps the test at ~5 minutes. The I.4.c retention tiers give untested items a cautious, early-confirmed mastery. A hard exit gate keeps `completed` honest ("demonstrated mastery on the chapter's items", D.1).
+
+**Accepted trade-offs:** typed recall tests reading/meaning, not usage. Grammar meaning grading depends on the AI grader (with its existing fallback). Lesson-level partial-pass skipping will be uncommon.
+
+**Revisit when:** AI-generated, modality-varied review prompts land (#8 follow-up); Assessments should adopt them too. Or if beta learners report that the exit gate feels like a grind.
+
 ### I.4.e Curriculum Outline (structured navigation surface)
 
 **Decision:** Ship a **minimal-but-complete Curriculum Outline view** at MVP. Hierarchical, navigable, decision-supporting — but functional UI, not gamified game-map.

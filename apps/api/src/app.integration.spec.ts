@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import type {
+  AssessmentResultDto,
+  AssessmentStartDto,
   CheckResultDto,
   CurriculumDto,
   LessonCompletionDto,
@@ -77,7 +79,11 @@ function fakePrisma() {
     lessonId: string;
     completedAt: Date;
   }> = [];
-  return {
+  const marks = new Map<string, { chapterId: string; kind: string }>();
+  const attempts = new Map<string, Record<string, unknown>>();
+  const fake: Record<string, unknown> = {
+    // Interactive transactions run against the same in-memory fake.
+    $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(fake),
     module: {
       findMany: () =>
         Promise.resolve([
@@ -108,13 +114,65 @@ function fakePrisma() {
         ]),
     },
     lessonItem: {
+      // Real Prisma applies `select`; the fake returns the full item.
       findMany: () =>
-        Promise.resolve(
-          lessonRow.items.map(({ item }) => ({ lessonId: lessonRow.id, item })),
-        ),
+        Promise.resolve([
+          { lessonId: lessonRow.id, itemId: kanaA.id, item: kanaA },
+        ]),
+    },
+    userLessonSkip: {
+      findMany: () => Promise.resolve([]),
+      createMany: ({ data }: { data: unknown[] }) =>
+        Promise.resolve({ count: data.length }),
     },
     userChapterMark: {
-      findMany: () => Promise.resolve([]),
+      findMany: ({ where: { userId } }: { where: { userId: string } }) =>
+        Promise.resolve(
+          [...marks]
+            .filter(([key]) => key.startsWith(`${userId}:`))
+            .map(([, m]) => m),
+        ),
+      upsert: ({
+        where: { userId_chapterId: k },
+        create,
+      }: {
+        where: { userId_chapterId: { userId: string; chapterId: string } };
+        create: { chapterId: string; kind: string };
+      }) => {
+        marks.set(`${k.userId}:${k.chapterId}`, {
+          chapterId: create.chapterId,
+          kind: create.kind,
+        });
+        return Promise.resolve(create);
+      },
+    },
+    assessmentAttempt: {
+      create: ({ data }: { data: Record<string, unknown> }) => {
+        const id = `att-${attempts.size + 1}`;
+        attempts.set(id, {
+          id,
+          status: 'IN_PROGRESS',
+          createdAt: new Date(),
+          correctCount: null,
+          results: null,
+          ...data,
+        });
+        return Promise.resolve({ id });
+      },
+      findUnique: ({ where: { id } }: { where: { id: string } }) =>
+        Promise.resolve(attempts.get(id) ?? null),
+      updateMany: ({
+        where: { id, status },
+        data,
+      }: {
+        where: { id: string; status: string };
+        data: Record<string, unknown>;
+      }) => {
+        const row = attempts.get(id);
+        if (!row || row.status !== status) return Promise.resolve({ count: 0 });
+        attempts.set(id, { ...row, ...data });
+        return Promise.resolve({ count: 1 });
+      },
     },
     lesson: {
       findFirst: () => Promise.resolve(lessonRow),
@@ -126,6 +184,8 @@ function fakePrisma() {
     item: {
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
         Promise.resolve(id === kanaA.id ? kanaA : null),
+      findMany: ({ where }: { where: { id: { in: string[] } } }) =>
+        Promise.resolve(where.id.in.includes(kanaA.id) ? [kanaA] : []),
     },
     user: {
       upsert: ({ create }: { create: { id: string } }) =>
@@ -178,6 +238,7 @@ function fakePrisma() {
       findMany: () => Promise.resolve([]),
     },
   };
+  return fake;
 }
 
 describe('API (HTTP integration)', () => {
@@ -259,9 +320,13 @@ describe('API (HTTP integration)', () => {
     const body = res.body as CurriculumDto;
 
     expect(body.currentChapterId).toBe('ch-1');
-    expect(body.nextLesson).toEqual({
+    expect(body.next).toEqual({
+      kind: 'lesson',
       slug: 'the-five-vowels',
       title: 'The Five Vowels あいうえお',
+      chapterId: 'ch-1',
+      chapterTitle: 'Hiragana — Vowels',
+      chapterStart: true,
     });
     const chapter = body.modules[0].chapters[0];
     expect(chapter).toMatchObject({ state: 'current', lessonCount: 1 });
@@ -278,9 +343,13 @@ describe('API (HTTP integration)', () => {
       .set(DEV_USER_HEADER, 'user_curriculum_new')
       .expect(200);
     expect(res.body).toEqual({
-      nextLesson: {
+      next: {
+        kind: 'lesson',
         slug: 'the-five-vowels',
         title: 'The Five Vowels あいうえお',
+        chapterId: 'ch-1',
+        chapterTitle: 'Hiragana — Vowels',
+        chapterStart: true,
       },
     });
   });
@@ -361,15 +430,108 @@ describe('API (HTTP integration)', () => {
     expect(() => new Date(body.completedAt).toISOString()).not.toThrow();
   });
 
-  it('GET /curriculum reflects that completion (chapter completed, nothing next)', async () => {
+  it('GET /curriculum reflects that completion (exit Assessment is next)', async () => {
     const res = await request(app.getHttpServer())
       .get('/curriculum')
       .set(DEV_USER_HEADER, 'user_int_test')
       .expect(200);
     const body = res.body as CurriculumDto;
 
-    expect(body.modules[0].chapters[0].state).toBe('completed');
+    expect(body.modules[0].chapters[0].state).toBe('current');
     expect(body.modules[0].chapters[0].lessons[0].state).toBe('completed');
-    expect(body.nextLesson).toBeNull();
+    expect(body.next).toEqual({
+      kind: 'assessment',
+      chapterId: 'ch-1',
+      chapterTitle: 'Hiragana — Vowels',
+    });
+  });
+
+  describe('chapter Assessment (I.4.d.a)', () => {
+    const user = 'user_assessment';
+    const startIt = () =>
+      request(app.getHttpServer())
+        .post('/chapters/ch-1/assessment')
+        .set(DEV_USER_HEADER, user);
+
+    let attemptId: string;
+
+    it('POST /chapters/:id/assessment starts a skip-test without leaking answers', async () => {
+      const res = await startIt().expect(201);
+      const body = res.body as AssessmentStartDto;
+      expect(body).toMatchObject({
+        chapterId: 'ch-1',
+        chapterTitle: 'Hiragana — Vowels',
+        kind: 'SKIP',
+        passThreshold: 0.8,
+        questions: [
+          { itemId: 'ja:kana:a', prompt: 'Type the rōmaji for 「あ」' },
+        ],
+      });
+      expect(JSON.stringify(body)).not.toContain('"a"');
+      attemptId = body.attemptId;
+    });
+
+    it('POST /chapters/:id/assessment 404s for an unknown chapter', async () => {
+      await request(app.getHttpServer())
+        .post('/chapters/nope/assessment')
+        .set(DEV_USER_HEADER, user)
+        .expect(404);
+    });
+
+    it('POST /assessments/:id/submit 400s on a malformed body', async () => {
+      for (const body of [{}, { answers: 'a' }, { answers: [{ itemId: 1 }] }]) {
+        await request(app.getHttpServer())
+          .post(`/assessments/${attemptId}/submit`)
+          .set(DEV_USER_HEADER, user)
+          .send(body)
+          .expect(400);
+      }
+    });
+
+    it('POST /assessments/:id/submit 404s for another learner', async () => {
+      await request(app.getHttpServer())
+        .post(`/assessments/${attemptId}/submit`)
+        .set(DEV_USER_HEADER, 'someone_else')
+        .send({ answers: [] })
+        .expect(404);
+    });
+
+    it('passing the skip-test completes the chapter', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/assessments/${attemptId}/submit`)
+        .set(DEV_USER_HEADER, user)
+        .send({ answers: [{ itemId: 'ja:kana:a', answer: 'a' }] })
+        .expect(201);
+      expect(res.body as AssessmentResultDto).toMatchObject({
+        passed: true,
+        correct: 1,
+        total: 1,
+        kind: 'SKIP',
+        results: [{ itemId: 'ja:kana:a', correct: true, correctAnswer: 'a' }],
+      });
+
+      const outline = await request(app.getHttpServer())
+        .get('/curriculum')
+        .set(DEV_USER_HEADER, user)
+        .expect(200);
+      const body = outline.body as CurriculumDto;
+      expect(body.modules[0].chapters[0].state).toBe('completed');
+      expect(body.modules[0].chapters[0].lessons[0].state).toBe('skipped');
+      expect(body.next).toBeNull();
+    });
+
+    it('a repeat submit replays the result; the passed chapter offers no new Assessment', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/assessments/${attemptId}/submit`)
+        .set(DEV_USER_HEADER, user)
+        .send({ answers: [{ itemId: 'ja:kana:a', answer: 'wrong now' }] })
+        .expect(201);
+      expect(res.body as AssessmentResultDto).toMatchObject({
+        passed: true,
+        correct: 1,
+        results: [{ itemId: 'ja:kana:a', answer: 'a', correct: true }],
+      });
+      await startIt().expect(400);
+    });
   });
 });

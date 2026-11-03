@@ -69,6 +69,7 @@ describe('CurriculumService', () => {
   let lessonItemFindMany: jest.Mock;
   let completionFindMany: jest.Mock;
   let markFindMany: jest.Mock;
+  let skipFindMany: jest.Mock;
   let userFindUnique: jest.Mock;
   let userUpsert: jest.Mock;
   let userUpdateMany: jest.Mock;
@@ -78,6 +79,7 @@ describe('CurriculumService', () => {
     lessonItemFindMany = jest.fn().mockResolvedValue(keyItemRows);
     completionFindMany = jest.fn().mockResolvedValue([]);
     markFindMany = jest.fn().mockResolvedValue([]);
+    skipFindMany = jest.fn().mockResolvedValue([]);
     userFindUnique = jest.fn().mockResolvedValue(null);
     userUpsert = jest.fn().mockResolvedValue({});
     userUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
@@ -92,6 +94,7 @@ describe('CurriculumService', () => {
             lessonItem: { findMany: lessonItemFindMany },
             lessonCompletion: { findMany: completionFindMany },
             userChapterMark: { findMany: markFindMany },
+            userLessonSkip: { findMany: skipFindMany },
             user: {
               findUnique: userFindUnique,
               upsert: userUpsert,
@@ -145,7 +148,7 @@ describe('CurriculumService', () => {
         lessonCount: 2,
         estimatedMinutes: 4, // null minutes count as 0
         state: 'current',
-        actions: { relocate: false, skipTest: true, review: false },
+        actions: { relocate: false, assessment: true, review: false },
       });
       expect(c1.lessons[0]).toEqual({
         id: 'l1',
@@ -169,31 +172,69 @@ describe('CurriculumService', () => {
       expect(dto.modules[1].chapters[0].state).toBe('locked');
       expect(dto.currentChapterId).toBe('c1');
       expect(dto.relocated).toBe(false);
-      expect(dto.nextLesson).toEqual({ slug: 'slug-l1', title: 'Lesson l1' });
+      expect(dto.next).toEqual({
+        kind: 'lesson',
+        slug: 'slug-l1',
+        title: 'Lesson l1',
+        chapterId: 'c1',
+        chapterTitle: 'Chapter c1',
+        chapterStart: true, // nothing in c1 done yet → skip-test offer
+      });
     });
 
-    it('feeds completions and chapter marks into the state', async () => {
+    it('feeds completions, lesson skips and chapter marks into the state', async () => {
       completionFindMany.mockResolvedValue([
         { lessonId: 'l1' },
         { lessonId: 'l2' },
       ]);
       markFindMany.mockResolvedValue([
-        { chapterId: 'c2', kind: 'PASSED_SKIP_TEST' },
+        { chapterId: 'c1', kind: 'PASSED_ASSESSMENT' },
+        { chapterId: 'c2', kind: 'PASSED_ASSESSMENT' },
       ]);
+      skipFindMany.mockResolvedValue([{ lessonId: 'l4' }]);
       const dto = await service.getCurriculum('u1');
       const states = dto.modules.flatMap((m) => m.chapters.map((c) => c.state));
       expect(states).toEqual(['completed', 'completed', 'current']);
       expect(dto.modules[0].chapters[1].lessons[0].state).toBe('skipped');
-      expect(dto.nextLesson?.slug).toBe('slug-l4');
+      expect(dto.modules[1].chapters[0].lessons[0].state).toBe('skipped');
+      // c3's only lesson was collapsed → its exit Assessment is next.
+      expect(dto.next).toEqual({
+        kind: 'assessment',
+        chapterId: 'c3',
+        chapterTitle: 'Chapter c3',
+      });
+      expect(skipFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1' } }),
+      );
     });
 
-    it('returns no next lesson once everything is passed', async () => {
-      completionFindMany.mockResolvedValue(
-        ['l1', 'l2', 'l3', 'l4'].map((lessonId) => ({ lessonId })),
+    it('offers the exit Assessment once the lessons are done (they never pass a chapter alone)', async () => {
+      completionFindMany.mockResolvedValue([
+        { lessonId: 'l1' },
+        { lessonId: 'l2' },
+      ]);
+      const dto = await service.getCurriculum('u1');
+      expect(dto.modules[0].chapters[0]).toMatchObject({
+        state: 'current',
+        actions: { assessment: true },
+      });
+      expect(dto.next).toEqual({
+        kind: 'assessment',
+        chapterId: 'c1',
+        chapterTitle: 'Chapter c1',
+      });
+    });
+
+    it('returns nothing next once every chapter is passed', async () => {
+      markFindMany.mockResolvedValue(
+        ['c1', 'c2', 'c3'].map((chapterId) => ({
+          chapterId,
+          kind: 'PASSED_ASSESSMENT',
+        })),
       );
       const dto = await service.getCurriculum('u1');
       expect(dto.currentChapterId).toBeNull();
-      expect(dto.nextLesson).toBeNull();
+      expect(dto.next).toBeNull();
     });
 
     it('honours a valid relocation and leaves the pointer alone', async () => {
@@ -203,6 +244,8 @@ describe('CurriculumService', () => {
       userFindUnique.mockResolvedValue({ currentChapterId: 'c1' });
       const dto = await service.getCurriculum('u1');
       expect(dto).toMatchObject({ currentChapterId: 'c1', relocated: true });
+      // Already passed: no skip-test offer on entering it again.
+      expect(dto.next).toMatchObject({ kind: 'lesson', chapterStart: false });
       expect(userUpdateMany).not.toHaveBeenCalled();
     });
 
@@ -229,7 +272,14 @@ describe('CurriculumService', () => {
     it('returns only the next lesson, without loading key items', async () => {
       completionFindMany.mockResolvedValue([{ lessonId: 'l1' }]);
       await expect(service.getNext('u1')).resolves.toEqual({
-        nextLesson: { slug: 'slug-l2', title: 'Lesson l2' },
+        next: {
+          kind: 'lesson',
+          slug: 'slug-l2',
+          title: 'Lesson l2',
+          chapterId: 'c1',
+          chapterTitle: 'Chapter c1',
+          chapterStart: false, // l1 already done
+        },
       });
       expect(lessonItemFindMany).not.toHaveBeenCalled();
     });
@@ -279,7 +329,7 @@ describe('CurriculumService', () => {
         create: { id: 'u1', currentChapterId: 'c1' },
       });
       expect(dto).toMatchObject({ currentChapterId: 'c1', relocated: true });
-      expect(dto.nextLesson?.slug).toBe('slug-l1');
+      expect(dto.next).toMatchObject({ kind: 'lesson', slug: 'slug-l1' });
       expect(moduleFindMany).toHaveBeenCalledTimes(1);
       expect(userFindUnique).toHaveBeenCalledTimes(1);
     });

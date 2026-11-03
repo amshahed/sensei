@@ -6,7 +6,7 @@ import type {
   ItemMasteryDto,
   Modality,
 } from '@sensei/types';
-import type { Grade } from 'ts-fsrs';
+import { type Grade, Rating } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
 import { reviewQuestionFor } from '../reviews/review-question';
 import {
@@ -112,6 +112,44 @@ export class MasteryService {
       retrievability: retrievability(card, now),
       due: saved.due ? saved.due.toISOString() : null,
     };
+  }
+
+  /**
+   * Inferred mastery (I.4.c tier 2, used by a passed chapter Assessment,
+   * I.4.d.a): items the learner wasn't directly tested on enter FSRS at
+   * moderate confidence — a Hard first review, so Reviews confirm them early.
+   * Items the learner already has state for are left untouched (inference
+   * never overrides evidence). Returns how many items were seeded.
+   */
+  async seedInferred(
+    userId: string,
+    itemIds: string[],
+    now: Date = new Date(),
+  ): Promise<number> {
+    if (itemIds.length === 0) return 0;
+    const existing = await this.prisma.itemMasteryState.findMany({
+      where: { userId, itemId: { in: itemIds } },
+      select: { itemId: true },
+    });
+    const known = new Set(existing.map((e) => e.itemId));
+    const fresh = [...new Set(itemIds)].filter((id) => !known.has(id));
+    if (fresh.length === 0) return 0;
+
+    const card = applyRating(emptyCard(now), Rating.Hard, now);
+    const fsrs = serializeCard(card) as Prisma.InputJsonValue;
+    const mastery = masteryFromStability(card.stability);
+    const { count } = await this.prisma.itemMasteryState.createMany({
+      data: fresh.map((itemId) => ({
+        userId,
+        itemId,
+        fsrs,
+        mastery,
+        due: card.due,
+        lastReview: now,
+      })),
+      skipDuplicates: true,
+    });
+    return count;
   }
 
   /**

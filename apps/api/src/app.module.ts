@@ -9,6 +9,7 @@ import { ChecksModule } from './checks/checks.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ProgressModule } from './progress/progress.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
+import { AssessmentsModule } from './assessments/assessments.module';
 import { UsersModule } from './users/users.module';
 import { VoyageModule } from './voyage/voyage.module';
 
@@ -23,6 +24,7 @@ import { VoyageModule } from './voyage/voyage.module';
     ReviewsModule,
     ProgressModule,
     CurriculumModule,
+    AssessmentsModule,
     UsersModule,
     VoyageModule,
   ],

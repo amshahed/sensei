@@ -1,0 +1,486 @@
+import {
+  BadRequestException,
+  ConflictException,
+  GoneException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import type {
+  AssessmentItemResultDto,
+  AssessmentKind,
+  AssessmentResultDto,
+  AssessmentStartDto,
+  AssessmentSubmitRequest,
+} from '@sensei/types';
+import { mapLimit } from '../common/map-limit';
+import { exactMatch } from '../common/normalize-answer';
+import { CurriculumService } from '../curriculum/curriculum.service';
+import { GradingService } from '../grading/grading.service';
+import { ratingFromLabel } from '../mastery/fsrs';
+import { MasteryService } from '../mastery/mastery.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { WritingEvalService } from '../writing-eval/writing-eval.service';
+import {
+  type AssessmentQuestion,
+  assessmentQuestionFor,
+  sampleAcrossGroups,
+} from './assessment-question';
+
+/** ~5 minutes of typed recall (decisions.md I.4.d.a). */
+export const ASSESSMENT_SAMPLE_SIZE = 20;
+/** Pass bar: ≥80% of graded answers correct (I.4.d). */
+export const ASSESSMENT_PASS_THRESHOLD = 0.8;
+/** An attempt must be submitted within this long of starting it. */
+export const ASSESSMENT_TTL_MS = 60 * 60 * 1000;
+/** Max concurrent AI grading calls / FSRS writes per submit. */
+const CONCURRENCY = 4;
+/** Injection token for the sampler's randomness (deterministic in tests). */
+export const ASSESSMENT_RANDOM = Symbol('ASSESSMENT_RANDOM');
+
+const ITEM_SELECT = {
+  id: true,
+  type: true,
+  display: true,
+  reading: true,
+  meaning: true,
+  data: true,
+} satisfies Prisma.ItemSelect;
+
+type GradedResult = AssessmentItemResultDto & {
+  /** False when the answer couldn't be fairly judged — excluded from the score + FSRS. */
+  scored: boolean;
+  /** AI rating, when the meaning grader produced one. */
+  rating?: ReturnType<typeof ratingFromLabel>;
+};
+
+/** What `AssessmentAttempt.results` stores, so a repeat submit can replay it. */
+type StoredResults = {
+  items: AssessmentItemResultDto[];
+  total: number;
+  skippedLessonIds: string[];
+};
+
+type Tx = Prisma.TransactionClient;
+
+/**
+ * Chapter Assessment engine (I.4.d.a): one engine for both the skip-test
+ * (taken before a chapter's lessons are done) and the exit Assessment (after).
+ * Questions are generated per item and sampled across the chapter's lessons;
+ * the learner submits every answer once and gets the score at the end.
+ */
+@Injectable()
+export class AssessmentsService {
+  private readonly logger = new Logger(AssessmentsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly curriculum: CurriculumService,
+    private readonly mastery: MasteryService,
+    private readonly grading: GradingService,
+    private readonly writingEval: WritingEvalService,
+    @Inject(ASSESSMENT_RANDOM) private readonly random: () => number,
+  ) {}
+
+  async start(userId: string, chapterId: string): Promise<AssessmentStartDto> {
+    const { modules, state } = await this.curriculum.getState(userId);
+    const chapter = modules
+      .flatMap((m) => m.chapters)
+      .find((c) => c.id === chapterId);
+    if (!chapter) {
+      throw new NotFoundException(`Chapter not found: ${chapterId}`);
+    }
+    if (!state.chapterActions.get(chapterId)?.assessment) {
+      throw new BadRequestException(
+        `The Assessment for chapter ${chapterId} isn't available: it is locked or already passed.`,
+      );
+    }
+    const kind: AssessmentKind = state.lessonsDoneChapterIds.has(chapterId)
+      ? 'EXIT'
+      : 'SKIP';
+
+    const byLesson = await this.chapterItems(chapter.lessons.map((l) => l.id));
+    const seen = new Set<string>();
+    const groups = byLesson.map((items) =>
+      items.flatMap((item) => {
+        if (seen.has(item.id)) return [];
+        seen.add(item.id);
+        const question = assessmentQuestionFor(item);
+        return question ? [{ itemId: item.id, prompt: question.prompt }] : [];
+      }),
+    );
+    const questions = sampleAcrossGroups(
+      groups,
+      ASSESSMENT_SAMPLE_SIZE,
+      this.random,
+    );
+
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: { id: userId },
+    });
+    const base = {
+      chapterId,
+      chapterTitle: chapter.title,
+      kind,
+      passThreshold: ASSESSMENT_PASS_THRESHOLD,
+    };
+
+    if (questions.length === 0) {
+      if (kind === 'SKIP') {
+        throw new BadRequestException(
+          `Chapter ${chapterId} has nothing to test yet — start its lessons instead.`,
+        );
+      }
+      // Lessons done, nothing assessable: the exit gate can't be taken, so it
+      // must not block the learner — the chapter passes.
+      const attemptId = await this.prisma.$transaction(async (tx) => {
+        const stored: StoredResults = {
+          items: [],
+          total: 0,
+          skippedLessonIds: [],
+        };
+        const { id } = await tx.assessmentAttempt.create({
+          data: {
+            userId,
+            chapterId,
+            kind,
+            itemIds: [],
+            status: 'PASSED',
+            correctCount: 0,
+            results: stored as unknown as Prisma.InputJsonValue,
+            submittedAt: new Date(),
+          },
+          select: { id: true },
+        });
+        await this.markPassed(tx, userId, chapterId, new Date());
+        return id;
+      });
+      return { ...base, attemptId, questions: [], autoPassed: true };
+    }
+
+    const attempt = await this.prisma.assessmentAttempt.create({
+      data: {
+        userId,
+        chapterId,
+        kind,
+        itemIds: questions.map((q) => q.itemId),
+      },
+      select: { id: true },
+    });
+    return { ...base, attemptId: attempt.id, questions, autoPassed: false };
+  }
+
+  async submit(
+    userId: string,
+    attemptId: string,
+    body: AssessmentSubmitRequest,
+  ): Promise<AssessmentResultDto> {
+    const attempt = await this.prisma.assessmentAttempt.findUnique({
+      where: { id: attemptId },
+    });
+    if (!attempt || attempt.userId !== userId) {
+      throw new NotFoundException(`Assessment attempt not found: ${attemptId}`);
+    }
+    // Idempotent: a repeat submit (double tap, lost response) replays the
+    // stored result instead of failing.
+    if (attempt.status !== 'IN_PROGRESS') return storedResult(attempt);
+
+    const now = new Date();
+    if (now.getTime() - attempt.createdAt.getTime() > ASSESSMENT_TTL_MS) {
+      throw new GoneException('This Assessment has expired — start a new one.');
+    }
+    const { state } = await this.curriculum.getState(userId);
+    if (!state.chapterActions.get(attempt.chapterId)?.assessment) {
+      throw new ConflictException(
+        'This chapter no longer takes an Assessment (it was passed meanwhile).',
+      );
+    }
+
+    const answers = new Map(body.answers.map((a) => [a.itemId, a.answer]));
+    const items = await this.prisma.item.findMany({
+      where: { id: { in: attempt.itemIds } },
+      select: ITEM_SELECT,
+    });
+    const itemsById = new Map(items.map((i) => [i.id, i]));
+
+    const graded = await mapLimit(
+      attempt.itemIds,
+      CONCURRENCY,
+      async (itemId): Promise<GradedResult> => {
+        const item = itemsById.get(itemId);
+        const question = item ? assessmentQuestionFor(item) : null;
+        const answer = (answers.get(itemId) ?? '').trim();
+        if (!question) {
+          // The item was deleted or changed since the attempt started.
+          return {
+            itemId,
+            prompt: '',
+            answer,
+            correct: false,
+            correctAnswer: '',
+            scored: false,
+          };
+        }
+        return { itemId, answer, ...(await this.grade(question, answer)) };
+      },
+    );
+
+    const scored = graded.filter((g) => g.scored);
+    const total = scored.length;
+    if (total === 0) {
+      // Nothing could be judged (grader outage) — leave the attempt open.
+      throw new ServiceUnavailableException(
+        'Grading is unavailable right now — please submit again shortly.',
+      );
+    }
+    const correct = scored.filter((g) => g.correct).length;
+    const passed = correct / total >= ASSESSMENT_PASS_THRESHOLD - 1e-9;
+    const skippedLessonIds =
+      !passed && attempt.kind === 'SKIP'
+        ? await this.fullyTestedLessons(
+            attempt.chapterId,
+            new Set(scored.filter((g) => g.correct).map((g) => g.itemId)),
+          )
+        : [];
+    const stored: StoredResults = {
+      items: graded.map(
+        ({ itemId, prompt, answer, correct: ok, correctAnswer }) => ({
+          itemId,
+          prompt,
+          answer,
+          correct: ok,
+          correctAnswer,
+        }),
+      ),
+      total,
+      skippedLessonIds,
+    };
+
+    // Claim the attempt and record the chapter outcome atomically, so a
+    // concurrent submit can't double-apply and a failure can't leave a
+    // PASSED attempt without its mark.
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.assessmentAttempt.updateMany({
+        where: { id: attemptId, status: 'IN_PROGRESS' },
+        data: {
+          status: passed ? 'PASSED' : 'FAILED',
+          correctCount: correct,
+          results: stored as unknown as Prisma.InputJsonValue,
+          submittedAt: now,
+        },
+      });
+      if (count === 0) return false;
+      if (passed) await this.markPassed(tx, userId, attempt.chapterId, now);
+      if (skippedLessonIds.length > 0) {
+        await tx.userLessonSkip.createMany({
+          data: skippedLessonIds.map((lessonId) => ({ userId, lessonId })),
+          skipDuplicates: true,
+        });
+      }
+      return true;
+    });
+    if (!claimed) {
+      // A concurrent submit won the claim — replay its result.
+      const winner = await this.prisma.assessmentAttempt.findUnique({
+        where: { id: attemptId },
+      });
+      if (winner && winner.status !== 'IN_PROGRESS') {
+        return storedResult(winner);
+      }
+      throw new ConflictException('This Assessment was already submitted.');
+    }
+
+    // FSRS is best-effort after the outcome is safely recorded: a failed
+    // write is logged and self-corrects through later reviews.
+    const skipTestFailed = attempt.kind === 'SKIP' && !passed;
+    await this.writeBack(userId, scored, { penalise: !skipTestFailed, now });
+    if (passed) {
+      await this.seedUntested(userId, attempt.chapterId, attempt.itemIds, now);
+    }
+
+    return {
+      attemptId,
+      chapterId: attempt.chapterId,
+      kind: attempt.kind,
+      passed,
+      correct,
+      total,
+      passThreshold: ASSESSMENT_PASS_THRESHOLD,
+      results: stored.items,
+      skippedLessonIds,
+    };
+  }
+
+  private async grade(
+    question: AssessmentQuestion,
+    answer: string,
+  ): Promise<Omit<GradedResult, 'itemId' | 'answer'>> {
+    const base = { prompt: question.prompt, correctAnswer: question.expected };
+    if (!answer) return { ...base, correct: false, scored: true };
+    switch (question.check) {
+      case 'romaji':
+        return {
+          ...base,
+          correct: question.accepted.some((a) => exactMatch(answer, a)),
+          scored: true,
+        };
+      case 'reading':
+        return {
+          ...base,
+          correct: question.accepted.some((a) =>
+            this.writingEval.exactMatch(answer, a),
+          ),
+          scored: true,
+        };
+      case 'meaning': {
+        const r = await this.grading.gradeOpen({
+          prompt: question.prompt,
+          answer,
+          exemplar: question.expected,
+        });
+        // The fallback is a word-for-word match against the gloss: trust a
+        // match, but never fail a learner on it — our outage isn't their miss.
+        const fallbackMiss = r.gradedBy === 'fallback' && !r.correct;
+        return {
+          ...base,
+          correct: r.correct,
+          scored: r.scored && !fallbackMiss,
+          rating: ratingFromLabel(r.rating),
+        };
+      }
+    }
+  }
+
+  /**
+   * FSRS: correct answers count as normal reviews; wrong ones as Again —
+   * except on a failed skip-test, which carries no penalty (I.4.d).
+   */
+  private async writeBack(
+    userId: string,
+    scored: GradedResult[],
+    { penalise, now }: { penalise: boolean; now: Date },
+  ): Promise<void> {
+    const writes = scored.filter((g) => g.correct || penalise);
+    await mapLimit(writes, CONCURRENCY, async (g) => {
+      try {
+        await this.mastery.recordCheckResult({
+          userId,
+          itemId: g.itemId,
+          format: 'TYPED',
+          correct: g.correct,
+          rating: g.rating,
+          reviewedAt: now,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Mastery write-back failed for item ${g.itemId}: ${String(err)}`,
+        );
+      }
+    });
+  }
+
+  /**
+   * Chapter passed: mark it and return a learner who had relocated here to
+   * their furthest point.
+   */
+  private async markPassed(
+    tx: Tx,
+    userId: string,
+    chapterId: string,
+    now: Date,
+  ): Promise<void> {
+    await tx.userChapterMark.upsert({
+      where: { userId_chapterId: { userId, chapterId } },
+      update: { kind: 'PASSED_ASSESSMENT', createdAt: now },
+      create: { userId, chapterId, kind: 'PASSED_ASSESSMENT', createdAt: now },
+    });
+    await tx.user.updateMany({
+      where: { id: userId, currentChapterId: chapterId },
+      data: { currentChapterId: null },
+    });
+  }
+
+  /** Seed the passed chapter's untested items as inferred mastery (I.4.c). */
+  private async seedUntested(
+    userId: string,
+    chapterId: string,
+    testedItemIds: string[],
+    now: Date,
+  ): Promise<void> {
+    try {
+      const tested = new Set(testedItemIds);
+      const untested = (await this.chapterTargets(chapterId))
+        .map((t) => t.itemId)
+        .filter((id) => !tested.has(id));
+      await this.mastery.seedInferred(userId, untested, now);
+    } catch (err) {
+      this.logger.error(
+        `Inferred-mastery seeding failed for chapter ${chapterId}: ${String(err)}`,
+      );
+    }
+  }
+
+  /**
+   * Partial pass (I.4.d.a): a lesson collapses only if every one of its
+   * TARGET items was tested in this attempt and answered correctly.
+   */
+  private async fullyTestedLessons(
+    chapterId: string,
+    correctItemIds: ReadonlySet<string>,
+  ): Promise<string[]> {
+    const byLesson = new Map<string, string[]>();
+    for (const { lessonId, itemId } of await this.chapterTargets(chapterId)) {
+      byLesson.set(lessonId, [...(byLesson.get(lessonId) ?? []), itemId]);
+    }
+    return [...byLesson]
+      .filter(([, ids]) => ids.every((id) => correctItemIds.has(id)))
+      .map(([lessonId]) => lessonId);
+  }
+
+  /** TARGET items per lesson, lessons in the given order. */
+  private async chapterItems(lessonIds: string[]) {
+    const rows = await this.prisma.lessonItem.findMany({
+      where: { role: 'TARGET', lessonId: { in: lessonIds } },
+      orderBy: { position: 'asc' },
+      select: { lessonId: true, item: { select: ITEM_SELECT } },
+    });
+    return lessonIds.map((id) =>
+      rows.filter((r) => r.lessonId === id).map((r) => r.item),
+    );
+  }
+
+  private chapterTargets(chapterId: string) {
+    return this.prisma.lessonItem.findMany({
+      where: { role: 'TARGET', lesson: { chapterId } },
+      select: { lessonId: true, itemId: true },
+    });
+  }
+}
+
+/** Rebuild the result of an already-submitted attempt from what it stored. */
+function storedResult(attempt: {
+  id: string;
+  chapterId: string;
+  kind: AssessmentKind;
+  status: string;
+  correctCount: number | null;
+  results: Prisma.JsonValue | null;
+}): AssessmentResultDto {
+  const stored = (attempt.results ?? {}) as Partial<StoredResults>;
+  return {
+    attemptId: attempt.id,
+    chapterId: attempt.chapterId,
+    kind: attempt.kind,
+    passed: attempt.status === 'PASSED',
+    correct: attempt.correctCount ?? 0,
+    total: stored.total ?? 0,
+    passThreshold: ASSESSMENT_PASS_THRESHOLD,
+    results: stored.items ?? [],
+    skippedLessonIds: stored.skippedLessonIds ?? [],
+  };
+}
