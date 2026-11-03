@@ -1,11 +1,13 @@
 import type {
   CheckResultDto,
+  CurriculumDto,
   DueReviewItemDto,
   HealthResponse,
   LessonCompletionDto,
   LessonDetailDto,
   MeDto,
   ProgressDto,
+  RelocateRequest,
   ReviewResultDto,
 } from '@sensei/types';
 
@@ -98,5 +100,19 @@ export const api = {
 
   progress(): Promise<ProgressDto> {
     return request<ProgressDto>('/progress');
+  },
+
+  /** Curriculum Outline (I.4.e): Module → Chapter → Lesson with states. */
+  curriculum(): Promise<CurriculumDto> {
+    return request<CurriculumDto>('/curriculum');
+  },
+
+  /** "Relocate position here" — returns the updated outline. */
+  relocate(chapterId: string): Promise<CurriculumDto> {
+    const body: RelocateRequest = { chapterId };
+    return request<CurriculumDto>('/curriculum/relocate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 };

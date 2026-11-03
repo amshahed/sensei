@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -36,6 +36,12 @@ export function LessonPlayer({
 }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [score, setScore] = useState(0);
+  // The completion write, so leaving the done screen waits for it: the outline
+  // and Home's "Continue" read completions as soon as the learner is back.
+  const completion = useRef<Promise<unknown>>(Promise.resolve());
+  const exitAfterCompletion = onExit
+    ? () => void completion.current.then(onExit)
+    : undefined;
 
   useEffect(() => {
     let active = true;
@@ -104,7 +110,7 @@ export function LessonPlayer({
         <DoneScreen
           correct={score}
           total={lesson.checks.length}
-          onExit={onExit}
+          onExit={exitAfterCompletion}
         />
       );
     }
@@ -121,7 +127,9 @@ export function LessonPlayer({
           if (next < lesson.checks.length) {
             setPhase({ kind: 'check', lesson, index: next });
           } else {
-            void api.completeLesson(lesson.slug).catch(() => undefined);
+            completion.current = api
+              .completeLesson(lesson.slug)
+              .catch(() => undefined);
             setPhase({
               kind: 'done',
               lesson,
@@ -135,7 +143,11 @@ export function LessonPlayer({
   }
 
   return (
-    <DoneScreen correct={phase.correct} total={phase.total} onExit={onExit} />
+    <DoneScreen
+      correct={phase.correct}
+      total={phase.total}
+      onExit={exitAfterCompletion}
+    />
   );
 }
 
@@ -270,7 +282,11 @@ function CheckBeat({
     setFailed(false);
     try {
       // The guess flag only applies to multiple-choice (K.1).
-      const r = await api.gradeCheck(check.id, answer, isMultipleChoice && guessed);
+      const r = await api.gradeCheck(
+        check.id,
+        answer,
+        isMultipleChoice && guessed,
+      );
       setResult(r);
     } catch {
       // Don't score a network blip as a wrong answer — let the learner retry.
@@ -383,7 +399,7 @@ function DoneScreen({
           ? 'Nice work — you finished the lesson.'
           : `You got ${correct} of ${total} right.`}
       </Text>
-      {onExit ? <PrimaryButton label="Back to home" onPress={onExit} /> : null}
+      {onExit ? <PrimaryButton label="Done" onPress={onExit} /> : null}
     </View>
   );
 }

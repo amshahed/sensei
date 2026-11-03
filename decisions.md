@@ -894,6 +894,26 @@ If learner takes the skip-test:
 - Outline at chapter granularity only (no lesson visibility) — weaker decision support for skip-test choice; learner can't recognize lesson titles to gauge familiarity.
 - Allow mid-chapter lesson jumping — breaks within-chapter prerequisite assumptions; bypasses skip-test mechanism.
 
+### I.4.e.a Curriculum Outline — gating + state rules for the build (implements I.4.e; locked 2026-11-03)
+
+**Decision:** "Prerequisites met" = **next-chapter lookahead**. The first chapter not yet passed is the **frontier** (`current`, unless the learner relocated). The next unpassed chapter after it is `available` (skip-testable). Every unpassed chapter beyond that is `locked`. Passing a skip-test on the available chapter opens the one after it, so known material can be skipped one chapter at a time.
+
+Build rules:
+- **Passed** = every lesson completed, OR skip-test passed, OR skipped by placement. The last two are stored per learner per chapter (`UserChapterMark`: `PASSED_SKIP_TEST` / `SKIPPED_VIA_PLACEMENT`).
+- **A skip-test pass shows as `completed`.** It is the bidirectional end-of-chapter Assessment (I.4.d), same bar. Placement skips keep their own `skipped_via_placement` state.
+- **Skip-test is offered on `current` and `available` chapters.** `current` is included because I.4.d allows re-attempting after starting a chapter.
+- **Relocate** = one nullable pointer, `User.currentChapterId`. It's valid only for a skipped chapter (passed but not every lesson completed) behind the frontier. It lapses on its own once that chapter's lessons are all completed. While relocated, the frontier shows `available` and offers "return to your furthest point" (clears the pointer). Chapters finished lesson by lesson offer Review, not relocate.
+- **Lesson states:** `completed` · `current` (first unfinished lesson of the current chapter) · `not_started` · `skipped` (unfinished lesson in a skipped chapter).
+- **Chapters with no published lessons are hidden**, and so are modules left empty. They can't be played, so they mustn't block the frontier. This matters while authoring, when chapters exist before their lessons.
+- **Per-lesson detail = title + state + key (TARGET) items**, per the #14 acceptance criteria. I.4.e's Teach-beat preview is deferred: the key items already tell a learner whether they know a lesson.
+- **"Continue"** (Home tile + outline footer) plays the current chapter's first unfinished lesson. It's the only way into a lesson from the outline (no mid-chapter jumping).
+
+**Why lookahead:** it keeps `locked` meaningful (I.4.e defines it as "prerequisites not met") while a learner who already knows the next chapter can test out of it without finishing the current one first. Chain skipping covers longer runs of known material at one ~5-min test per chapter, the same reasoning I.4.d uses to reject module-level skip-tests. Founder chose it 2026-11-03.
+
+**Rejected:**
+- Every future chapter skip-testable: `locked` stops meaning anything, and a learner can jump past prerequisites they never demonstrated.
+- Only the current chapter skip-testable: a learner has to start a chapter before they can test out of the next one.
+
 ### I.4 Placement quiz design (pending)
 
 Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.
