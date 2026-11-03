@@ -4,7 +4,7 @@
  */
 
 export interface HealthResponse {
-  status: 'ok';
+  status: "ok";
   service: string;
   timestamp: string;
 }
@@ -28,24 +28,24 @@ export interface MeDto {
  * B.2, B.3, B.4.
  * ------------------------------------------------------------------------- */
 
-export type ItemType = 'KANA' | 'VOCAB' | 'KANJI' | 'GRAMMAR';
+export type ItemType = "KANA" | "VOCAB" | "KANJI" | "GRAMMAR";
 
 export type LessonType =
-  | 'F_KANA'
-  | 'F_VOCAB'
-  | 'F_KANJI'
-  | 'F_GRAMMAR'
-  | 'I_LISTENING'
-  | 'I_SPEAKING'
-  | 'I_READING'
-  | 'I_WRITING'
-  | 'I_SCENARIO'
-  | 'REVIEW'
-  | 'ASSESSMENT';
+  | "F_KANA"
+  | "F_VOCAB"
+  | "F_KANJI"
+  | "F_GRAMMAR"
+  | "I_LISTENING"
+  | "I_SPEAKING"
+  | "I_READING"
+  | "I_WRITING"
+  | "I_SCENARIO"
+  | "REVIEW"
+  | "ASSESSMENT";
 
-export type CheckFormat = 'MULTIPLE_CHOICE' | 'TYPED' | 'SPOKEN';
+export type CheckFormat = "MULTIPLE_CHOICE" | "TYPED" | "SPOKEN";
 
-export type LessonItemRole = 'TARGET' | 'SUPPORTING';
+export type LessonItemRole = "TARGET" | "SUPPORTING";
 
 export interface ItemDto {
   /** Language-prefixed id, e.g. "ja:kana:a" (CC.1). */
@@ -121,7 +121,7 @@ export interface LessonCompletionDto {
 /* ---- Mastery + spaced repetition (issue #6 / decisions G.1–G.4) ---- */
 
 /** The three evaluation modalities tracked per item (G.1 breadcrumbs). */
-export type Modality = 'recognition' | 'recall' | 'production';
+export type Modality = "recognition" | "recall" | "production";
 
 /**
  * A learner's mastery snapshot for one item. `mastery` is the continuous 0–1
@@ -206,4 +206,84 @@ export interface ReviewResultDto {
   correctAnswer: string;
   /** Updated 0–1 mastery after this review. */
   mastery: number;
+}
+
+// ---------------- Curriculum Outline (#14, I.4.e) ----------------
+
+/**
+ * Chapter state (I.4.e). "Prerequisites met" uses next-chapter lookahead
+ * (decisions.md I.4.e.a): the frontier — the first chapter not completed or
+ * skipped — and the next unpassed chapter after it are reachable; everything
+ * beyond is locked.
+ */
+export type ChapterState =
+  | "completed"
+  | "current"
+  | "skipped_via_placement"
+  | "available"
+  | "locked";
+
+/** Lesson state within a chapter. `skipped` = its chapter was skipped (placement or skip-test). */
+export type LessonState = "completed" | "current" | "not_started" | "skipped";
+
+export interface CurriculumKeyItemDto {
+  id: string;
+  display: string;
+  reading: string | null;
+  meaning: string | null;
+}
+
+/** Read-only lesson row — the outline never navigates into a lesson (no mid-chapter jumping). */
+export interface CurriculumLessonDto {
+  id: string;
+  slug: string;
+  title: string;
+  type: LessonType;
+  position: number;
+  estimatedMinutes: number | null;
+  state: LessonState;
+  /** The lesson's TARGET items, in teaching order. */
+  keyItems: CurriculumKeyItemDto[];
+}
+
+export interface CurriculumChapterActionsDto {
+  /** Move the position pointer here (past skipped chapters; or back to the frontier). */
+  relocate: boolean;
+  /** Skip-test offered (I.4.d) — wired up by #15. */
+  skipTest: boolean;
+  /** Review this chapter's items. */
+  review: boolean;
+}
+
+export interface CurriculumChapterDto {
+  id: string;
+  slug: string;
+  title: string;
+  position: number;
+  lessonCount: number;
+  /** Sum of the lessons' estimatedMinutes (lessons without an estimate count 0). */
+  estimatedMinutes: number;
+  state: ChapterState;
+  actions: CurriculumChapterActionsDto;
+  lessons: CurriculumLessonDto[];
+}
+
+export interface CurriculumModuleDto {
+  id: string;
+  slug: string;
+  title: string;
+  position: number;
+  chapters: CurriculumChapterDto[];
+}
+
+export interface CurriculumDto {
+  modules: CurriculumModuleDto[];
+  /** The chapter the learner is working in (null when everything is done). */
+  currentChapterId: string | null;
+  /** The lesson "Continue" should open (null when nothing is left). */
+  nextLesson: { slug: string; title: string } | null;
+}
+
+export interface RelocateRequest {
+  chapterId: string;
 }
