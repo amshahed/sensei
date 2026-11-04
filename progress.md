@@ -129,7 +129,7 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 
 Design grilling COMPLETE (all phases A–M locked). **Implementing** against the GitHub issues (epic #1, children #2–#22). The core learning loop is merged to `main`, each via a high-reviewed, CI-green PR.
 
-### Implementation status (as of 2026-11-03)
+### Implementation status (as of 2026-11-04)
 
 | Issue | Scope | Status |
 |---|---|---|
@@ -154,21 +154,24 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 | PR #51 | Hermetic tests — `apps/api/.env` kept out of every Jest run (Prisma's implicit .env load); `DEV_USER_ID` read per call | ✅ merged |
 | #14 | Curriculum Outline (I.4.e, I.4.e.a) — `GET /curriculum`, `GET /curriculum/next`, `POST /curriculum/relocate` (incl. `null` = back to furthest point); next-chapter lookahead gating; mobile Home · Curriculum · Progress tab bar + outline screen | ✅ merged (PR #52) |
 | #15 | Chapter Assessment engine (I.4.d, I.4.d.a) — one engine for skip-test + exit gate; ~20 sampled per-item typed-recall Qs, ≥80%; partial-pass lesson collapse; inferred mastery on pass; chapter-intro skip-test offer; idempotent submit | ✅ merged (PR #53) |
+| PR #55 | Shared recall (G.4.a) — one typed-recall question + grader for Reviews, Assessments, Practice; kanji readings without KANJIDIC2 markers; no answer leak in the due queue; grader outage → unscored | ✅ merged |
+| #17 | Practice Mode (J.1, J.1.f) — `GET /practice/scopes`, `POST /practice/sessions` (weakest / module / chapter + type filter; learned items only; G.4 order; cap 20), `POST /practice/sessions/:id/answer` (first scored answer per item per session writes FSRS, in one transaction with the claim); mobile Practice tab + drill (misses re-asked once, exposure only); Outline `actions.practice` + Progress per-type links | ✅ merged (PR #56) |
 
 **The M.4 loop is closed and live in code** (item DB → lesson player → Check → AI/deterministic grading → FSRS → reviews). Auth is wired (#3) and **verified against live infra**: real Clerk session → `GET /me` → 200 with a `users` row created in the live DB.
 
 **Live infra provisioned (2026-11-02):**
 - **Clerk** — dev instance `ins_3LZBi0bt…`; keys set in `apps/api/.env` (`CLERK_SECRET_KEY`) + `apps/mobile/.env` (`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`).
-- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; the first 3 Prisma migrations applied + seeded (the-five-vowels). **Not yet deployed:** `20261103120000_curriculum_position` (#14) + `20261103180000_chapter_assessment` (#15) — the pair was verified on a throwaway branch (`migration-test-15`). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
+- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; migrations through `20261103180000_chapter_assessment` (#15) applied + seeded (the-five-vowels). The #14/#15 pair was verified on a throwaway branch first, then deployed (2026-11-03); the test branch is deleted. **Not yet deployed:** `20261104090000_practice_mode` (#17: two new tables, no data changes). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
 - **Item + reference data in Neon (2026-11-03):** 92 kana · 1,358 vocab (N5 702 / N4 656) · 103 N5 kanji · 40 grammar shells · 9,694 Tatoeba sentences embedded (Voyage, ~72k tokens ≈ $0.004). Voyage is on its no-payment-method tier (3 RPM): every batch hit a 429 and got through on the last retry.
 
-**Next AFK issue: #17 Practice Mode** (J.1) — its "pick what to drill" scope reuses the Curriculum Outline (#14). #13 signup + placement (HITL) will write `SKIPPED_VIA_PLACEMENT` marks the outline already renders.
+**No AFK issues left.** Every open issue is `hitl`: #22 content, #20 notifications, #19 streak, #13 signup + placement, #11 speaking, #10 listening (and epic #1). The next build step needs the founder to pick which one to unblock. #13 (placement) will write the `SKIPPED_VIA_PLACEMENT` marks the outline already renders.
 
 **HITL still pending from the founder:**
 - **#3 last-mile (optional):** drive sign-up/sign-in through the mobile UI on a device/simulator via EAS (the token→API path is already verified; only the on-device UI walkthrough is unexercised).
 - **#22 skeleton blocked on Anthropic credits:** `authoring:skeleton` failed with "credit balance is too low". Top up console.anthropic.com → Plans & Billing, then rerun `pnpm authoring:skeleton` from `apps/api` (the item data it reads is already in Neon).
 - **Optional — Voyage payment method:** lifts the 3 RPM / 10K TPM cap. The free token allowance still applies. It only matters for re-ingests and retrieval at authoring scale.
-- **Deploy the #14 + #15 migrations to Neon** (`pnpm prisma:deploy` from `apps/api`), then delete the `migration-test-15` branch.
+- **Deploy the #17 migration to Neon** (`pnpm prisma:deploy` from `apps/api`): `20261104090000_practice_mode`, adding only the `PracticeSession` + `PracticeAttempt` tables.
+- **Content gap for Practice/Reviews:** grammar items have no meaning yet, so they can't be quizzed (G.4.a). #22 authoring must write one per taught grammar item.
 - provision Railway · Azure · R2 (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `GEMINI_API_KEY` are set).
 
 ---
