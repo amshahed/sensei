@@ -14,6 +14,7 @@ import type {
 } from '@sensei/types';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { isUniqueViolation } from '../prisma/prisma-errors';
 import {
   RECALLABLE_ITEM_SELECT,
   recallQuestionFor,
@@ -451,9 +452,3 @@ export async function learnerHasProgress(
 const questionsOf = (a: Attempt) =>
   a.questions as unknown as PlacementQuestion[];
 const answersOf = (a: Attempt) => a.answers as unknown as StoredAnswer[];
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
-  );
-}

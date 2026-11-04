@@ -6,6 +6,7 @@ import type {
   Interest,
   PriorExperience,
 } from '@sensei/types';
+import { DAILY_TARGET_OPTIONS } from '../streak/targets';
 import { PrimaryButton, Screen, ui } from '../ui';
 
 const INTERESTS: { id: Interest; label: string }[] = [
@@ -21,12 +22,6 @@ const PRIOR: { id: PriorExperience; label: string }[] = [
   { id: 'SOME_KANA', label: 'Some kana / basic phrases' },
   { id: 'FAIR_AMOUNT', label: 'A fair amount of vocab and grammar' },
   { id: 'REFRESHER', label: 'Studied before, refreshing' },
-];
-const TARGETS: { id: DailyTargetMinutes; label: string }[] = [
-  { id: 5, label: '5 min' },
-  { id: 10, label: '10 min' },
-  { id: 20, label: '20 min' },
-  { id: 30, label: '30+ min' },
 ];
 
 /**
@@ -110,7 +105,7 @@ export function IntakeScreen({
 
       <Text style={styles.q}>How much time per day?</Text>
       <View style={styles.wrap}>
-        {TARGETS.map((o) => (
+        {DAILY_TARGET_OPTIONS.map((o) => (
           <Option
             key={o.id}
             label={o.label}

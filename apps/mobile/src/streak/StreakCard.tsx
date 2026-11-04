@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { DailyTargetMinutes, StreakDto } from '@sensei/types';
+import type { StreakDto } from '@sensei/types';
 import { api } from '../api';
 import { ui } from '../ui';
-
-const TARGETS: DailyTargetMinutes[] = [5, 10, 20, 30];
+import { DAILY_TARGET_OPTIONS } from './targets';
 
 /**
  * The learning streak as a calm, secondary line (K.2 #2): today's progress
@@ -74,7 +73,7 @@ export function StreakCard() {
 
       {editing ? (
         <View style={styles.chips}>
-          {TARGETS.map((m) => (
+          {DAILY_TARGET_OPTIONS.map(({ id: m, label }) => (
             <Pressable
               key={m}
               style={[styles.chip, m === today.targetMinutes && styles.chipOn]}
@@ -89,7 +88,7 @@ export function StreakCard() {
                   m === today.targetMinutes && styles.chipTextOn,
                 ]}
               >
-                {m === 30 ? '30+ min' : `${m} min`}
+                {label}
               </Text>
             </Pressable>
           ))}

@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StreakService } from './streak.service';
@@ -154,7 +155,14 @@ describe('StreakService', () => {
       providers: [
         StreakService,
         { provide: PrismaService, useValue: s.prisma },
-        { provide: MasteryService, useValue: { getDue: due } },
+        {
+          provide: MasteryService,
+          useValue: {
+            // `due` stands in for the due list; the service only counts it.
+            dueCount: async (_u: string, _n: Date, limit: number) =>
+              Math.min(((await due()) as unknown[]).length, limit),
+          },
+        },
       ],
     }).compile();
     service = moduleRef.get(StreakService);
@@ -213,6 +221,27 @@ describe('StreakService', () => {
       );
     });
 
+    it('two first credits of the day racing: the loser retries as an update', async () => {
+      const studyDay = s.prisma.studyDay as {
+        upsert: (a: unknown) => Promise<Day>;
+      };
+      const real = studyDay.upsert;
+      let raced = false;
+      studyDay.upsert = async (args) => {
+        if (!raced) {
+          raced = true;
+          await real(args); // the other request's create wins...
+          throw new Prisma.PrismaClientKnownRequestError('unique', {
+            code: 'P2002',
+            clientVersion: 'test',
+          }); // ...and ours loses on the primary key
+        }
+        return real(args);
+      };
+      await lesson(4);
+      expect(today().effortSeconds).toBe(2 * 4 * 60);
+    });
+
     it('never throws: the learning action already happened', async () => {
       (s.prisma.studyDay as { upsert: unknown }).upsert = () =>
         Promise.reject(new Error('db down'));
@@ -248,6 +277,32 @@ describe('StreakService', () => {
       const res = await service.status('u1', undefined, NOW);
       expect(s.days.get('2026-11-03')).toMatchObject({ frozen: true });
       expect(res).toMatchObject({ days: 2, freezes: 0, freezeCap: 2 });
+    });
+
+    it('activity on the day back fills the gap, even if Home is never opened', async () => {
+      s.user.streakFreezes = 1;
+      s.days.set('2026-11-02', { ...emptyDay('2026-11-02'), done: true });
+      await lesson(10); // 11-04: back after missing 11-03, no status read
+      expect(s.days.get('2026-11-03')).toMatchObject({ frozen: true });
+      // Next day, the done 11-04 is the last covered day — the streak holds.
+      const res = await service.status(
+        'u1',
+        undefined,
+        new Date('2026-11-05T12:00:00Z'),
+      );
+      expect(res).toMatchObject({ days: 3, freezes: 0 });
+    });
+
+    it('no gap: the bank is read without taking the row lock', async () => {
+      s.user.streakFreezes = 2;
+      s.days.set('2026-11-03', { ...emptyDay('2026-11-03'), done: true });
+      const tx = jest.spyOn(
+        s.prisma as { $transaction: () => unknown },
+        '$transaction',
+      );
+      const res = await service.status('u1', undefined, NOW);
+      expect(tx).not.toHaveBeenCalled();
+      expect(res.freezes).toBe(2);
     });
 
     it('a gap larger than the bank breaks the streak and keeps the bank', async () => {
@@ -304,6 +359,17 @@ describe('StreakService', () => {
       const res = await service.setTarget('u1', 5, undefined, NOW);
       expect(res.today.done).toBe(true);
       expect(res.days).toBe(1);
+    });
+
+    it('a day finished by a lowered target still banks its freeze', async () => {
+      s.user.dailyTargetMinutes = 20;
+      await lesson(15); // 15 min against a 20-min target: not done
+      expect(today().done).toBe(false);
+      const res = await service.setTarget('u1', 5, undefined, NOW);
+      expect(res.today.done).toBe(true);
+      expect(today().freezeEarned).toBe(true);
+      expect(res.freezes).toBe(1);
+      expect(s.user.streakFreezes).toBe(1);
     });
 
     it('"not now" silences suggestions', async () => {

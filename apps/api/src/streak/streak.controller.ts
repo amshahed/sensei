@@ -7,11 +7,10 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import type { DailyTargetMinutes, StreakDto } from '@sensei/types';
+import type { StreakDto } from '@sensei/types';
 import { CurrentUserId } from '../auth/current-user.decorator';
+import { DAILY_TARGETS, isDailyTarget } from './streak-rules';
 import { StreakService } from './streak.service';
-
-const TARGETS: readonly DailyTargetMinutes[] = [5, 10, 20, 30];
 
 /** Learning streak (K.2/K.3.f). `tz` = the app's IANA timezone. */
 @Controller('streak')
@@ -34,12 +33,12 @@ export class StreakController {
     @Query('tz') tz?: string,
   ): Promise<StreakDto> {
     const minutes = (body as { minutes?: unknown } | null)?.minutes;
-    if (!TARGETS.includes(minutes as DailyTargetMinutes)) {
+    if (!isDailyTarget(minutes)) {
       throw new BadRequestException(
-        `Body must be { "minutes": ${TARGETS.join(' | ')} }.`,
+        `Body must be { "minutes": ${DAILY_TARGETS.join(' | ')} }.`,
       );
     }
-    return this.streak.setTarget(userId, minutes as DailyTargetMinutes, tz);
+    return this.streak.setTarget(userId, minutes, tz);
   }
 
   /** "Not now" on a target suggestion. */

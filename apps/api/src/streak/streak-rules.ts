@@ -12,7 +12,19 @@ export const FREEZE_EARN_MULTIPLE = 2;
 export const SUGGEST_WINDOW_DAYS = 14;
 export const SUGGEST_MIN_ACTIVE_DAYS = 7;
 export const SUGGEST_COOLDOWN_DAYS = 14;
-const TARGETS: readonly DailyTargetMinutes[] = [5, 10, 20, 30];
+/** Every allowed daily target — a Record so the compiler flags a missing or extra one. */
+const TARGET_SET: Record<DailyTargetMinutes, true> = {
+  5: true,
+  10: true,
+  20: true,
+  30: true,
+};
+/** The daily-target options, ascending (K.3.c). */
+export const DAILY_TARGETS = Object.keys(TARGET_SET)
+  .map(Number)
+  .sort((a, b) => a - b) as readonly DailyTargetMinutes[];
+export const isDailyTarget = (v: unknown): v is DailyTargetMinutes =>
+  DAILY_TARGETS.includes(v as DailyTargetMinutes);
 export const DEFAULT_TARGET_MINUTES: DailyTargetMinutes = 10;
 
 /** True if `tz` is an IANA timezone this runtime understands. */
@@ -109,16 +121,16 @@ export function targetSuggestion(
   const target = targetMinutes * 60;
   const share = (pred: (r: DayRow) => boolean) =>
     active.filter(pred).length / active.length;
-  const idx = TARGETS.indexOf(targetMinutes as DailyTargetMinutes);
+  const idx = DAILY_TARGETS.indexOf(targetMinutes as DailyTargetMinutes);
   if (
     share((r) => r.effortSeconds >= FREEZE_EARN_MULTIPLE * target) >= 0.7 &&
     idx !== -1 &&
-    idx < TARGETS.length - 1
+    idx < DAILY_TARGETS.length - 1
   ) {
-    return { direction: 'up', targetMinutes: TARGETS[idx + 1] };
+    return { direction: 'up', targetMinutes: DAILY_TARGETS[idx + 1] };
   }
   if (share((r) => r.effortSeconds < target) >= 0.5 && idx > 0) {
-    return { direction: 'down', targetMinutes: TARGETS[idx - 1] };
+    return { direction: 'down', targetMinutes: DAILY_TARGETS[idx - 1] };
   }
   return null;
 }

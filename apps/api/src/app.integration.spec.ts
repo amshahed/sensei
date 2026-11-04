@@ -503,6 +503,21 @@ function fakePrisma() {
         }
         return Promise.resolve({ count });
       },
+      findFirst: ({
+        where,
+      }: {
+        where: { userId: string; itemId: string; due?: { lte: Date } };
+      }) => {
+        const row = masteryStates.get(`${where.userId}:${where.itemId}`) as
+          | { due?: Date | null }
+          | undefined;
+        const due = row?.due ?? null;
+        return Promise.resolve(
+          row && (!where.due || (due !== null && due <= where.due.lte))
+            ? row
+            : null,
+        );
+      },
       findUnique: ({
         where,
       }: {

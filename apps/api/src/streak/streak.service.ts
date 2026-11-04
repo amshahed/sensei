@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { StudyDay } from '@prisma/client';
 import type { DailyTargetMinutes, StreakDto } from '@sensei/types';
 import { MasteryService, REVIEW_SESSION_CAP } from '../mastery/mastery.service';
+import { isUniqueViolation } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ANSWER_EFFORT_SECONDS,
@@ -78,11 +80,11 @@ export class StreakService {
     const target = (user?.dailyTargetMinutes ??
       DEFAULT_TARGET_MINUTES) as DailyTargetMinutes;
     const today = localDate(now, user?.timezone ?? timeZone ?? null);
-    // Only an actual bank can cover a gap: skip the locking transaction otherwise.
-    const freezes =
-      user && user.streakFreezes > 0
-        ? await this.applyFreezes(userId, today)
-        : (user?.streakFreezes ?? 0);
+    const bank = await this.applyFreezes(
+      userId,
+      today,
+      user?.streakFreezes ?? 0,
+    );
 
     const rows = await this.prisma.studyDay.findMany({
       where: { userId },
@@ -90,25 +92,27 @@ export class StreakService {
       take: STREAK_LOOKBACK_DAYS,
     });
     const todayRow = rows.find((r) => r.localDate === today);
-    const reviewsRemaining = todayRow?.done
+    let reviewsRemaining = todayRow?.done
       ? 0
       : await this.reviewsRemaining(
           userId,
           todayRow?.reviewsAnswered ?? 0,
           now,
         );
-    // Settle here too: a lowered target can complete a day with no new activity.
-    if (
-      todayRow &&
-      !todayRow.done &&
-      reviewsRemaining === 0 &&
-      todayRow.effortSeconds >= target * 60
-    ) {
-      await this.prisma.studyDay.updateMany({
-        where: { userId, localDate: today, done: false },
-        data: { done: true, doneAt: now },
-      });
-      todayRow.done = true;
+    // Settle here too: a lowered target can finish a day (or earn its freeze)
+    // with no new activity.
+    let freezes = bank;
+    if (todayRow) {
+      const settled = await this.settleDay(
+        userId,
+        todayRow,
+        target,
+        now,
+        reviewsRemaining,
+      );
+      if (settled.done) reviewsRemaining = 0;
+      todayRow.done = settled.done;
+      if (settled.freezeBanked) freezes++;
     }
 
     return {
@@ -184,6 +188,10 @@ export class StreakService {
     const user = await this.loadUser(userId);
     if (!user) return;
     const today = localDate(now, user.timezone);
+    // Activity on the day back from a gap fills the gap first (K.3.a): once
+    // today is done it becomes the last covered day, and a gap behind a
+    // covered day is never looked at again.
+    await this.applyFreezes(userId, today, user.streakFreezes);
     const effort =
       activity.kind === 'lesson'
         ? (activity.estimatedMinutes ?? DEFAULT_LESSON_MINUTES) * 60
@@ -191,7 +199,7 @@ export class StreakService {
     const reviews =
       activity.kind === 'answers' && activity.review ? activity.count : 0;
 
-    const day = await this.prisma.studyDay.upsert({
+    const args = {
       where: { userId_localDate: { userId, localDate: today } },
       create: {
         userId,
@@ -203,65 +211,103 @@ export class StreakService {
         effortSeconds: { increment: effort },
         reviewsAnswered: { increment: reviews },
       },
-    });
+    };
+    let day: StudyDay;
+    try {
+      day = await this.prisma.studyDay.upsert(args);
+    } catch (err) {
+      // Two first credits of the day raced: both missed the row and one
+      // create lost on the primary key. The row exists now — retry updates it.
+      if (!isUniqueViolation(err)) throw err;
+      day = await this.prisma.studyDay.upsert(args);
+    }
 
-    const target = (user.dailyTargetMinutes ?? DEFAULT_TARGET_MINUTES) * 60;
+    await this.settleDay(
+      userId,
+      day,
+      user.dailyTargetMinutes ?? DEFAULT_TARGET_MINUTES,
+      now,
+    );
+  }
+
+  /**
+   * Mark the day done once due reviews are cleared and effort meets the
+   * target, and bank a freeze when a done day reaches 2× target (K.3.a —
+   * once per day, capped). Both writes are compare-and-set, so concurrent
+   * settles agree. `reviewsRemaining` may be passed when already known.
+   */
+  private async settleDay(
+    userId: string,
+    day: StudyDay,
+    targetMinutes: number,
+    now: Date,
+    reviewsRemaining?: number,
+  ): Promise<{ done: boolean; freezeBanked: boolean }> {
+    const target = targetMinutes * 60;
     let done = day.done;
     if (!done && day.effortSeconds >= target) {
-      const cleared =
-        day.reviewsAnswered >= REVIEW_SESSION_CAP ||
-        (await this.mastery.getDue(userId, now)).length === 0;
-      if (cleared) {
+      const remaining =
+        reviewsRemaining ??
+        (await this.reviewsRemaining(userId, day.reviewsAnswered, now));
+      if (remaining === 0) {
         await this.prisma.studyDay.updateMany({
-          where: { userId, localDate: today, done: false },
+          where: { userId, localDate: day.localDate, done: false },
           data: { done: true, doneAt: now },
         });
         done = true;
       }
     }
-    // K.3.a: a done day at 2× target banks one freeze (once per day, capped).
+    let freezeBanked = false;
     if (
       done &&
       !day.freezeEarned &&
       day.effortSeconds >= FREEZE_EARN_MULTIPLE * target
     ) {
       const { count } = await this.prisma.studyDay.updateMany({
-        where: { userId, localDate: today, freezeEarned: false },
+        where: { userId, localDate: day.localDate, freezeEarned: false },
         data: { freezeEarned: true },
       });
       if (count === 1) {
-        await this.prisma.user.updateMany({
+        const banked = await this.prisma.user.updateMany({
           where: { id: userId, streakFreezes: { lt: FREEZE_CAP } },
           data: { streakFreezes: { increment: 1 } },
         });
+        freezeBanked = banked.count === 1;
       }
     }
+    return { done, freezeBanked };
   }
 
   /**
    * Cover days missed since the last covered one with banked freezes — only
    * when the bank covers the whole gap (otherwise the streak is already lost
-   * and the bank is kept). Serialised per learner with a row lock so two
-   * concurrent reads can't spend the same freezes twice. Returns the bank.
+   * and the bank is kept). A cheap unlocked look decides whether there is
+   * anything to do; the spend itself is serialised per learner with a row
+   * lock so concurrent calls can't spend the same freezes twice. Returns the
+   * bank left.
    */
-  private async applyFreezes(userId: string, today: string): Promise<number> {
+  private async applyFreezes(
+    userId: string,
+    today: string,
+    bank: number,
+  ): Promise<number> {
+    if (bank === 0) return 0;
+    const gap = missedDays(await this.recentDays(userId, today), today).length;
+    if (gap === 0 || gap > bank) return bank;
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: { streakFreezes: true },
       });
-      const bank = user?.streakFreezes ?? 0;
-      if (bank === 0) return 0;
-      // The last cap+1 days with activity suffice: if none of them is covered,
-      // at least cap+1 days were missed, which no bank can cover.
-      const recent = await tx.studyDay.findMany({
-        where: { userId, localDate: { lt: today } },
-        orderBy: { localDate: 'desc' },
-        take: FREEZE_CAP + 1,
-      });
-      const missed = missedDays(recent, today);
-      if (missed.length === 0 || missed.length > bank) return bank;
+      // Re-read under the lock: another call may have spent or filled first.
+      const locked = user?.streakFreezes ?? 0;
+      if (locked === 0) return 0;
+      const missed = missedDays(
+        await this.recentDays(userId, today, tx),
+        today,
+      );
+      if (missed.length === 0 || missed.length > locked) return locked;
       for (const localDate of missed) {
         await tx.studyDay.upsert({
           where: { userId_localDate: { userId, localDate } },
@@ -273,19 +319,36 @@ export class StreakService {
         where: { id: userId },
         data: { streakFreezes: { decrement: missed.length } },
       });
-      return bank - missed.length;
+      return locked - missed.length;
     });
   }
 
-  /** Reviews still standing between the learner and a done day. */
+  /**
+   * The last cap+1 days with activity before today. Enough for the gap: if
+   * none of them is covered, at least cap+1 days were missed, which no bank
+   * can cover.
+   */
+  private recentDays(
+    userId: string,
+    today: string,
+    db: Pick<PrismaService, 'studyDay'> = this.prisma,
+  ) {
+    return db.studyDay.findMany({
+      where: { userId, localDate: { lt: today } },
+      orderBy: { localDate: 'desc' },
+      take: FREEZE_CAP + 1,
+    });
+  }
+
+  /** Due reviews still standing between the learner and a done day. */
   private async reviewsRemaining(
     userId: string,
     answeredToday: number,
     now: Date,
   ): Promise<number> {
-    if (answeredToday >= REVIEW_SESSION_CAP) return 0;
-    const due = (await this.mastery.getDue(userId, now)).length;
-    return Math.min(due, REVIEW_SESSION_CAP - answeredToday);
+    const left = REVIEW_SESSION_CAP - answeredToday;
+    if (left <= 0) return 0;
+    return this.mastery.dueCount(userId, now, left);
   }
 }
 

@@ -54,6 +54,13 @@ export class ReviewsService {
       );
     }
 
+    // Read before the FSRS write moves it: only a scored answer to an item
+    // that was actually due clears part of today's reviews (K.3.f).
+    const now = new Date();
+    const wasDue = await this.prisma.itemMasteryState.findFirst({
+      where: { userId, itemId, due: { lte: now } },
+      select: { itemId: true },
+    });
     const graded = await this.recall.grade(question, answer);
     const base = recallResult(itemId, question, graded);
     let mastery: number;
@@ -73,11 +80,12 @@ export class ReviewsService {
       mastery = state.mastery;
     }
     // The answer was real effort either way (K.3.f); credited after the FSRS
-    // write so "reviews cleared" sees this item as no longer due.
+    // write so "reviews cleared" sees this item as no longer due. Repeats,
+    // not-yet-due items and unscored answers are effort, not reviews.
     await this.streak.record(userId, {
       kind: 'answers',
       count: 1,
-      review: true,
+      review: graded.scored && wasDue !== null,
     });
     return { ...base, mastery };
   }

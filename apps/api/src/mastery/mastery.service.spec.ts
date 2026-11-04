@@ -263,6 +263,55 @@ describe('MasteryService', () => {
     });
   });
 
+  describe('dueCount', () => {
+    const kana = (n: number) => ({
+      item: {
+        type: 'KANA',
+        display: 'あ',
+        reading: 'あ',
+        meaning: null,
+        data: { romaji: `a${n}` },
+      },
+    });
+    const shell = {
+      item: {
+        type: 'GRAMMAR',
+        display: 'です',
+        reading: null,
+        meaning: null,
+        data: {},
+      },
+    };
+
+    it('counts only quizzable due items, with the same filter as getDue', async () => {
+      stateFindMany.mockResolvedValueOnce([kana(1), shell, kana(2)]);
+      expect(await service.dueCount('dev-user', NOW, 15)).toBe(2);
+      const [[args]] = stateFindMany.mock.calls as [
+        [{ where: Record<string, unknown> }],
+      ];
+      expect(args.where).toMatchObject({
+        userId: 'dev-user',
+        due: { lte: NOW },
+        NOT: { item: { type: 'GRAMMAR', meaning: null } },
+      });
+    });
+
+    it('stops paging once the limit is reached', async () => {
+      const page = Array.from({ length: 50 }, (_, i) => kana(i));
+      stateFindMany.mockResolvedValue(page);
+      expect(await service.dueCount('dev-user', NOW, 15)).toBe(15);
+      expect(stateFindMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('pages past non-quizzable rows to find enough', async () => {
+      stateFindMany
+        .mockResolvedValueOnce(Array.from({ length: 50 }, () => shell))
+        .mockResolvedValueOnce([kana(1)]);
+      expect(await service.dueCount('dev-user', NOW, 15)).toBe(1);
+      expect(stateFindMany).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('seedInferred (I.4.c tier 2 via a passed Assessment)', () => {
     it('seeds only items without state, at moderate (Hard) confidence', async () => {
       stateFindMany.mockResolvedValue([{ itemId: 'known' }]);
