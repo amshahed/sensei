@@ -957,6 +957,34 @@ Build rules:
 - Every future chapter skip-testable: `locked` stops meaning anything, and a learner can jump past prerequisites they never demonstrated.
 - Only the current chapter skip-testable: a learner has to start a chapter before they can test out of the next one.
 
+### I.4.f Placement — first-miss entry point, course-order sampling (amends I.4.a + I.4.c; implements I.3.b/I.3.d/I.4 for #13; locked 2026-11-04)
+
+**Context:** the live item data can't support I.4.a/I.4.c as written. There is no prerequisite graph: grammar `prereqs` are all empty, and vocab/kanji have none. There are no frequency ranks. Grammar items have no meanings and no cloze content.
+
+**Decision (founder-locked):**
+- **Entry point = first miss.** Questions run in course order. The learner starts at the earliest chapter containing an item they missed. Every chapter before it gets a `SKIPPED_VIA_PLACEMENT` mark. With no miss, they start after the last chapter the quiz reached. A wrong skip is undone with "Go back and learn this chapter" (I.4.e); under-placement is fixed with a skip-test (I.4.d). This amends I.4.c's rejection of applying placement to whole chapters: chapters are skipped, but untested items are only *inferred*, never treated as tested.
+- **Inference without a prerequisite graph.**
+  - Tested-correct items are seeded as a Good review (high retention; recognition breadcrumb).
+  - Untested, quizzable items in skipped chapters are seeded Hard (moderate), exactly like a passed Assessment (I.4.d.a).
+  - Tested-wrong items, and everything from the start chapter on, stay unscheduled and are taught normally.
+  - Existing FSRS state is never overwritten.
+- **Course-order sampling (amends I.4.a's fixed split and frequency bands).**
+  - About 2 items per chapter, in course order, until the budget runs out. `some_kana`: about 24, kana items only. `fair_amount` / `refresher`: about 40 across kana, vocab and kanji.
+  - The item-type mix follows the curriculum.
+  - Formats per I.4.b, all multiple choice: kana = character for a sound (the script is named, because の and ノ share "no"); vocab = meaning; kanji = reading + meaning, both needed.
+  - Grammar is skipped until #22 writes cloze content and meanings. So a grammar-only chapter before the first miss is skipped with no direct evidence.
+- **Stop at the first miss (replaces I.4.a's "10 perfect → skip the rest" and I.4.c's early-exit inference).** Nothing after the first miss can move the entry point, so the quiz ends there. Length adapts: short for near-beginners, the full set only for strong learners.
+
+**Build rules (implementation calls, flagged to the founder):**
+- Every question offers "I don't know". It counts as a miss, so nobody is pushed into guessing.
+- The placement intro offers "Skip, start from the beginning". It's only offered before the first answer; after that, "I don't know" is the way out.
+- Placement runs once, in the signup session (I.3.d). An unfinished attempt resumes where it stopped.
+- Survey per I.3.b: interests (multi-select, at least one), prior experience (required), daily target (5 / 10 / 20 / 30, default 10). All stored on the user. The consumers of interests and daily target (example theming, review cap, streak) arrive with their own issues.
+
+**Why:** the first-miss rule errs toward skipping, and that's the cheap direction to be wrong in. Relocate and skip-tests already exist, while under-placing intermediate learners is the drop-off I.3.b names. Course-order sampling needs no data we don't have, and it puts each miss in the chapter where the gap is. Stopping at the first miss stops asking questions that can no longer change the outcome.
+
+**Acknowledged risks:** a lucky multiple-choice guess can skip a chapter ("I don't know" reduces this; relocate fixes it). With about 2 items per chapter, a single slip places a learner one chapter early (a skip-test fixes it). The tuning review (#13's last checkbox) has to wait until #22 provides real chapters.
+
 ### I.4 Placement quiz design (pending)
 
 Pending grilling. Open questions: scope (what items it tests), format (multi-modality vs writing-only), what it controls (skip lessons vs skip chapters vs gate-by-item-mastery), how it integrates with intake.

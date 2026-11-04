@@ -11,6 +11,8 @@ import { ProgressModule } from './progress/progress.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
 import { AssessmentsModule } from './assessments/assessments.module';
 import { PracticeModule } from './practice/practice.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { PlacementModule } from './placement/placement.module';
 import { UsersModule } from './users/users.module';
 import { VoyageModule } from './voyage/voyage.module';
 
@@ -27,6 +29,8 @@ import { VoyageModule } from './voyage/voyage.module';
     CurriculumModule,
     AssessmentsModule,
     PracticeModule,
+    OnboardingModule,
+    PlacementModule,
     UsersModule,
     VoyageModule,
   ],
