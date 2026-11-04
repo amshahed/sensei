@@ -9,6 +9,10 @@ import type {
   CurriculumDto,
   LessonCompletionDto,
   LessonDetailDto,
+  OnboardingDto,
+  PlacementAnswerDto,
+  PlacementResultDto,
+  PlacementStartDto,
   PracticeResultDto,
   PracticeScopesDto,
   PracticeSessionDto,
@@ -33,8 +37,27 @@ const kanaA = {
   display: 'あ',
   reading: 'あ',
   meaning: null,
-  data: { romaji: 'a' },
+  data: { romaji: 'a', script: 'hiragana' },
 };
+
+/** Other hiragana: distractors for placement's kana question. */
+const kanaPool = [
+  kanaA,
+  ...(
+    [
+      ['い', 'i'],
+      ['う', 'u'],
+      ['え', 'e'],
+      ['お', 'o'],
+    ] as const
+  ).map(([display, romaji]) => ({
+    ...kanaA,
+    id: `ja:kana:${romaji}`,
+    display,
+    reading: display,
+    data: { romaji, script: 'hiragana' },
+  })),
+];
 
 const lessonRow = {
   id: 'lesson-1',
@@ -91,8 +114,11 @@ function fakePrisma() {
       lessonId: lessonRow.id,
       itemId: kanaA.id,
       role: 'TARGET',
+      position: 0,
       item: kanaA,
       lesson: {
+        position: 1,
+        chapterId: lessonRow.chapter.id,
         chapter: {
           id: lessonRow.chapter.id,
           title: lessonRow.chapter.title,
@@ -102,6 +128,13 @@ function fakePrisma() {
       },
     },
   ];
+  const users = new Map<string, Record<string, unknown>>();
+  const placements = new Map<string, Record<string, unknown>>();
+  /** Prisma-style `where` equality (null matches a missing value). */
+  const matches = (row: Record<string, unknown>, where: object) =>
+    Object.entries(where).every(([k, v]) =>
+      v === null ? row[k] == null : row[k] === v,
+    );
   const fake: Record<string, unknown> = {
     // Interactive transactions run against the same in-memory fake.
     $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(fake),
@@ -145,7 +178,46 @@ function fakePrisma() {
     },
     chapter: {
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
-        Promise.resolve(id === lessonRow.chapter.id ? { id } : null),
+        Promise.resolve(
+          id === lessonRow.chapter.id
+            ? { id, title: lessonRow.chapter.title }
+            : null,
+        ),
+      findMany: () => Promise.resolve([{ id: lessonRow.chapter.id }]),
+    },
+    placementAttempt: {
+      findUnique: ({ where }: { where: { id?: string; userId?: string } }) =>
+        Promise.resolve(
+          [...placements.values()].find((p) => matches(p, where)) ?? null,
+        ),
+      findUniqueOrThrow: ({ where: { id } }: { where: { id: string } }) =>
+        Promise.resolve(placements.get(id)),
+      create: ({ data }: { data: Record<string, unknown> }) => {
+        const id = `pl-${placements.size + 1}`;
+        const row = {
+          id,
+          status: 'IN_PROGRESS',
+          answers: [],
+          answered: 0,
+          startChapterId: null,
+          completedAt: null,
+          ...data,
+        };
+        placements.set(id, row);
+        return Promise.resolve(row);
+      },
+      updateMany: ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }) => {
+        const row = placements.get(where.id);
+        if (!row || !matches(row, where)) return Promise.resolve({ count: 0 });
+        placements.set(where.id, { ...row, ...data });
+        return Promise.resolve({ count: 1 });
+      },
     },
     practiceSession: {
       create: ({ data }: { data: Record<string, unknown> }) => {
@@ -175,6 +247,27 @@ function fakePrisma() {
         Promise.resolve({ count: data.length }),
     },
     userChapterMark: {
+      createMany: ({
+        data,
+      }: {
+        data: Array<{ userId: string; chapterId: string; kind: string }>;
+      }) => {
+        let count = 0;
+        for (const m of data) {
+          const key = `${m.userId}:${m.chapterId}`;
+          if (marks.has(key)) continue;
+          marks.set(key, { chapterId: m.chapterId, kind: m.kind });
+          count++;
+        }
+        return Promise.resolve({ count });
+      },
+      count: ({ where }: { where: { userId: string; kind: string } }) =>
+        Promise.resolve(
+          [...marks].filter(
+            ([key, m]) =>
+              key.startsWith(`${where.userId}:`) && m.kind === where.kind,
+          ).length,
+        ),
       findMany: ({ where: { userId } }: { where: { userId: string } }) =>
         Promise.resolve(
           [...marks]
@@ -233,14 +326,36 @@ function fakePrisma() {
     item: {
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
         Promise.resolve(id === kanaA.id ? kanaA : null),
-      findMany: ({ where }: { where: { id: { in: string[] } } }) =>
-        Promise.resolve(where.id.in.includes(kanaA.id) ? [kanaA] : []),
+      // By id (assessments) or by type (placement's distractor pool).
+      findMany: ({ where }: { where: { id?: { in: string[] } } }) =>
+        Promise.resolve(
+          where.id ? (where.id.in.includes(kanaA.id) ? [kanaA] : []) : kanaPool,
+        ),
     },
     user: {
-      upsert: ({ create }: { create: { id: string } }) =>
-        Promise.resolve(create),
-      findUnique: () => Promise.resolve(null),
-      updateMany: () => Promise.resolve({ count: 0 }),
+      upsert: ({ create }: { create: { id: string } }) => {
+        const row = users.get(create.id) ?? { interests: [], ...create };
+        users.set(create.id, row);
+        return Promise.resolve(row);
+      },
+      findUnique: ({ where: { id } }: { where: { id: string } }) => {
+        const row = users.get(id);
+        if (!row) return Promise.resolve(null);
+        const attempt = [...placements.values()].find((p) => p.userId === id);
+        return Promise.resolve({ ...row, placementAttempt: attempt ?? null });
+      },
+      updateMany: ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }) => {
+        const row = users.get(where.id);
+        if (!row || !matches(row, where)) return Promise.resolve({ count: 0 });
+        users.set(where.id, { ...row, ...data });
+        return Promise.resolve({ count: 1 });
+      },
     },
     lessonCompletion: {
       findMany: ({ where: { userId } }: { where: { userId: string } }) =>
@@ -261,6 +376,27 @@ function fakePrisma() {
       },
     },
     itemMasteryState: {
+      createMany: ({
+        data,
+      }: {
+        data: Array<
+          Record<string, unknown> & { userId: string; itemId: string }
+        >;
+      }) => {
+        let count = 0;
+        for (const row of data) {
+          const key = `${row.userId}:${row.itemId}`;
+          if (masteryStates.has(key)) continue;
+          masteryStates.set(key, {
+            recognition: 0,
+            recall: 0,
+            production: 0,
+            ...row,
+          });
+          count++;
+        }
+        return Promise.resolve({ count });
+      },
       findUnique: ({
         where,
       }: {
@@ -751,6 +887,208 @@ describe('API (HTTP integration)', () => {
           .set(DEV_USER_HEADER, 'someone_else')
           .send({ itemId: kanaA.id, answer: 'a' })
           .expect(404);
+      });
+    });
+  });
+
+  describe('signup intake + placement (I.3.b, I.4.f)', () => {
+    const as = (user: string) => ({
+      get: (path: string) =>
+        request(app.getHttpServer()).get(path).set(DEV_USER_HEADER, user),
+      post: (path: string, body?: object) =>
+        request(app.getHttpServer())
+          .post(path)
+          .set(DEV_USER_HEADER, user)
+          .send(body),
+    });
+
+    it('a new learner owes the survey first; placement 400s until then', async () => {
+      const u = as('user_onboard_new');
+      const res = await u.get('/onboarding').expect(200);
+      expect(res.body).toEqual({ intakeDone: false, placement: 'not_needed' });
+      await u.post('/placement').expect(400);
+    });
+
+    it('POST /onboarding/intake validates the three answers', async () => {
+      const u = as('user_onboard_bad');
+      for (const body of [
+        {},
+        { interests: [], priorExperience: 'NONE' },
+        { interests: ['KARAOKE'], priorExperience: 'NONE' },
+        { interests: ['TRAVEL'], priorExperience: 'EXPERT' },
+        {
+          interests: ['TRAVEL'],
+          priorExperience: 'NONE',
+          dailyTargetMinutes: 7,
+        },
+      ]) {
+        await u.post('/onboarding/intake', body).expect(400);
+      }
+    });
+
+    it('a total beginner skips placement entirely', async () => {
+      const u = as('user_onboard_beginner');
+      const res = await u
+        .post('/onboarding/intake', {
+          interests: ['TRAVEL', 'JLPT'],
+          priorExperience: 'NONE',
+        })
+        .expect(201);
+      expect(res.body as OnboardingDto).toEqual({
+        intakeDone: true,
+        placement: 'not_needed',
+      });
+      await u.post('/placement').expect(400);
+      // The survey is taken once.
+      await u
+        .post('/onboarding/intake', {
+          interests: ['TRAVEL'],
+          priorExperience: 'NONE',
+        })
+        .expect(409);
+    });
+
+    describe('a learner who knows some kana', () => {
+      const u = as('user_onboard_kana');
+      let start: PlacementStartDto;
+
+      it('is owed the kana placement after the survey', async () => {
+        const res = await u
+          .post('/onboarding/intake', {
+            interests: ['ANIME_MANGA'],
+            priorExperience: 'SOME_KANA',
+            dailyTargetMinutes: 20,
+          })
+          .expect(201);
+        expect(res.body).toEqual({ intakeDone: true, placement: 'pending' });
+      });
+
+      it('POST /placement asks multiple-choice kana without leaking answers', async () => {
+        const res = await u.post('/placement').expect(201);
+        start = res.body as PlacementStartDto;
+        expect(start).toMatchObject({
+          tier: 'KANA',
+          answered: 0,
+          result: null,
+        });
+        expect(start.questions).toHaveLength(1);
+        const [q] = start.questions;
+        expect(q).toMatchObject({
+          itemId: kanaA.id,
+          type: 'KANA',
+          prompt: 'Which hiragana is read “a”?',
+        });
+        expect(q.parts[0].choices).toHaveLength(4);
+        expect(q.parts[0].choices).toContain('あ');
+        expect(JSON.stringify(start)).not.toContain('"answer"');
+        expect(JSON.stringify(start)).not.toContain('chapterId');
+        // Resuming returns the same attempt.
+        const again = (await u.post('/placement').expect(201))
+          .body as PlacementStartDto;
+        expect(again.attemptId).toBe(start.attemptId);
+      });
+
+      it('answers are validated: offered choices only, in order', async () => {
+        const path = `/placement/${start.attemptId}/answer`;
+        await u.post(path, { itemId: kanaA.id, choices: ['ん'] }).expect(400);
+        await u.post(path, { itemId: kanaA.id, choices: 'あ' }).expect(400);
+        await u.post(path, { itemId: 'ja:kana:i', choices: null }).expect(400);
+        await as('someone_else')
+          .post(path, { itemId: kanaA.id, choices: ['あ'] })
+          .expect(404);
+      });
+
+      it('getting everything right places past the chapter and seeds what was tested', async () => {
+        const res = await u
+          .post(`/placement/${start.attemptId}/answer`, {
+            itemId: kanaA.id,
+            choices: ['あ'],
+          })
+          .expect(201);
+        const body = res.body as PlacementAnswerDto;
+        expect(body).toEqual({
+          done: true,
+          result: {
+            status: 'COMPLETED',
+            startChapter: null, // placed past everything published
+            skippedChapterCount: 1,
+            answered: 1,
+          },
+        });
+
+        // Retrying the same answer replays the outcome.
+        const replay = await u
+          .post(`/placement/${start.attemptId}/answer`, {
+            itemId: kanaA.id,
+            choices: ['あ'],
+          })
+          .expect(201);
+        expect(replay.body).toEqual(body);
+
+        expect((await u.get('/onboarding').expect(200)).body).toEqual({
+          intakeDone: true,
+          placement: 'done',
+        });
+        const outline = (await u.get('/curriculum').expect(200))
+          .body as CurriculumDto;
+        const chapter = outline.modules[0].chapters[0];
+        expect(chapter.state).toBe('skipped_via_placement');
+        expect(chapter.lessons[0].state).toBe('skipped');
+        // The correctly-answered kana now has FSRS state: drillable.
+        expect(chapter.actions.practice).toBe(true);
+        await u.post('/placement/skip').expect(409);
+      });
+    });
+
+    it('"I don\'t know" on the first question starts at the beginning, nothing seeded', async () => {
+      const u = as('user_onboard_unsure');
+      await u
+        .post('/onboarding/intake', {
+          interests: ['CURIOUS'],
+          priorExperience: 'FAIR_AMOUNT',
+        })
+        .expect(201);
+      const start = (await u.post('/placement').expect(201))
+        .body as PlacementStartDto;
+      expect(start.tier).toBe('FULL');
+      const res = await u
+        .post(`/placement/${start.attemptId}/answer`, {
+          itemId: start.questions[0].itemId,
+          choices: null,
+        })
+        .expect(201);
+      expect((res.body as PlacementAnswerDto).result).toEqual({
+        status: 'COMPLETED',
+        startChapter: { id: 'ch-1', title: 'Hiragana — Vowels' },
+        skippedChapterCount: 0,
+        answered: 1,
+      });
+      const outline = (await u.get('/curriculum').expect(200))
+        .body as CurriculumDto;
+      expect(outline.modules[0].chapters[0].state).toBe('current');
+      expect(outline.modules[0].chapters[0].actions.practice).toBe(false);
+    });
+
+    it('POST /placement/skip starts from the beginning', async () => {
+      const u = as('user_onboard_skip');
+      await u
+        .post('/onboarding/intake', {
+          interests: ['LIVE_WORK'],
+          priorExperience: 'REFRESHER',
+        })
+        .expect(201);
+      const res = await u.post('/placement/skip').expect(201);
+      expect(res.body as PlacementResultDto).toEqual({
+        status: 'SKIPPED',
+        startChapter: { id: 'ch-1', title: 'Hiragana — Vowels' },
+        skippedChapterCount: 0,
+        answered: 0,
+      });
+      // Idempotent, and placement is no longer owed.
+      await u.post('/placement/skip').expect(201);
+      expect((await u.get('/onboarding').expect(200)).body).toEqual({
+        intakeDone: true,
+        placement: 'done',
       });
     });
   });

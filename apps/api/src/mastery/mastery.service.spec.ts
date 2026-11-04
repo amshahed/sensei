@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import type { Prisma } from '@prisma/client';
 import { MasteryService } from './mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -299,6 +300,45 @@ describe('MasteryService', () => {
       stateFindMany.mockResolvedValue([{ itemId: 'a' }]);
       expect(await service.seedInferred('u1', ['a'], NOW)).toBe(0);
       expect(await service.seedInferred('u1', [], NOW)).toBe(0);
+      expect(stateCreateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('seedTested (I.4.c tier 1 via placement, I.4.f)', () => {
+    it('seeds a Good first review with a recognition breadcrumb, later due than an inferred seed', async () => {
+      stateFindMany.mockResolvedValue([{ itemId: 'known' }]);
+      expect(await service.seedTested('u1', ['known', 't1'], NOW)).toBe(1);
+      await service.seedInferred('u1', ['i1'], NOW);
+      type Row = {
+        itemId: string;
+        due: Date;
+        mastery: number;
+        recognition?: number;
+      };
+      const [[tested], [inferred]] = stateCreateMany.mock.calls as [
+        [{ data: Row[] }],
+        [{ data: Row[] }],
+      ];
+      expect(tested.data.map((d) => d.itemId)).toEqual(['t1']);
+      expect(tested.data[0].recognition).toBeGreaterThan(0);
+      expect(inferred.data[0].recognition).toBeUndefined();
+      // High retention (Good) outlasts moderate (Hard).
+      expect(tested.data[0].due.getTime()).toBeGreaterThan(
+        inferred.data[0].due.getTime(),
+      );
+      expect(tested.data[0].mastery).toBeGreaterThanOrEqual(
+        inferred.data[0].mastery,
+      );
+    });
+
+    it('runs on a caller-supplied transaction client', async () => {
+      const txFindMany = jest.fn().mockResolvedValue([]);
+      const txCreateMany = jest.fn().mockResolvedValue({ count: 1 });
+      const tx = {
+        itemMasteryState: { findMany: txFindMany, createMany: txCreateMany },
+      } as unknown as Prisma.TransactionClient;
+      await service.seedTested('u1', ['t1'], NOW, tx);
+      expect(txCreateMany).toHaveBeenCalled();
       expect(stateCreateMany).not.toHaveBeenCalled();
     });
   });
