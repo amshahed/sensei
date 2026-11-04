@@ -24,6 +24,8 @@ import type {
   PracticeStartRequest,
   ProgressDto,
   RelocateRequest,
+  ReminderSettingsRequest,
+  RemindersDto,
   ReviewResultDto,
   StreakDto,
 } from '@sensei/types';
@@ -45,6 +47,17 @@ export function setAuthTokenProvider(
   provider: (() => Promise<string | null>) | null,
 ): void {
   authTokenProvider = provider;
+}
+
+/**
+ * Called after any successful write outside `/reminders` — learning activity
+ * that may have finished the day — so the reminders layer can re-sync
+ * (K.3.g). Kept as a hook so this module doesn't depend on notifications.
+ */
+let activityListener: (() => void) | null = null;
+
+export function setActivityListener(listener: (() => void) | null): void {
+  activityListener = listener;
 }
 
 /** A non-2xx response; `status` lets screens tell a retryable failure from a permanent one. */
@@ -83,7 +96,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         res.status,
       );
     }
-    return (await res.json()) as T;
+    const body = (await res.json()) as T;
+    if ((init?.method ?? 'GET') !== 'GET' && !path.startsWith('/reminders')) {
+      activityListener?.();
+    }
+    return body;
   } finally {
     clearTimeout(timer);
   }
@@ -261,6 +278,29 @@ export const api = {
   dismissTargetSuggestion(): Promise<StreakDto> {
     return request<StreakDto>(
       `/streak/suggestion/dismiss?tz=${encodeURIComponent(deviceTimeZone())}`,
+      { method: 'POST' },
+    );
+  },
+
+  /** Reminder settings, the one-time offer, and the plan to schedule (K.3.g). */
+  reminders(): Promise<RemindersDto> {
+    return request<RemindersDto>(
+      `/reminders?tz=${encodeURIComponent(deviceTimeZone())}`,
+    );
+  },
+
+  /** Change any reminder settings (also answers the offer). */
+  updateReminders(body: ReminderSettingsRequest): Promise<RemindersDto> {
+    return request<RemindersDto>(
+      `/reminders?tz=${encodeURIComponent(deviceTimeZone())}`,
+      { method: 'PUT', body: JSON.stringify(body) },
+    );
+  },
+
+  /** "Not now" on the reminders offer. */
+  dismissRemindersOffer(): Promise<RemindersDto> {
+    return request<RemindersDto>(
+      `/reminders/offer/dismiss?tz=${encodeURIComponent(deviceTimeZone())}`,
       { method: 'POST' },
     );
   },

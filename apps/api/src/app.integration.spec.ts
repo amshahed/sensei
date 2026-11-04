@@ -348,6 +348,7 @@ function fakePrisma() {
         const row = existing
           ? { ...existing, ...update }
           : {
+              createdAt: new Date(),
               interests: [],
               streakFreezes: 0,
               // Schema defaults for reminders (K.3.g).
@@ -1258,6 +1259,15 @@ describe('API (HTTP integration)', () => {
       request(app.getHttpServer())
         .get('/streak?tz=Europe/Berlin')
         .set(DEV_USER_HEADER, user);
+
+    // Signing in creates the learner's row (as the app's GET /me does), so
+    // the first status read can store the timezone that days are counted in.
+    beforeAll(() =>
+      request(app.getHttpServer())
+        .get('/me')
+        .set(DEV_USER_HEADER, user)
+        .expect(200),
+    );
 
     it('a new learner starts at zero with the default target', async () => {
       const res = await get().expect(200);
