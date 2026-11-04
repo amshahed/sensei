@@ -21,6 +21,7 @@ import { SkeletonSchema, type Lesson } from './skeleton-schema';
 import { generateDraft } from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
 import { readCorrections } from './corrections-log';
+import { authoringModel, formatCost } from './authoring-llm';
 
 const CORRECTIONS_N = 5;
 
@@ -105,9 +106,9 @@ async function draftLesson(
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(draft, null, 2), 'utf8');
 
-  const costUsd = (inputTokens * 15 + outputTokens * 75) / 1_000_000;
+  const cost = formatCost(authoringModel(), inputTokens, outputTokens);
   console.log(
-    `  tokens: ${inputTokens} in / ${outputTokens} out  (~$${costUsd.toFixed(4)})  → ${outPath}`,
+    `  tokens: ${inputTokens} in / ${outputTokens} out  (${cost})  → ${outPath}`,
   );
 }
 
