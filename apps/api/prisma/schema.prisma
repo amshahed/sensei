@@ -195,6 +195,35 @@ model User {
   lessonSkips        UserLessonSkip[]
   assessmentAttempts AssessmentAttempt[]
   practiceSessions   PracticeSession[]
+
+  /// Signup intake (I.3.b), null until the survey is submitted.
+  /// Q1 — what pulled them to Japanese (`Interest` values; JLPT intent derives from it).
+  interests          String[]          @default([])
+  /// Q2 — routes placement (I.3.d).
+  priorExperience    PriorExperience?
+  /// Q3 — daily commitment in minutes (5 / 10 / 20 / 30).
+  dailyTargetMinutes Int?
+  intakeCompletedAt  DateTime?
+  placementAttempt   PlacementAttempt?
+}
+
+/// Signup Q2 (I.3.b): drives placement routing (I.3.d).
+enum PriorExperience {
+  NONE // total beginner: no placement
+  SOME_KANA // kana-only placement
+  FAIR_AMOUNT // full placement
+  REFRESHER // full placement
+}
+
+enum PlacementTier {
+  KANA
+  FULL
+}
+
+enum PlacementStatus {
+  IN_PROGRESS
+  COMPLETED // ended at the first miss, or ran out of questions
+  SKIPPED // learner chose to start from the beginning
 }
 
 /// How a chapter was passed (I.4.e.a / I.4.d.a). Lesson completions alone
@@ -332,4 +361,26 @@ model PracticeAttempt {
   session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@id([sessionId, itemId])
+}
+
+/// The signup placement quiz (I.4.f) — at most one per learner. Questions
+/// (with their answers) stay server-side; the learner answers them in course
+/// order and the quiz ends at the first miss.
+model PlacementAttempt {
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  tier           PlacementTier
+  status         PlacementStatus @default(IN_PROGRESS)
+  /// Ordered questions: [{ itemId, chapterId, type, prompt, display, parts: [{ label, choices, answer }] }].
+  questions      Json
+  /// One entry per answered question, in order: [{ itemId, correct }].
+  answers        Json            @default("[]")
+  /// Compare-and-set guard: answers are accepted strictly in order.
+  answered       Int             @default(0)
+  /// Where the learner starts (null = nothing left / skipped to the beginning).
+  startChapterId String?
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

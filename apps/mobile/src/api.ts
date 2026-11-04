@@ -9,7 +9,13 @@ import type {
   HealthResponse,
   LessonCompletionDto,
   LessonDetailDto,
+  IntakeRequest,
   MeDto,
+  OnboardingDto,
+  PlacementAnswerDto,
+  PlacementAnswerRequest,
+  PlacementResultDto,
+  PlacementStartDto,
   PracticeAnswerRequest,
   PracticeResultDto,
   PracticeScopesDto,
@@ -196,5 +202,41 @@ export const api = {
       `/practice/sessions/${encodeURIComponent(sessionId)}/answer`,
       { method: 'POST', body: JSON.stringify(body) },
     );
+  },
+
+  /** What onboarding still owes: the signup survey, then placement (I.3). */
+  onboarding(): Promise<OnboardingDto> {
+    return request<OnboardingDto>('/onboarding');
+  },
+
+  /** Submit the 3-question signup survey (once). */
+  submitIntake(body: IntakeRequest): Promise<OnboardingDto> {
+    return request<OnboardingDto>('/onboarding/intake', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** Start or resume the placement quiz (I.4.f). */
+  startPlacement(): Promise<PlacementStartDto> {
+    return request<PlacementStartDto>('/placement', { method: 'POST' });
+  },
+
+  /** Answer the next placement question; `choices: null` = "I don't know". */
+  answerPlacement(
+    attemptId: string,
+    itemId: string,
+    choices: string[] | null,
+  ): Promise<PlacementAnswerDto> {
+    const body: PlacementAnswerRequest = { itemId, choices };
+    return request<PlacementAnswerDto>(
+      `/placement/${encodeURIComponent(attemptId)}/answer`,
+      { method: 'POST', body: JSON.stringify(body) },
+    );
+  },
+
+  /** "Skip — start from the beginning" (before the first answer). */
+  skipPlacement(): Promise<PlacementResultDto> {
+    return request<PlacementResultDto>('/placement/skip', { method: 'POST' });
   },
 };

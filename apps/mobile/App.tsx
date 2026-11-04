@@ -3,6 +3,7 @@ import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NextStepDto } from '@sensei/types';
 import { AuthGate } from './src/auth/AuthGate';
+import { OnboardingGate } from './src/onboarding/OnboardingGate';
 import { HomeScreen } from './src/home/HomeScreen';
 import { CurriculumScreen } from './src/curriculum/CurriculumScreen';
 import { AssessmentScreen } from './src/assessment/AssessmentScreen';
@@ -55,66 +56,70 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <AuthGate>
-        {flow?.kind === 'lesson' ? (
-          <LessonPlayer key={flow.slug} slug={flow.slug} onExit={endFlow} />
-        ) : flow?.kind === 'chapterIntro' ? (
-          <ChapterIntro
-            chapterTitle={flow.step.chapterTitle}
-            onSkipTest={() => startAssessment(flow.step.chapterId)}
-            onStart={() => setFlow({ kind: 'lesson', slug: flow.step.slug })}
-            onExit={endFlow}
-          />
-        ) : flow?.kind === 'assessment' ? (
-          <AssessmentScreen
-            key={flow.chapterId}
-            chapterId={flow.chapterId}
-            onExit={endFlow}
-          />
-        ) : flow?.kind === 'review' ? (
-          <ReviewSession onExit={endFlow} />
-        ) : flow?.kind === 'practice' ? (
-          <PracticeSession
-            request={flow.launch.request}
-            title={flow.launch.title}
-            onExit={endFlow}
-          />
-        ) : (
-          <>
-            <View style={styles.container}>
-              {tab === 'home' && (
-                <HomeScreen
-                  onContinue={continueWith}
-                  onStartReview={() => setFlow({ kind: 'review' })}
-                />
-              )}
-              {tab === 'curriculum' && (
-                <CurriculumScreen
-                  onContinue={continueWith}
-                  onAssessment={startAssessment}
-                  onPractice={(chapterId, title) =>
-                    startPractice({
-                      request: { scope: { kind: 'chapter', id: chapterId } },
-                      title,
-                    })
-                  }
-                />
-              )}
-              {tab === 'practice' && <PracticeScreen onStart={startPractice} />}
-              {tab === 'progress' && (
-                <ProgressScreen
-                  // J.2.b: a weak item type links straight to a drill of it.
-                  onPractice={(type) =>
-                    startPractice({
-                      request: { scope: { kind: 'weakest' }, types: [type] },
-                      title: `${TYPE_LABELS[type]} practice`,
-                    })
-                  }
-                />
-              )}
-            </View>
-            <TabBar active={tab} onSelect={setTab} />
-          </>
-        )}
+        <OnboardingGate>
+          {flow?.kind === 'lesson' ? (
+            <LessonPlayer key={flow.slug} slug={flow.slug} onExit={endFlow} />
+          ) : flow?.kind === 'chapterIntro' ? (
+            <ChapterIntro
+              chapterTitle={flow.step.chapterTitle}
+              onSkipTest={() => startAssessment(flow.step.chapterId)}
+              onStart={() => setFlow({ kind: 'lesson', slug: flow.step.slug })}
+              onExit={endFlow}
+            />
+          ) : flow?.kind === 'assessment' ? (
+            <AssessmentScreen
+              key={flow.chapterId}
+              chapterId={flow.chapterId}
+              onExit={endFlow}
+            />
+          ) : flow?.kind === 'review' ? (
+            <ReviewSession onExit={endFlow} />
+          ) : flow?.kind === 'practice' ? (
+            <PracticeSession
+              request={flow.launch.request}
+              title={flow.launch.title}
+              onExit={endFlow}
+            />
+          ) : (
+            <>
+              <View style={styles.container}>
+                {tab === 'home' && (
+                  <HomeScreen
+                    onContinue={continueWith}
+                    onStartReview={() => setFlow({ kind: 'review' })}
+                  />
+                )}
+                {tab === 'curriculum' && (
+                  <CurriculumScreen
+                    onContinue={continueWith}
+                    onAssessment={startAssessment}
+                    onPractice={(chapterId, title) =>
+                      startPractice({
+                        request: { scope: { kind: 'chapter', id: chapterId } },
+                        title,
+                      })
+                    }
+                  />
+                )}
+                {tab === 'practice' && (
+                  <PracticeScreen onStart={startPractice} />
+                )}
+                {tab === 'progress' && (
+                  <ProgressScreen
+                    // J.2.b: a weak item type links straight to a drill of it.
+                    onPractice={(type) =>
+                      startPractice({
+                        request: { scope: { kind: 'weakest' }, types: [type] },
+                        title: `${TYPE_LABELS[type]} practice`,
+                      })
+                    }
+                  />
+                )}
+              </View>
+              <TabBar active={tab} onSelect={setTab} />
+            </>
+          )}
+        </OnboardingGate>
       </AuthGate>
       <StatusBar style="auto" />
     </SafeAreaView>

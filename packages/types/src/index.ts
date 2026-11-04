@@ -450,3 +450,91 @@ export interface PracticeScopesDto {
   learned: ItemTypeCounts;
   modules: PracticeScopeModuleDto[];
 }
+
+/* ---------------------------------------------------------------------------
+ * Signup intake + placement quiz (I.3.b, I.3.d, I.4.f)
+ * ------------------------------------------------------------------------- */
+
+/** Signup Q1: what pulled the learner to Japanese (multi-select). */
+export type Interest =
+  | "TRAVEL"
+  | "ANIME_MANGA"
+  | "LIVE_WORK"
+  | "FRIENDS_FAMILY"
+  | "JLPT"
+  | "CURIOUS";
+
+/** Signup Q2: prior study, which routes placement (I.3.d). */
+export type PriorExperience =
+  | "NONE"
+  | "SOME_KANA"
+  | "FAIR_AMOUNT"
+  | "REFRESHER";
+
+/** Signup Q3: daily commitment in minutes. */
+export type DailyTargetMinutes = 5 | 10 | 20 | 30;
+
+export interface IntakeRequest {
+  interests: Interest[];
+  priorExperience: PriorExperience;
+  /** Defaults to 10. */
+  dailyTargetMinutes?: DailyTargetMinutes;
+}
+
+/**
+ * Where the learner is in onboarding. `placement` is `pending` while a
+ * placement quiz is owed (intake says they've studied before and they haven't
+ * finished or skipped it yet).
+ */
+export interface OnboardingDto {
+  intakeDone: boolean;
+  placement: "not_needed" | "pending" | "done";
+}
+
+export interface PlacementQuestionPartDto {
+  /** e.g. "Reading" / "Meaning" for kanji; null for single-part questions. */
+  label: string | null;
+  choices: string[];
+}
+
+/** One multiple-choice placement question. Answers stay server-side. */
+export interface PlacementQuestionDto {
+  itemId: string;
+  type: ItemType;
+  prompt: string;
+  /** The character / word being asked about (null when the prompt says it all). */
+  display: string | null;
+  parts: PlacementQuestionPartDto[];
+}
+
+export interface PlacementResultDto {
+  status: "COMPLETED" | "SKIPPED";
+  /** Where the learner starts; null when they placed past everything published. */
+  startChapter: { id: string; title: string } | null;
+  /** Chapters marked as already known (SKIPPED_VIA_PLACEMENT). */
+  skippedChapterCount: number;
+  /** Questions answered. */
+  answered: number;
+}
+
+export interface PlacementStartDto {
+  attemptId: string;
+  tier: "KANA" | "FULL";
+  /** Every question, in order; the learner resumes at index `answered`. */
+  questions: PlacementQuestionDto[];
+  answered: number;
+  /** Set when the attempt is already over (e.g. there was nothing to ask). */
+  result: PlacementResultDto | null;
+}
+
+export interface PlacementAnswerRequest {
+  itemId: string;
+  /** One choice per part, in order; null = "I don't know" (counts as a miss). */
+  choices: string[] | null;
+}
+
+/** The quiz ends at the first miss or after the last question (I.4.f). */
+export interface PlacementAnswerDto {
+  done: boolean;
+  result: PlacementResultDto | null;
+}

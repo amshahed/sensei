@@ -152,19 +152,51 @@ export class MasteryService {
   }
 
   /**
-   * Inferred mastery (I.4.c tier 2, used by a passed chapter Assessment,
-   * I.4.d.a): items the learner wasn't directly tested on enter FSRS at
-   * moderate confidence — a Hard first review, so Reviews confirm them early.
-   * Items the learner already has state for are left untouched (inference
-   * never overrides evidence). Returns how many items were seeded.
+   * Inferred mastery (I.4.c tier 2 — a passed chapter Assessment, I.4.d.a, or
+   * a chapter skipped by placement, I.4.f): items the learner wasn't directly
+   * tested on enter FSRS at moderate confidence — a Hard first review, so
+   * Reviews confirm them early. Returns how many items were seeded.
    */
-  async seedInferred(
+  seedInferred(
     userId: string,
     itemIds: string[],
     now: Date = new Date(),
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<number> {
+    return this.seed(userId, itemIds, Rating.Hard, now, db);
+  }
+
+  /**
+   * Placement evidence (I.4.c tier 1 / I.4.f): items answered correctly in
+   * the multiple-choice placement quiz enter FSRS as a Good first review
+   * (high retention) with a recognition breadcrumb. Returns how many were seeded.
+   */
+  seedTested(
+    userId: string,
+    itemIds: string[],
+    now: Date = new Date(),
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<number> {
+    return this.seed(userId, itemIds, Rating.Good, now, db, {
+      recognition: updateBreadcrumb(0, true),
+    });
+  }
+
+  /**
+   * Seed first-review FSRS state for items the learner has no state for yet.
+   * Existing state is never touched: a seed is weaker evidence than any
+   * review the learner has actually done.
+   */
+  private async seed(
+    userId: string,
+    itemIds: string[],
+    rating: Grade,
+    now: Date,
+    db: Prisma.TransactionClient,
+    breadcrumbs: { recognition?: number } = {},
   ): Promise<number> {
     if (itemIds.length === 0) return 0;
-    const existing = await this.prisma.itemMasteryState.findMany({
+    const existing = await db.itemMasteryState.findMany({
       where: { userId, itemId: { in: itemIds } },
       select: { itemId: true },
     });
@@ -172,10 +204,10 @@ export class MasteryService {
     const fresh = [...new Set(itemIds)].filter((id) => !known.has(id));
     if (fresh.length === 0) return 0;
 
-    const card = applyRating(emptyCard(now), Rating.Hard, now);
+    const card = applyRating(emptyCard(now), rating, now);
     const fsrs = serializeCard(card) as Prisma.InputJsonValue;
     const mastery = masteryFromStability(card.stability);
-    const { count } = await this.prisma.itemMasteryState.createMany({
+    const { count } = await db.itemMasteryState.createMany({
       data: fresh.map((itemId) => ({
         userId,
         itemId,
@@ -183,6 +215,7 @@ export class MasteryService {
         mastery,
         due: card.due,
         lastReview: now,
+        ...breadcrumbs,
       })),
       skipDuplicates: true,
     });
