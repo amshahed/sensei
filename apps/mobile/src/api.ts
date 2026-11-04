@@ -5,6 +5,7 @@ import type {
   CheckResultDto,
   CurriculumDto,
   CurriculumNextDto,
+  DailyTargetMinutes,
   DueReviewItemDto,
   HealthResponse,
   LessonCompletionDto,
@@ -24,6 +25,7 @@ import type {
   ProgressDto,
   RelocateRequest,
   ReviewResultDto,
+  StreakDto,
 } from '@sensei/types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -239,4 +241,36 @@ export const api = {
   skipPlacement(): Promise<PlacementResultDto> {
     return request<PlacementResultDto>('/placement/skip', { method: 'POST' });
   },
+
+  /** Learning streak + today's progress (K.2). Sends the device timezone. */
+  streak(): Promise<StreakDto> {
+    return request<StreakDto>(
+      `/streak?tz=${encodeURIComponent(deviceTimeZone())}`,
+    );
+  },
+
+  /** Change the daily target — an accepted suggestion or a manual edit (K.3.c). */
+  setDailyTarget(minutes: DailyTargetMinutes): Promise<StreakDto> {
+    return request<StreakDto>(
+      `/streak/target?tz=${encodeURIComponent(deviceTimeZone())}`,
+      { method: 'PUT', body: JSON.stringify({ minutes }) },
+    );
+  },
+
+  /** "Not now" on a target suggestion. */
+  dismissTargetSuggestion(): Promise<StreakDto> {
+    return request<StreakDto>(
+      `/streak/suggestion/dismiss?tz=${encodeURIComponent(deviceTimeZone())}`,
+      { method: 'POST' },
+    );
+  },
 };
+
+/** The device's IANA timezone: the learner's day boundary (K.3.f). */
+function deviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
