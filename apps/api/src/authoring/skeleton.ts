@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaClient } from '@prisma/client';
 import { loadItemData, generateSkeleton } from './skeleton-prompter';
+import { authoringModel, formatCost } from './authoring-llm';
 
 function parseArgs(): { moduleId: string; outputPath: string } {
   const args = process.argv.slice(2);
@@ -63,9 +64,8 @@ async function main(): Promise<void> {
     console.log(
       `  kana=${data.kana.length} grammar=${data.grammar.length} vocab=${data.vocab.length} kanji=${data.kanji.length}`,
     );
-    console.log(
-      `  calling ${process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8'}...`,
-    );
+    const model = authoringModel();
+    console.log(`  calling ${model}...`);
 
     const { skeleton, inputTokens, outputTokens } = await generateSkeleton(
       anthropic,
@@ -84,8 +84,9 @@ async function main(): Promise<void> {
     );
     console.log(`  tokens: ${inputTokens} in / ${outputTokens} out`);
 
-    const costUsd = (inputTokens * 15 + outputTokens * 75) / 1_000_000;
-    console.log(`  estimated cost: ~$${costUsd.toFixed(4)}`);
+    console.log(
+      `  estimated cost: ${formatCost(model, inputTokens, outputTokens)}`,
+    );
 
     const dir = path.dirname(outputPath);
     fs.mkdirSync(dir, { recursive: true });

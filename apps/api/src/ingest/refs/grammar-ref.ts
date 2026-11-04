@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AnthropicLike } from '../../llm/anthropic-llm-client';
 import { VoyageClient } from '../../voyage/voyage-client';
 import { upsertRefDoc } from './upsert-doc';
+import { authoringModel } from '../../authoring/authoring-llm';
 
 const SYSTEM_PROMPT = `You are a Japanese linguistics reference author.
 Write concise, accurate grammar reference passages for a Japanese learning app.
@@ -19,7 +20,7 @@ export async function generateGrammarRef(
   patternName: string,
   jlptLevel: string,
 ): Promise<string> {
-  const model = process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8';
+  const model = authoringModel();
 
   const res = await anthropic.messages.create({
     model,

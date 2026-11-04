@@ -9,6 +9,15 @@ import {
   type LessonDraft,
   type CorrectionEntry,
 } from './lesson-schema';
+import {
+  assertComplete,
+  authoringModel,
+  criticModel,
+  parseLlmJson,
+} from './authoring-llm';
+
+const DRAFT_MAX_TOKENS = 4096;
+const CRITIQUE_MAX_TOKENS = 2048;
 
 const DRAFTER_SYSTEM_PROMPT = `You are a Japanese lesson author for a mobile language-learning app.
 Design lesson content for Foundation Japanese targeting early N5 learners.
@@ -181,20 +190,6 @@ export type GenerateDraftResult = {
   outputTokens: number;
 };
 
-function parseLlmJson(raw: string, callerLabel: string): unknown {
-  const text = raw
-    .replace(/^```[\w]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    throw new Error(
-      `${callerLabel} returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
-    );
-  }
-}
-
 export async function generateDraft(
   anthropic: AnthropicLike,
   voyage: VoyageClient,
@@ -202,7 +197,7 @@ export async function generateDraft(
   lesson: Lesson,
   corrections: CorrectionEntry[],
 ): Promise<GenerateDraftResult> {
-  const model = process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8';
+  const model = authoringModel();
   const items = await loadLessonItems(prisma, lesson.itemIds);
 
   let passages: string[] = [];
@@ -216,18 +211,17 @@ export async function generateDraft(
 
   const userPrompt = buildDraftPrompt(lesson, items, passages, corrections);
 
+  // No sampling parameters: current Opus models reject `temperature`.
   const res = await anthropic.messages.create({
     model,
-    max_tokens: 4096,
-    temperature: 0,
+    max_tokens: DRAFT_MAX_TOKENS,
     system: DRAFTER_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
   });
+  assertComplete(res, 'Drafter', DRAFT_MAX_TOKENS);
 
-  const inputTokens =
-    (res as { usage?: { input_tokens?: number } }).usage?.input_tokens ?? 0;
-  const outputTokens =
-    (res as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? 0;
+  const inputTokens = res.usage?.input_tokens ?? 0;
+  const outputTokens = res.usage?.output_tokens ?? 0;
 
   const raw = res.content
     .filter((b) => b.type === 'text')
@@ -303,21 +297,19 @@ export async function generateCritique(
   anthropic: AnthropicLike,
   draft: LessonDraft,
 ): Promise<GenerateCritiqueResult> {
-  const model = process.env['LLM_CRITIC_MODEL'] ?? 'claude-haiku-4-5-20251001';
+  const model = criticModel();
   const userPrompt = buildCritiquePrompt(draft);
 
   const res = await anthropic.messages.create({
     model,
-    max_tokens: 2048,
-    temperature: 0,
+    max_tokens: CRITIQUE_MAX_TOKENS,
     system: CRITIC_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
   });
+  assertComplete(res, 'Critic', CRITIQUE_MAX_TOKENS);
 
-  const inputTokens =
-    (res as { usage?: { input_tokens?: number } }).usage?.input_tokens ?? 0;
-  const outputTokens =
-    (res as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? 0;
+  const inputTokens = res.usage?.input_tokens ?? 0;
+  const outputTokens = res.usage?.output_tokens ?? 0;
 
   const raw = res.content
     .filter((b) => b.type === 'text')

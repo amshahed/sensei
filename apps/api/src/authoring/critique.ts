@@ -18,6 +18,7 @@ import { PrismaClient } from '@prisma/client';
 import { LessonDraftSchema } from './lesson-schema';
 import { generateCritique } from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
+import { criticModel, formatCost } from './authoring-llm';
 
 function parseArgs(): { draftPath: string } {
   const args = process.argv.slice(2);
@@ -61,9 +62,7 @@ async function main(): Promise<void> {
     }
 
     // AI critic
-    console.log(
-      `[critic] calling ${process.env['LLM_CRITIC_MODEL'] ?? 'claude-haiku-4-5-20251001'}...`,
-    );
+    console.log(`[critic] calling ${criticModel()}...`);
     const { critique, inputTokens, outputTokens } = await generateCritique(
       anthropic,
       draft,
@@ -83,10 +82,8 @@ async function main(): Promise<void> {
     }
     console.log(`────────────────────────────────────────────────────────────`);
 
-    const costUsd = (inputTokens * 0.8 + outputTokens * 4) / 1_000_000;
-    console.log(
-      `\ntokens: ${inputTokens} in / ${outputTokens} out  (~$${costUsd.toFixed(4)})`,
-    );
+    const cost = formatCost(criticModel(), inputTokens, outputTokens);
+    console.log(`\ntokens: ${inputTokens} in / ${outputTokens} out  (${cost})`);
 
     const outPath = draftPath.replace(/\.json$/, '.critique.json');
     fs.writeFileSync(outPath, JSON.stringify(critique, null, 2), 'utf8');

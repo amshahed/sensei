@@ -13,6 +13,7 @@ import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import { PrismaClient } from '@prisma/client';
 import type { Lesson } from './skeleton-schema';
+import { authoringModel, criticModel } from './authoring-llm';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -162,7 +163,7 @@ describe('generateDraft', () => {
     expect(createFn).toHaveBeenCalledTimes(1);
   });
 
-  it('calls LLM with temperature:0 and correct model', async () => {
+  it('calls the authoring model with no sampling params (Opus 4.8 rejects them)', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
     const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma();
@@ -170,12 +171,10 @@ describe('generateDraft', () => {
     await generateDraft(fake, voyage, prisma, TEST_LESSON, []);
 
     const callBody = (
-      createFn.mock.calls as Array<[{ temperature: number; model: string }]>
+      createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
-    expect(callBody.temperature).toBe(0);
-    expect(callBody.model).toBe(
-      process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8',
-    );
+    expect(callBody).not.toHaveProperty('temperature');
+    expect(callBody.model).toBe(authoringModel());
   });
 
   it('skips vector search when voyage is disabled', async () => {
@@ -292,19 +291,17 @@ describe('generateCritique', () => {
     expect(createFn).toHaveBeenCalledTimes(1);
   });
 
-  it('calls LLM with temperature:0 and haiku model', async () => {
+  it('calls the critic model with no sampling params', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_CRITIQUE);
     const draft = LessonDraftSchema.parse(MINIMAL_DRAFT);
 
     await generateCritique(fake, draft);
 
     const callBody = (
-      createFn.mock.calls as Array<[{ temperature: number; model: string }]>
+      createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
-    expect(callBody.temperature).toBe(0);
-    expect(callBody.model).toBe(
-      process.env['LLM_CRITIC_MODEL'] ?? 'claude-haiku-4-5-20251001',
-    );
+    expect(callBody).not.toHaveProperty('temperature');
+    expect(callBody.model).toBe(criticModel());
   });
 
   it('throws on non-JSON critic output', async () => {

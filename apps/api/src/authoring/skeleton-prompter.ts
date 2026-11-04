@@ -1,6 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { SkeletonSchema, type Skeleton } from './skeleton-schema';
+import { assertComplete, authoringModel, parseLlmJson } from './authoring-llm';
+
+/**
+ * Room for ~100 lessons of skeleton JSON: the first live run used 14.7k
+ * output tokens. Stays under the SDK's non-streaming ceiling (~21k).
+ */
+const SKELETON_MAX_TOKENS = 20000;
 
 const SYSTEM_PROMPT = `You are a Japanese curriculum architect for a mobile language-learning app.
 Your task is to design a lesson skeleton for a Foundation Japanese module.
@@ -185,42 +192,26 @@ export async function generateSkeleton(
   moduleId: string,
   data: ItemData,
 ): Promise<GenerateSkeletonResult> {
-  const model = process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8';
+  const model = authoringModel();
   const userPrompt = buildUserPrompt(moduleId, data);
 
+  // No sampling parameters: current Opus models reject `temperature`.
   const res = await anthropic.messages.create({
     model,
-    max_tokens: 16384,
-    temperature: 0,
+    max_tokens: SKELETON_MAX_TOKENS,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
   });
+  assertComplete(res, 'Skeleton', SKELETON_MAX_TOKENS);
 
-  const inputTokens =
-    (res as { usage?: { input_tokens?: number } }).usage?.input_tokens ?? 0;
-  const outputTokens =
-    (res as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? 0;
+  const inputTokens = res.usage?.input_tokens ?? 0;
+  const outputTokens = res.usage?.output_tokens ?? 0;
 
   const raw = res.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')
-    .join('')
-    .trim();
-
-  // Strip markdown code fences the LLM may add despite instructions
-  const text = raw
-    .replace(/^```[\w]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text) as unknown;
-  } catch {
-    throw new Error(
-      `LLM returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
-    );
-  }
+    .join('');
+  const parsed = parseLlmJson(raw, 'Skeleton');
 
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;

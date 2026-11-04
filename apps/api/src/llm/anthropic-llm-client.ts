@@ -12,6 +12,8 @@ export interface AnthropicLike {
   messages: {
     create(body: unknown): Promise<{
       content: Array<{ type: string; text?: string }>;
+      stop_reason?: string | null;
+      usage?: { input_tokens?: number; output_tokens?: number };
     }>;
   };
 }
@@ -58,7 +60,8 @@ export class AnthropicLlmClient implements LlmClient {
       task === 'authoring'
         ? this.config.get<string>('LLM_AUTHORING_MODEL')
         : this.config.get<string>('LLM_GRADING_MODEL');
-    return override ?? DEFAULT_MODELS[task];
+    // Blank (as .env.example ships it) means the default, not "".
+    return override?.trim() || DEFAULT_MODELS[task];
   }
 
   async parseJson<T>(opts: ParseJsonOptions): Promise<T> {

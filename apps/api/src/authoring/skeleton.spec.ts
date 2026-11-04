@@ -6,6 +6,7 @@ import {
 import { SkeletonSchema } from './skeleton-schema';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { PrismaClient } from '@prisma/client';
+import { authoringModel } from './authoring-llm';
 
 const MINIMAL_SKELETON = {
   module: {
@@ -123,7 +124,7 @@ describe('generateSkeleton', () => {
     expect(createFn).toHaveBeenCalledTimes(1);
   });
 
-  it('passes temperature:0 and correct model to the LLM', async () => {
+  it('calls the authoring model with no sampling params (Opus 4.8 rejects them)', async () => {
     const createFn = jest.fn().mockResolvedValue({
       content: [{ type: 'text', text: JSON.stringify(MINIMAL_SKELETON) }],
       usage: { input_tokens: 50, output_tokens: 100 },
@@ -138,12 +139,10 @@ describe('generateSkeleton', () => {
     });
 
     const callBody = (
-      createFn.mock.calls as Array<[{ temperature: number; model: string }]>
+      createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
-    expect(callBody.temperature).toBe(0);
-    expect(callBody.model).toBe(
-      process.env['LLM_AUTHORING_MODEL'] ?? 'claude-opus-4-8',
-    );
+    expect(callBody).not.toHaveProperty('temperature');
+    expect(callBody.model).toBe(authoringModel());
   });
 
   it('throws when LLM returns non-JSON', async () => {

@@ -100,6 +100,22 @@ describe('AnthropicLlmClient', () => {
     expect(lastBody().model).toBe('claude-sonnet-4-6');
   });
 
+  it('a blank model setting (as .env.example ships it) uses the default, not ""', async () => {
+    const { client, lastBody } = fakeAnthropic('{}');
+    const blank = new AnthropicLlmClient(
+      config({ LLM_GRADING_MODEL: '', LLM_AUTHORING_MODEL: ' ' }),
+      client,
+    );
+    await blank.parseJson({
+      task: 'authoring',
+      system: 's',
+      user: 'u',
+      schema: {},
+      schemaName: 'x',
+    });
+    expect(lastBody().model).toBe('claude-opus-4-8');
+  });
+
   it('sends a json_schema output_config and caches the system prefix when asked', async () => {
     const { client, lastBody } = fakeAnthropic('{}');
     const llm = new AnthropicLlmClient(config({}), client);
