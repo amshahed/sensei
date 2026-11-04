@@ -42,9 +42,9 @@ const LESSON_STATE = {
  * "Continue", which opens the learner's next step. Chapter actions: the
  * Assessment (skip-test ahead, or the exit Assessment once the lessons are
  * done, I.4.d.a) and relocate position (skipped chapters → learn them
- * properly), undone from the "revisiting" banner. Once a chapter has been
- * learned (or tested out of), "Practise this chapter" drills it (J.1.b) —
- * practice never moves the learner's position.
+ * properly), undone from the "revisiting" banner. Once the learner has
+ * learned items from a chapter (server flag `actions.practice`), "Practise
+ * this chapter" drills them (J.1.b) — practice never moves their position.
  */
 export function CurriculumScreen({
   onContinue,
@@ -227,10 +227,6 @@ function ChapterRow({
 }) {
   const st = CHAPTER_STATE[c.state];
   const locked = c.state === 'locked';
-  // Something here has been learned: practice drills only learned items (J.1.e).
-  const practisable =
-    c.state === 'completed' ||
-    c.lessons.some((l) => l.state === 'completed' || l.state === 'skipped');
   return (
     <View style={[styles.chapter, c.state === 'current' && styles.current]}>
       <Pressable
@@ -269,7 +265,7 @@ function ChapterRow({
               <Text style={styles.actionText}>{assessmentLabel}</Text>
             </Pressable>
           ) : null}
-          {practisable ? (
+          {c.actions.practice ? (
             <Pressable
               style={styles.action}
               onPress={onPractice}

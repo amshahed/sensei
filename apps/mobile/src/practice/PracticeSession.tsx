@@ -19,8 +19,15 @@ type Phase =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'empty' }
-  | { kind: 'drill'; sessionId: string; queue: Entry[]; index: number }
-  | { kind: 'done' };
+  | {
+      kind: 'drill';
+      sessionId: string;
+      queue: Entry[];
+      index: number;
+      /** Answers that updated FSRS (first scored answer per item). */
+      counted: number;
+    }
+  | { kind: 'done'; counted: number };
 
 /**
  * One Practice drill (J.1): weakest-first items from the chosen scope, typed
@@ -55,6 +62,7 @@ export function PracticeSession({
                 sessionId,
                 queue: items.map((item) => ({ item, repeat: false })),
                 index: 0,
+                counted: 0,
               }
             : { kind: 'empty' },
         );
@@ -103,18 +111,20 @@ export function PracticeSession({
         <Text style={styles.emoji}>💪</Text>
         <Text style={ui.title}>Practice done</Text>
         <Text style={[ui.body, styles.centered]}>
-          Your answers have updated your review schedule.
+          {phase.counted > 0
+            ? 'Your answers have updated your review schedule.'
+            : 'Nothing was recorded this time, so your review schedule is unchanged.'}
         </Text>
         <PrimaryButton
           label="Practice again"
           onPress={() => setRound((r) => r + 1)}
         />
-        <PrimaryButton label="Back to practice" onPress={onExit} />
+        <PrimaryButton label="Back" onPress={onExit} />
       </View>
     );
   }
 
-  const { sessionId, queue, index } = phase;
+  const { sessionId, queue, index, counted } = phase;
   const { item, repeat } = queue[index];
   // A real (scored) miss comes back once at the end, for exposure.
   const requeues = (r: PracticeResultDto | null) =>
@@ -137,10 +147,17 @@ export function PracticeSession({
           ? [...queue, { item, repeat: true }]
           : queue;
         const next = index + 1;
+        const nextCounted = counted + (r?.counted ? 1 : 0);
         setPhase(
           next < nextQueue.length
-            ? { kind: 'drill', sessionId, queue: nextQueue, index: next }
-            : { kind: 'done' },
+            ? {
+                kind: 'drill',
+                sessionId,
+                queue: nextQueue,
+                index: next,
+                counted: nextCounted,
+              }
+            : { kind: 'done', counted: nextCounted },
         );
       }}
     />

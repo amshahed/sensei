@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import type { ItemType, ProgressDto } from '@sensei/types';
+import type { ItemType, ItemTypeCounts, ProgressDto } from '@sensei/types';
 import { api } from '../api';
 import { PrimaryButton, ui } from '../ui';
 
@@ -33,6 +33,9 @@ export function ProgressScreen({
   const [data, setData] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Learned, drillable items per type: a "Practise" link only where there is
+  // something to drill (J.1.e). Best-effort — no links if it can't load.
+  const [learned, setLearned] = useState<ItemTypeCounts | null>(null);
 
   const load = useCallback(() => {
     let active = true;
@@ -56,6 +59,19 @@ export function ProgressScreen({
   }, []);
 
   useEffect(load, [load]);
+  // A boolean dep: the parent passes a fresh callback on every render.
+  const canPractice = !!onPractice;
+  useEffect(() => {
+    if (!canPractice) return;
+    let active = true;
+    api
+      .practiceScopes()
+      .then((s) => active && setLearned(s.learned))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [canPractice]);
 
   if (loading) {
     return (
@@ -111,7 +127,7 @@ export function ProgressScreen({
           <Text style={styles.rowValue}>
             {t.masteredCount}/{t.totalItems}
           </Text>
-          {onPractice ? (
+          {onPractice && (learned?.[t.type] ?? 0) > 0 ? (
             <Pressable
               onPress={() => onPractice(t.type)}
               accessibilityRole="button"
