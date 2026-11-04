@@ -97,6 +97,19 @@ export class StreakService {
           todayRow?.reviewsAnswered ?? 0,
           now,
         );
+    // Settle here too: a lowered target can complete a day with no new activity.
+    if (
+      todayRow &&
+      !todayRow.done &&
+      reviewsRemaining === 0 &&
+      todayRow.effortSeconds >= target * 60
+    ) {
+      await this.prisma.studyDay.updateMany({
+        where: { userId, localDate: today, done: false },
+        data: { done: true, doneAt: now },
+      });
+      todayRow.done = true;
+    }
 
     return {
       days: streakLength(rows, today),
@@ -126,32 +139,31 @@ export class StreakService {
     userId: string,
     minutes: DailyTargetMinutes,
     timeZone?: string,
+    now: Date = new Date(),
   ): Promise<StreakDto> {
     await this.prisma.user.upsert({
       where: { id: userId },
-      update: {
-        dailyTargetMinutes: minutes,
-        targetSuggestionDismissedAt: new Date(),
-      },
+      update: { dailyTargetMinutes: minutes, targetSuggestionDismissedAt: now },
       create: {
         id: userId,
         dailyTargetMinutes: minutes,
-        targetSuggestionDismissedAt: new Date(),
+        targetSuggestionDismissedAt: now,
       },
     });
-    return this.status(userId, timeZone);
+    return this.status(userId, timeZone, now);
   }
 
   /** "Not now" on a suggestion: quiet for {@link SUGGEST_COOLDOWN_DAYS}. */
   async dismissSuggestion(
     userId: string,
     timeZone?: string,
+    now: Date = new Date(),
   ): Promise<StreakDto> {
     await this.prisma.user.updateMany({
       where: { id: userId },
-      data: { targetSuggestionDismissedAt: new Date() },
+      data: { targetSuggestionDismissedAt: now },
     });
-    return this.status(userId, timeZone);
+    return this.status(userId, timeZone, now);
   }
 
   // ── internals ────────────────────────────────────────────────────────────

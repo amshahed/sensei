@@ -1,3 +1,4 @@
+import { StreakService } from '../streak/streak.service';
 import {
   BadRequestException,
   ConflictException,
@@ -81,6 +82,7 @@ const aiGrade = (correct: boolean, over: Record<string, unknown> = {}) => ({
 });
 
 describe('AssessmentsService', () => {
+  const streakRecord = jest.fn().mockResolvedValue(undefined);
   let service: AssessmentsService;
   let getState: jest.Mock;
   let lessonItemFindMany: jest.Mock;
@@ -139,6 +141,7 @@ describe('AssessmentsService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         AssessmentsService,
+        { provide: StreakService, useValue: { record: streakRecord } },
         RecallGraderService, // real grader over the mocked AI + normaliser
         { provide: ASSESSMENT_RANDOM, useValue: () => 0.5 },
         { provide: CurriculumService, useValue: { getState } },
@@ -298,6 +301,24 @@ describe('AssessmentsService', () => {
       expect(res.results).toHaveLength(1);
       expect(attemptUpdateMany).not.toHaveBeenCalled();
       expect(recordCheckResult).not.toHaveBeenCalled();
+    });
+
+    it('credits the answers to the learning streak on the first submit only (K.3.f)', async () => {
+      streakRecord.mockClear();
+      attemptFindUnique.mockResolvedValue(attempt());
+      await service.submit('u1', 'att-1', answers(allRight));
+      expect(streakRecord).toHaveBeenCalledTimes(1);
+      const [[userId, activity]] = streakRecord.mock.calls as [
+        [string, { kind: string; count: number }],
+      ];
+      expect(userId).toBe('u1');
+      expect(activity.kind).toBe('answers');
+      expect(activity.count).toBeGreaterThan(0);
+
+      streakRecord.mockClear();
+      attemptFindUnique.mockResolvedValue(attempt(storedPass));
+      await service.submit('u1', 'att-1', answers(allRight));
+      expect(streakRecord).not.toHaveBeenCalled();
     });
 
     it('replays the winner when a concurrent submit claimed it first — and writes nothing', async () => {

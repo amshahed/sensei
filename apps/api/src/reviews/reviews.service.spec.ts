@@ -1,3 +1,4 @@
+import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReviewsService, REVIEW_SESSION_CAP } from './reviews.service';
@@ -22,6 +23,7 @@ function dueItem(itemId: string): DueReviewItemDto {
 }
 
 describe('ReviewsService', () => {
+  const streakRecord = jest.fn().mockResolvedValue(undefined);
   let service: ReviewsService;
   let itemFindUnique: jest.Mock;
   let getDue: jest.Mock;
@@ -39,6 +41,7 @@ describe('ReviewsService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ReviewsService,
+        { provide: StreakService, useValue: { record: streakRecord } },
         {
           provide: PrismaService,
           useValue: {
@@ -111,6 +114,21 @@ describe('ReviewsService', () => {
         correct: true,
         rating: undefined,
       });
+    });
+
+    it('every answer is credited to the learning streak as a review (K.3.f)', async () => {
+      itemFindUnique.mockResolvedValue(kana);
+      streakRecord.mockClear();
+      await service.grade('dev-user', 'ja:kana:a', 'i');
+      expect(streakRecord).toHaveBeenCalledWith('dev-user', {
+        kind: 'answers',
+        count: 1,
+        review: true,
+      });
+      // Credited after the FSRS write, so "reviews cleared" sees it as done.
+      expect(recordCheckResult.mock.invocationCallOrder[0]).toBeLessThan(
+        streakRecord.mock.invocationCallOrder[0],
+      );
     });
 
     it('grades a wrong answer as incorrect but still records it', async () => {

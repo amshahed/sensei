@@ -1,3 +1,4 @@
+import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { LessonsService } from './lessons.service';
@@ -46,12 +47,19 @@ describe('LessonsService', () => {
   let service: LessonsService;
   let findFirst: jest.Mock;
   let userUpsert: jest.Mock;
-  let completionUpsert: jest.Mock;
+  let completionCreateMany: jest.Mock;
+  let completionFind: jest.Mock;
+  let completionUpdate: jest.Mock;
+  let streakRecord: jest.Mock;
 
   beforeEach(async () => {
     findFirst = jest.fn();
     userUpsert = jest.fn();
-    completionUpsert = jest.fn();
+    completionCreateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const row = { completedAt: new Date('2026-06-12T00:00:00.000Z') };
+    completionFind = jest.fn().mockResolvedValue(row);
+    completionUpdate = jest.fn().mockResolvedValue(row);
+    streakRecord = jest.fn().mockResolvedValue(undefined);
     const moduleRef = await Test.createTestingModule({
       providers: [
         LessonsService,
@@ -60,9 +68,14 @@ describe('LessonsService', () => {
           useValue: {
             lesson: { findFirst },
             user: { upsert: userUpsert },
-            lessonCompletion: { upsert: completionUpsert },
+            lessonCompletion: {
+              createMany: completionCreateMany,
+              findUniqueOrThrow: completionFind,
+              update: completionUpdate,
+            },
           },
         },
+        { provide: StreakService, useValue: { record: streakRecord } },
       ],
     }).compile();
     service = moduleRef.get(LessonsService);
@@ -106,10 +119,7 @@ describe('LessonsService', () => {
 
   describe('complete', () => {
     it('upserts the user then records the completion', async () => {
-      findFirst.mockResolvedValue({ id: 'lesson-1' });
-      completionUpsert.mockResolvedValue({
-        completedAt: new Date('2026-06-12T00:00:00.000Z'),
-      });
+      findFirst.mockResolvedValue({ id: 'lesson-1', estimatedMinutes: 6 });
 
       const dto = await service.complete('the-five-vowels', 'dev-user');
 
@@ -119,18 +129,36 @@ describe('LessonsService', () => {
         update: {},
         create: { id: 'dev-user' },
       });
-      expect(completionUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            userId_lessonId: { userId: 'dev-user', lessonId: 'lesson-1' },
-          },
-        }),
-      );
+      expect(completionCreateMany).toHaveBeenCalledWith({
+        data: [{ userId: 'dev-user', lessonId: 'lesson-1' }],
+        skipDuplicates: true,
+      });
+      // A first completion credits the lesson's minutes to the streak.
+      expect(streakRecord).toHaveBeenCalledWith('dev-user', {
+        kind: 'lesson',
+        estimatedMinutes: 6,
+      });
       expect(dto).toEqual({
         lessonId: 'lesson-1',
         completed: true,
         completedAt: '2026-06-12T00:00:00.000Z',
       });
+    });
+
+    it('re-completing refreshes the timestamp and credits no extra effort', async () => {
+      findFirst.mockResolvedValue({ id: 'lesson-1', estimatedMinutes: 6 });
+      completionCreateMany.mockResolvedValue({ count: 0 });
+
+      const dto = await service.complete('the-five-vowels', 'dev-user');
+
+      expect(completionUpdate).toHaveBeenCalledWith({
+        where: {
+          userId_lessonId: { userId: 'dev-user', lessonId: 'lesson-1' },
+        },
+        data: { completedAt: expect.any(Date) as Date },
+      });
+      expect(streakRecord).not.toHaveBeenCalled();
+      expect(dto.completed).toBe(true);
     });
 
     it('throws NotFound completing a missing lesson', async () => {
