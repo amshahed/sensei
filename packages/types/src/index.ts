@@ -570,3 +570,37 @@ export interface StreakDto {
 export interface DailyTargetRequest {
   minutes: DailyTargetMinutes;
 }
+
+// ── Reminders (K.3.d / K.3.g) ─────────────────────────────────────────────
+
+/** A learner's reminder settings. Times are minutes after local midnight. */
+export interface ReminderSettingsDto {
+  on: boolean;
+  /** The primary reminder's time. */
+  minute: number;
+  /** The 21:00 last call on a day that isn't done yet. */
+  evening: boolean;
+  quietStartMinute: number;
+  quietEndMinute: number;
+}
+
+/** One reminder for the phone to schedule as a local notification. */
+export interface PlannedReminderDto {
+  /** ISO instant to fire at. */
+  at: string;
+  kind: "primary" | "lastCall";
+  title: string;
+  body: string;
+}
+
+/** `GET /reminders`: settings, whether to make the opt-in offer, and the plan. */
+export interface RemindersDto {
+  settings: ReminderSettingsDto;
+  /** Show the one-time in-context offer (after the first completed lesson). */
+  offer: boolean;
+  /** The next 7 days of reminders, soonest first; empty when off. */
+  plan: PlannedReminderDto[];
+}
+
+/** `PUT /reminders`: any subset of the settings. */
+export type ReminderSettingsRequest = Partial<ReminderSettingsDto>;

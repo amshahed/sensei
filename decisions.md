@@ -1229,6 +1229,26 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 - **Display (K.2 #2):** a small, calm line on Home under Continue/Reviews, showing streak days, today's progress and freezes. Never the hero, never confetti, and no streak-number milestones (K.3.e).
 - Nudges stay with #20 (K.3.d).
 
+#### K.3.g Reminders — how K.3.d is delivered (for #20; locked 2026-11-04)
+
+**Decision (founder-locked):**
+- **Scheduled on the phone, not pushed from the server.** The server builds the next 7 days of reminders: the times, plus fade counts taken from the FSRS due dates. The app schedules them as local notifications (`expo-notifications`) and rebuilds them whenever it opens and after any learning activity. A day can only be finished inside the app, so finishing it cancels that day's reminders immediately.
+  - Why: nothing is needed from the founder (no APNs key, Firebase project or EAS push setup). It's testable today, needs no server scheduler, and stores no device tokens.
+  - Accepted trade-offs: a learner who doesn't open the app for over 7 days stops getting reminders, and a second device can still ping after the day is done.
+  - Server push stays the upgrade path. The reminder plan carries over unchanged.
+- **Days with nothing due still get reminders, about the target.** K.3.f keeps the target on those days, so the learner isn't left to miss a day they committed to with no reminder. The fade wording ("N items are starting to fade") is used only when items really are due.
+
+**Build rules (implementation calls, flagged to the founder; tunable):**
+- **Opt-in, asked in context.** Reminders start off. After the learner's first completed lesson, Home offers them once: pick a time, then Turn on or Not now. The OS permission prompt appears only after tapping Turn on. Dismissing the offer is remembered, and reminders can be turned on later from the reminders line on Home.
+- **Times.**
+  - **Primary reminder:** at the learner's chosen time (presets 08:00, 12:30, 18:00 or 20:00; default 18:00).
+  - **Evening last call:** at 21:00, on by default, and only on a day that isn't done yet. It has its own role and copy, so it never repeats the primary. It's skipped when the primary is less than 2 hours earlier.
+  - **Quiet hours:** 22:00–08:00 by default, editable; any reminder that falls inside them is dropped.
+  - This gives at most 2 reminders a day by construction, and a learner who's done for the day gets none.
+- **Fade counts are capped at the session.** The count is the number of quizzable items due by the reminder's time, capped at what's left of a 15-item review session (G.4). The minutes estimate uses the same 20 seconds per answer as K.3.f.
+- **Copy.** Decay-honest, with no streak-loss guilt (no "you'll lose your streak", no countdowns of the streak number). The primary says what's fading or names today's target; the last call says there's still time today.
+- **One-tap off.** A single "Turn off" in the reminders line cancels everything scheduled on the device.
+
 ---
 
 ## Phase L — Tech stack

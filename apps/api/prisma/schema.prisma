@@ -214,6 +214,17 @@ model User {
   /// Last "not now" on a target-recalibration suggestion (K.3.c).
   targetSuggestionDismissedAt DateTime?
   studyDays                   StudyDay[]
+
+  /// Reminders (K.3.d/K.3.g), scheduled on the phone from a server-built
+  /// plan. Off until the learner opts in. Times are minutes after local
+  /// midnight.
+  remindersOn      Boolean   @default(false)
+  reminderMinute   Int       @default(1080)
+  eveningReminder  Boolean   @default(true)
+  quietStartMinute Int       @default(1320)
+  quietEndMinute   Int       @default(480)
+  /// When the in-context offer was answered (Turn on / Not now): asked once.
+  remindersAskedAt DateTime?
 }
 
 /// Signup Q2 (I.3.b): drives placement routing (I.3.d).

@@ -15,6 +15,7 @@ import type {
   PlacementStartDto,
   PracticeResultDto,
   PracticeScopesDto,
+  RemindersDto,
   StreakDto,
   PracticeSessionDto,
   ReviewResultDto,
@@ -346,7 +347,18 @@ function fakePrisma() {
         const existing = users.get(create.id);
         const row = existing
           ? { ...existing, ...update }
-          : { interests: [], streakFreezes: 0, ...create };
+          : {
+              interests: [],
+              streakFreezes: 0,
+              // Schema defaults for reminders (K.3.g).
+              remindersOn: false,
+              reminderMinute: 1080,
+              eveningReminder: true,
+              quietStartMinute: 1320,
+              quietEndMinute: 480,
+              remindersAskedAt: null,
+              ...create,
+            };
         users.set(create.id, row);
         return Promise.resolve(row);
       },
@@ -381,6 +393,8 @@ function fakePrisma() {
       },
     },
     lessonCompletion: {
+      findFirst: ({ where: { userId } }: { where: { userId: string } }) =>
+        Promise.resolve(completions.find((c) => c.userId === userId) ?? null),
       findMany: ({ where: { userId } }: { where: { userId: string } }) =>
         Promise.resolve(
           completions
@@ -427,6 +441,12 @@ function fakePrisma() {
       },
     },
     studyDay: {
+      findUnique: ({
+        where: { userId_localDate: k },
+      }: {
+        where: { userId_localDate: { userId: string; localDate: string } };
+      }) =>
+        Promise.resolve(studyDays.get(`${k.userId}:${k.localDate}`) ?? null),
       upsert: ({
         where: { userId_localDate: k },
         create,
@@ -1290,6 +1310,81 @@ describe('API (HTTP integration)', () => {
         .set(DEV_USER_HEADER, user)
         .expect(201);
       expect((res.body as StreakDto).days).toBe(1);
+    });
+  });
+
+  describe('reminders (K.3.d, K.3.g)', () => {
+    const user = 'user_reminders';
+    const http = () => request(app.getHttpServer());
+    const get = () =>
+      http().get('/reminders?tz=Europe/Berlin').set(DEV_USER_HEADER, user);
+    const put = (body: object) =>
+      http()
+        .put('/reminders?tz=Europe/Berlin')
+        .set(DEV_USER_HEADER, user)
+        .send(body);
+
+    it('start off, with no offer before a first completed lesson', async () => {
+      const res = await get().expect(200);
+      expect(res.body as RemindersDto).toEqual({
+        settings: {
+          on: false,
+          minute: 1080,
+          evening: true,
+          quietStartMinute: 1320,
+          quietEndMinute: 480,
+        },
+        offer: false,
+        plan: [],
+      });
+    });
+
+    it('PUT validates the settings', async () => {
+      await put({}).expect(400);
+      await put({ minute: 1440 }).expect(400);
+      await put({ on: 'yes' }).expect(400);
+      await put({ on: true, volume: 11 }).expect(400);
+    });
+
+    it('turning on returns a capped, future plan; one tap turns it off', async () => {
+      const on = (await put({ on: true, minute: 8 * 60 }).expect(200))
+        .body as RemindersDto;
+      expect(on.settings).toMatchObject({ on: true, minute: 480 });
+      expect(on.offer).toBe(false);
+      expect(on.plan.length).toBeGreaterThan(0);
+      expect(on.plan.length).toBeLessThanOrEqual(14);
+      for (const r of on.plan) {
+        expect(new Date(r.at).getTime()).toBeGreaterThan(Date.now());
+        expect(['primary', 'lastCall']).toContain(r.kind);
+      }
+      expect((await get().expect(200)).body).toMatchObject({
+        settings: { on: true },
+      });
+
+      const off = (await put({ on: false }).expect(200)).body as RemindersDto;
+      expect(off.plan).toEqual([]);
+    });
+  });
+
+  describe('the reminders offer', () => {
+    const user = 'user_reminders_offer';
+    const http = () => request(app.getHttpServer());
+
+    it('is made after a first completed lesson, until answered', async () => {
+      await http()
+        .post('/lessons/the-five-vowels/complete')
+        .set(DEV_USER_HEADER, user)
+        .expect(201);
+      const before = await http()
+        .get('/reminders')
+        .set(DEV_USER_HEADER, user)
+        .expect(200);
+      expect((before.body as RemindersDto).offer).toBe(true);
+      const after = await http()
+        .post('/reminders/offer/dismiss')
+        .set(DEV_USER_HEADER, user)
+        .expect(201);
+      expect((after.body as RemindersDto).offer).toBe(false);
     });
   });
 });

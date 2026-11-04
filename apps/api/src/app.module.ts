@@ -13,6 +13,7 @@ import { AssessmentsModule } from './assessments/assessments.module';
 import { PracticeModule } from './practice/practice.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { PlacementModule } from './placement/placement.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { StreakModule } from './streak/streak.module';
 import { UsersModule } from './users/users.module';
 import { VoyageModule } from './voyage/voyage.module';
@@ -33,6 +34,7 @@ import { VoyageModule } from './voyage/voyage.module';
     OnboardingModule,
     PlacementModule,
     StreakModule,
+    RemindersModule,
     UsersModule,
     VoyageModule,
   ],

@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "eveningReminder" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "quietEndMinute" INTEGER NOT NULL DEFAULT 480,
+ADD COLUMN     "quietStartMinute" INTEGER NOT NULL DEFAULT 1320,
+ADD COLUMN     "reminderMinute" INTEGER NOT NULL DEFAULT 1080,
+ADD COLUMN     "remindersAskedAt" TIMESTAMP(3),
+ADD COLUMN     "remindersOn" BOOLEAN NOT NULL DEFAULT false;
+
