@@ -11,9 +11,11 @@ import {
   recallResult,
 } from '../recall/recall-grader.service';
 import { recallQuestionFor } from '../recall/recall-question';
+import { StreakService } from '../streak/streak.service';
 
-/** G.4 session cap — matches the ~5–10 min micro-session length. */
-export const REVIEW_SESSION_CAP = 15;
+import { REVIEW_SESSION_CAP } from '../mastery/mastery.service';
+
+export { REVIEW_SESSION_CAP };
 
 @Injectable()
 export class ReviewsService {
@@ -21,6 +23,7 @@ export class ReviewsService {
     private readonly prisma: PrismaService,
     private readonly mastery: MasteryService,
     private readonly recall: RecallGraderService,
+    private readonly streak: StreakService,
   ) {}
 
   /** Due items for a user, lowest-retention-first, capped per G.4. */
@@ -53,23 +56,29 @@ export class ReviewsService {
 
     const graded = await this.recall.grade(question, answer);
     const base = recallResult(itemId, question, graded);
+    let mastery: number;
     if (!graded.scored) {
       // AI grader down and its fallback said "wrong": show the answer and
       // move on, but don't record a miss that may not be one (same as
       // lesson Checks).
-      return {
-        ...base,
-        mastery: await this.mastery.currentMastery(userId, itemId),
-      };
+      mastery = await this.mastery.currentMastery(userId, itemId);
+    } else {
+      const state = await this.mastery.recordCheckResult({
+        userId,
+        itemId,
+        format: 'TYPED',
+        correct: graded.correct,
+        rating: graded.rating,
+      });
+      mastery = state.mastery;
     }
-
-    const state = await this.mastery.recordCheckResult({
-      userId,
-      itemId,
-      format: 'TYPED',
-      correct: graded.correct,
-      rating: graded.rating,
+    // The answer was real effort either way (K.3.f); credited after the FSRS
+    // write so "reviews cleared" sees this item as no longer due.
+    await this.streak.record(userId, {
+      kind: 'answers',
+      count: 1,
+      review: true,
     });
-    return { ...base, mastery: state.mastery };
+    return { ...base, mastery };
   }
 }

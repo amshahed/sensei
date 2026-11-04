@@ -205,6 +205,15 @@ model User {
   dailyTargetMinutes Int?
   intakeCompletedAt  DateTime?
   placementAttempt   PlacementAttempt?
+
+  /// Learning streak (K.2/K.3.f). IANA timezone the app reports; days are
+  /// the learner's local calendar dates (UTC until known).
+  timezone                    String?
+  /// Banked streak-freezes, earned by over-delivering (K.3.a; capped).
+  streakFreezes               Int        @default(0)
+  /// Last "not now" on a target-recalibration suggestion (K.3.c).
+  targetSuggestionDismissedAt DateTime?
+  studyDays                   StudyDay[]
 }
 
 /// Signup Q2 (I.3.b): drives placement routing (I.3.d).
@@ -383,4 +392,27 @@ model PlacementAttempt {
   completedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// One learner-local day of study (K.3.f): effort credited from real work, and
+/// whether the day was done (reviews cleared + effort ≥ target) or covered by
+/// a freeze. The streak is the run of done-or-frozen days.
+model StudyDay {
+  userId          String
+  /// Learner-local calendar date, YYYY-MM-DD.
+  localDate       String
+  /// Credited effort (lesson estimates + 20s per answer), not stopwatch time.
+  effortSeconds   Int       @default(0)
+  /// Review answers today — a full G.4 session clears a backlog for the day.
+  reviewsAnswered Int       @default(0)
+  done            Boolean   @default(false)
+  doneAt          DateTime?
+  /// Covered by a banked freeze instead of being done.
+  frozen          Boolean   @default(false)
+  /// This day already banked its freeze (2× target), so it can't bank twice.
+  freezeEarned    Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, localDate])
 }

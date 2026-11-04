@@ -14,6 +14,7 @@ import type {
 } from '@sensei/types';
 import { MasteryService, rankWeakest } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StreakService } from '../streak/streak.service';
 import {
   RecallGraderService,
   recallResult,
@@ -48,6 +49,7 @@ export class PracticeService {
     private readonly prisma: PrismaService,
     private readonly mastery: MasteryService,
     private readonly recall: RecallGraderService,
+    private readonly streak: StreakService,
   ) {}
 
   /** What can be drilled: learned, quizzable item counts per module / chapter / type. */
@@ -209,7 +211,7 @@ export class PracticeService {
       mastery: await this.mastery.currentMastery(userId, itemId),
     });
     // Grader outage (unscored): nothing is written and the slot stays open.
-    if (!graded.scored) return current();
+    if (!graded.scored) return this.credited(userId, await current());
 
     // Double-count guardrail (J.1.c): the first scored answer claims the
     // (session, item) row and writes FSRS in the same transaction, so a
@@ -232,9 +234,21 @@ export class PracticeService {
         tx,
       );
     });
-    return state
-      ? { ...base, counted: true, mastery: state.mastery }
-      : current();
+    return this.credited(
+      userId,
+      state
+        ? { ...base, counted: true, mastery: state.mastery }
+        : await current(),
+    );
+  }
+
+  /**
+   * Every practice answer is effort toward today's target (K.3.b/K.3.f) —
+   * repeats included — credited after any FSRS write, then passed through.
+   */
+  private async credited<T>(userId: string, result: T): Promise<T> {
+    await this.streak.record(userId, { kind: 'answers', count: 1 });
+    return result;
   }
 
   /** Item ids a module / chapter scope covers (undefined = everything). */

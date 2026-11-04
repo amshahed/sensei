@@ -538,3 +538,35 @@ export interface PlacementAnswerDto {
   done: boolean;
   result: PlacementResultDto | null;
 }
+
+/* ---------------------------------------------------------------------------
+ * Learning streak (K.2, K.3.a–c, K.3.f)
+ * ------------------------------------------------------------------------- */
+
+/** A suggested daily-target change; applied only if the learner accepts (K.3.c). */
+export interface TargetSuggestionDto {
+  direction: "up" | "down";
+  targetMinutes: DailyTargetMinutes;
+}
+
+export interface StreakDto {
+  /** Consecutive done-or-frozen days, ending today (or yesterday while today is open). */
+  days: number;
+  today: {
+    /** Reviews cleared + effort ≥ target. Latched once reached. */
+    done: boolean;
+    /** Credited effort so far (lesson estimates + 20s per answer), whole minutes. */
+    effortMinutes: number;
+    targetMinutes: DailyTargetMinutes;
+    /** Reviews still needed today (0 = cleared: nothing due, or a full session done). */
+    reviewsRemaining: number;
+  };
+  /** Banked streak-freezes and the cap (K.3.a). */
+  freezes: number;
+  freezeCap: number;
+  suggestion: TargetSuggestionDto | null;
+}
+
+export interface DailyTargetRequest {
+  minutes: DailyTargetMinutes;
+}

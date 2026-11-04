@@ -38,6 +38,9 @@ export interface RecordCheckResultInput {
   reviewedAt?: Date;
 }
 
+/** G.4 session cap — matches the ~5–10 min micro-session length. */
+export const REVIEW_SESSION_CAP = 15;
+
 /** The FSRS card + modality breadcrumbs that G.4 ranks by. */
 interface RankableState {
   fsrs: unknown;

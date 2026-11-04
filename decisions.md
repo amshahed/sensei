@@ -1211,6 +1211,24 @@ The bring-your-own-content tool (PRD v1 Feature 8): learner supplies real Japane
 
 **Rejected:** A (only Foundation/Track-Complete) — too sparse; lets genuine motivating moments (all-kana, first conversation) pass unremarked. C (frequent micro-celebrations: per-lesson confetti, streak-number milestones) — Duolingo trap; cheapens every celebration, trains dopamine-seeking over learning (same pathology as streak-gaming). **Caveat:** "capability gain" needs a definition so the set stays small — an authoring-time curation call, not a system feature.
 
+#### K.3.f Learning streak — how "day done" is measured (implements K.2 + K.3.a–c for #19; locked 2026-11-04)
+
+**Decision (founder-locked):**
+- **The target is measured as effort, not stopwatch time.** The server credits real work as it happens. A completed lesson counts its estimated minutes, once per lesson (5 if it has no estimate). Each review, practice or assessment answer counts 20 seconds. No client timers, and leaving the app open earns nothing. The capped review session (15 × 20s ≈ 5 min) therefore alone meets a 5-minute target: the cheapest way to keep the streak is the highest-value learning act, exactly as K.2 intends. Accepted trade-off: it's an estimate, so slow, careful learners are under-credited.
+- **One rule every day: reviews cleared (if any) + effort ≥ target.** On a day with no reviews due, the reviews half is satisfied automatically and the target still applies. This resolves K.2's "fallback = one lesson or practice unit": the fallback replaces only the reviews requirement, so a learner's commitment keeps its meaning on days with nothing due (mostly new learners).
+
+**Build rules (implementation calls, flagged to the founder; tunable):**
+- **"Reviews cleared"** = nothing quizzable is due, or the learner answered a full review session today (15, the G.4 cap). A big backlog after a break is cleared one session per day, not all at once. Practice answers on due items clear them too, but Practice can't substitute for the session (K.3.b).
+- **A day is the learner's local calendar date** (IANA timezone reported by the app; UTC until known). It is checked whenever an activity is recorded, and once done it stays done, even if more items fall due later that day.
+- **Freezes (K.3.a):** the first time a day's effort reaches 2× the target, one freeze is banked, up to **2**. Missed days are covered automatically, but only if the bank covers the whole gap. Otherwise the streak resets and the bank is kept, because freezes aren't spent on a streak they can't save.
+- **Streak** = consecutive done-or-frozen days ending today, or ending yesterday if today isn't done yet.
+- **Recalibration (K.3.c):** over the previous 14 days, with at least 7 active days:
+  - Suggest the next target **up** when effort was ≥ 2× the target on at least 70% of active days.
+  - Suggest the next target **down** when the target was missed on at least half of active days.
+  - The learner accepts or dismisses. A dismissal silences suggestions for 14 days. Never silent: the target only changes when the learner says so. The target is also editable directly.
+- **Display (K.2 #2):** a small, calm line on Home under Continue/Reviews, showing streak days, today's progress and freezes. Never the hero, never confetti, and no streak-number milestones (K.3.e).
+- Nudges stay with #20 (K.3.d).
+
 ---
 
 ## Phase L — Tech stack
