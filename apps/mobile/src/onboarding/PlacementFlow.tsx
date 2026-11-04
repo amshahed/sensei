@@ -120,6 +120,16 @@ export function PlacementFlow({ onDone }: { onDone: () => void }) {
 
   const { start, index } = phase;
   const question = start.questions[index];
+  if (!question) {
+    // Out of step with the server (e.g. the attempt finished elsewhere):
+    // reload — the server returns the result or the right question.
+    return (
+      <View style={ui.center}>
+        <Text style={ui.hint}>Picking up where you left off…</Text>
+        <PrimaryButton label="Continue" onPress={load} />
+      </View>
+    );
+  }
   return (
     <QuestionScreen
       key={question.itemId}

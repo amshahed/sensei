@@ -30,6 +30,7 @@ describe('PlacementService', () => {
   let seedTested: jest.Mock;
   let seedInferred: jest.Mock;
   let tx: jest.Mock;
+  let completions: Array<{ lessonId: string }>;
 
   beforeEach(async () => {
     user = { intakeCompletedAt: new Date(), priorExperience: 'FAIR_AMOUNT' };
@@ -98,6 +99,7 @@ describe('PlacementService', () => {
       },
     ]);
     attemptCreate = jest.fn();
+    completions = [];
     seedTested = jest.fn().mockResolvedValue(0);
     seedInferred = jest.fn().mockResolvedValue(0);
 
@@ -118,7 +120,9 @@ describe('PlacementService', () => {
       userChapterMark: {
         createMany: markCreateMany,
         count: () => Promise.resolve(2),
+        findMany: () => Promise.resolve([]),
       },
+      lessonCompletion: { findMany: () => Promise.resolve(completions) },
       lessonItem: { findMany: lessonItemFindMany },
       item: { findMany: () => Promise.resolve([]) },
     };
@@ -195,6 +199,19 @@ describe('PlacementService', () => {
     );
   });
 
+  it('a correct answer in the start chapter is not seeded: that chapter is taught normally', async () => {
+    attempt!.questions = [q('a', 'c1'), q('a2', 'c2'), q('b', 'c2')];
+    await answer('a');
+    await answer('a2');
+    await answer('b', ['x']); // miss in c2 → start at c2
+    expect(seedTested).toHaveBeenCalledWith(
+      'u1',
+      ['a'],
+      expect.any(Date),
+      expect.anything(),
+    );
+  });
+
   it('"I don\'t know" is a miss', async () => {
     const res = await answer('a', null);
     expect(res.result?.startChapter?.id).toBe('c1');
@@ -255,6 +272,28 @@ describe('PlacementService', () => {
     });
     expect(markCreateMany).not.toHaveBeenCalled();
     expect(seedTested).not.toHaveBeenCalled();
+  });
+
+  it('a learner with progress from before onboarding is not placed on top of it', async () => {
+    attempt = null;
+    completions = [{ lessonId: 'l1' }];
+    await expect(service.start('u1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await expect(service.skip('u1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(attemptCreate).not.toHaveBeenCalled();
+  });
+
+  it('an empty attempt left unfinished is finished on the next start', async () => {
+    attempt = { ...attempt!, questions: [] };
+    const res = await service.start('u1');
+    expect(res.result).toMatchObject({
+      status: 'COMPLETED',
+      startChapter: { id: 'c1' },
+    });
+    expect(attempt).toMatchObject({ status: 'COMPLETED' });
   });
 
   it('no survey, or a beginner: no placement', async () => {

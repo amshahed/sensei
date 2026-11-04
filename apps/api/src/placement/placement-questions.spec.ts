@@ -104,6 +104,16 @@ describe('placementQuestionFor (I.4.b formats)', () => {
     expect(part.choices).not.toContain('ア');
   });
 
+  it('kana: sound-alikes are never distractors (を is pronounced "o")', () => {
+    const withWo = buildPools([...hiragana, kana('を', 'wo')]);
+    for (let r = 0; r < 1; r += 0.05) {
+      const o = placementQuestionFor(hiragana[4], 'c1', withWo, () => r)!;
+      expect(o.parts[0].choices).not.toContain('を');
+      const wo = placementQuestionFor(kana('を', 'wo'), 'c1', withWo, () => r)!;
+      expect(wo.parts[0].choices).not.toContain('お');
+    }
+  });
+
   it('vocab: the meaning, with distractors that are not also its senses', () => {
     for (let r = 0; r < 1; r += 0.1) {
       const q = placementQuestionFor(words[0], 'c1', pools, () => r)!;
@@ -173,6 +183,24 @@ describe('samplePlacement (course order, I.4.f)', () => {
     const qs = samplePlacement(chapters, 'KANA', pools, first);
     expect(qs.every((q) => q.type === 'KANA')).toBe(true);
     expect(qs).toHaveLength(2);
+  });
+
+  it('the kana quiz covers only the leading run of kana-only chapters', () => {
+    // hiragana, then vocab, then katakana: acing kana must not skip the vocab.
+    const qs = samplePlacement(
+      [
+        { id: 'hira', items: hiragana },
+        { id: 'words', items: [words[0], words[1]] },
+        {
+          id: 'kata',
+          items: [kana('ア', 'a', 'katakana'), kana('イ', 'i', 'katakana')],
+        },
+      ],
+      'KANA',
+      pools,
+      first,
+    );
+    expect(new Set(qs.map((q) => q.chapterId))).toEqual(new Set(['hira']));
   });
 
   it('stops at the tier budget', () => {

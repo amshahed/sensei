@@ -1,5 +1,10 @@
 import type { ItemType, PlacementQuestionDto } from '@sensei/types';
-import type { RecallableItem } from '../recall/recall-question';
+import {
+  dataString,
+  dataStrings,
+  kanjiReading,
+  type RecallableItem,
+} from '../recall/recall-question';
 
 /** ~2 items per chapter, in course order (I.4.f). */
 export const PLACEMENT_PER_CHAPTER = 2;
@@ -26,6 +31,18 @@ export function placementTierFor(
 const TIER_TYPES: Record<PlacementTier, ReadonlySet<ItemType>> = {
   KANA: new Set(['KANA']),
   FULL: new Set(['KANA', 'VOCAB', 'KANJI']),
+};
+
+/**
+ * What a tier's quiz speaks for. "Some kana" says nothing about vocab or
+ * grammar, so the kana quiz covers only the leading run of kana-only chapters
+ * — otherwise acing it would skip untested chapters between kana chapters.
+ * The full quiz speaks for everything (grammar-only chapters are the accepted
+ * gap, I.4.f).
+ */
+const TIER_SCOPE: Record<PlacementTier, ReadonlySet<ItemType> | null> = {
+  KANA: new Set(['KANA']),
+  FULL: null,
 };
 
 const DISTRACTORS = 3;
@@ -59,23 +76,18 @@ export interface DistractorPools {
   kanjiMeanings: string[];
 }
 
-const strings = (data: unknown, key: string): string[] => {
-  const v = (data as Record<string, unknown> | null)?.[key];
-  return Array.isArray(v)
-    ? v.filter((x): x is string => typeof x === 'string')
-    : [];
-};
-const str = (data: unknown, key: string): string | null => {
-  const v = (data as Record<string, unknown> | null)?.[key];
-  return typeof v === 'string' && v.trim() ? v.trim() : null;
-};
+const str = (data: unknown, key: string): string | null =>
+  dataString(data, key)?.trim() || null;
+const strings = dataStrings;
+/** A KANJIDIC2 reading as shown in choices: 'ひと.つ' → 'ひと(つ)' (shared with Reviews). */
+const readingLabel = (raw: string): string => kanjiReading(raw)?.label ?? '';
 
-/** A KANJIDIC2 reading as a learner sees it: 'ひと.つ' → 'ひと(つ)', 'ひと-' → 'ひと'. */
-function readingLabel(raw: string): string {
-  const bare = raw.replace(/-/g, '').trim();
-  const [stem, okurigana] = bare.split('.');
-  return okurigana ? `${stem}(${okurigana})` : stem;
-}
+/**
+ * How a kana sounds, for keeping sound-alikes out of each other's choices:
+ * を is romanised "wo" but pronounced "o".
+ */
+const SOUND: Record<string, string> = { wo: 'o', di: 'ji', du: 'zu' };
+const soundOf = (romaji: string) => SOUND[romaji] ?? romaji;
 const isKatakana = (s: string) => /^[゠-ヿ]/.test(s);
 
 export function buildPools(items: PlacementItem[]): DistractorPools {
@@ -161,7 +173,7 @@ export function placementQuestionFor(
       const romaji = str(item.data, 'romaji');
       if (!script || !romaji) return null;
       const others = (pools.kana.get(script) ?? [])
-        .filter(([, r]) => r !== romaji)
+        .filter(([, r]) => soundOf(r) !== soundOf(romaji))
         .map(([k]) => k);
       const wrong = pickDistractors(others, [item.display], random);
       if (!wrong) return null;
@@ -242,8 +254,10 @@ export function samplePlacement(
 ): PlacementQuestion[] {
   const budget = PLACEMENT_BUDGET[tier];
   const out: PlacementQuestion[] = [];
+  const scope = TIER_SCOPE[tier];
   for (const chapter of chapters) {
     if (out.length >= budget) break;
+    if (scope && chapter.items.some((i) => !scope.has(i.type))) break;
     const askable = chapter.items.filter((i) => TIER_TYPES[tier].has(i.type));
     const picks: Array<{ index: number; question: PlacementQuestion }> = [];
     const order = askable.map((_, i) => i);

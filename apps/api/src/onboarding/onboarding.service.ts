@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import type { IntakeRequest, OnboardingDto } from '@sensei/types';
 import { placementTierFor } from '../placement/placement-questions';
+import { learnerHasProgress } from '../placement/placement.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const DEFAULT_DAILY_TARGET = 10;
@@ -29,9 +30,19 @@ export class OnboardingService {
       return { intakeDone: true, placement: 'not_needed' };
     }
     const status = user.placementAttempt?.status;
+    if (status) {
+      return {
+        intakeDone: true,
+        placement: status === 'IN_PROGRESS' ? 'pending' : 'done',
+      };
+    }
+    // Learners from before onboarding existed aren't placed on top of their
+    // progress (placement belongs to signup, I.3.d).
     return {
       intakeDone: true,
-      placement: !status || status === 'IN_PROGRESS' ? 'pending' : 'done',
+      placement: (await learnerHasProgress(this.prisma, userId))
+        ? 'not_needed'
+        : 'pending',
     };
   }
 

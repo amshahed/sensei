@@ -1069,6 +1069,24 @@ describe('API (HTTP integration)', () => {
       expect(outline.modules[0].chapters[0].actions.practice).toBe(false);
     });
 
+    it('a learner with progress from before onboarding takes the survey but is not placed', async () => {
+      // user_int_test completed the-five-vowels earlier in this file.
+      const u = as('user_int_test');
+      expect((await u.get('/onboarding').expect(200)).body).toEqual({
+        intakeDone: false,
+        placement: 'not_needed',
+      });
+      const res = await u
+        .post('/onboarding/intake', {
+          interests: ['TRAVEL'],
+          priorExperience: 'FAIR_AMOUNT',
+        })
+        .expect(201);
+      expect(res.body).toEqual({ intakeDone: true, placement: 'not_needed' });
+      await u.post('/placement').expect(400);
+      await u.post('/placement/skip').expect(400);
+    });
+
     it('POST /placement/skip starts from the beginning', async () => {
       const u = as('user_onboard_skip');
       await u

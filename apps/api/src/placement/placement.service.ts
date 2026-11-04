@@ -59,6 +59,7 @@ export class PlacementService {
       where: { userId },
     });
     if (!attempt) {
+      await this.assertNew(userId);
       const questions = await this.buildQuestions(tier);
       try {
         attempt = await this.prisma.placementAttempt.create({
@@ -75,10 +76,12 @@ export class PlacementService {
           where: { userId },
         });
       }
-      // Nothing to ask (no askable items published yet): place at the start.
-      if (questions.length === 0 && attempt.status === 'IN_PROGRESS') {
-        attempt = await this.finish(userId, attempt, []);
-      }
+    }
+    // Nothing to ask (no askable items published): place at the start. Done
+    // on every start, so an attempt whose first finish failed can't strand
+    // the learner on an empty quiz.
+    if (attempt.status === 'IN_PROGRESS' && questionsOf(attempt).length === 0) {
+      attempt = await this.finish(userId, attempt, []);
     }
 
     const questions = questionsOf(attempt);
@@ -149,6 +152,7 @@ export class PlacementService {
       if (attempt.status === 'SKIPPED') return this.resultOf(attempt);
       throw new ConflictException('Placement is already done.');
     }
+    if (!attempt) await this.assertNew(userId);
     if (attempt && attempt.answered > 0) {
       throw new ConflictException(
         `Placement has started: answer "I don't know" to finish it here.`,
@@ -191,11 +195,23 @@ export class PlacementService {
     return tier;
   }
 
+  /**
+   * Placement is part of signup (I.3.d): a learner who already has progress
+   * (from before onboarding existed) isn't placed on top of it.
+   */
+  private async assertNew(userId: string): Promise<void> {
+    if (await learnerHasProgress(this.prisma, userId)) {
+      throw new BadRequestException(
+        'Placement is for new learners — you have already started lessons.',
+      );
+    }
+  }
+
   /** Sample the quiz from the published curriculum, in course order. */
   private async buildQuestions(
     tier: 'KANA' | 'FULL',
   ): Promise<PlacementQuestion[]> {
-    const [rows, poolItems] = await Promise.all([
+    const [rows, kanaPool, wordPool] = await Promise.all([
       this.prisma.lessonItem.findMany({
         where: {
           role: 'TARGET',
@@ -218,12 +234,25 @@ export class PlacementService {
           },
         },
       }),
+      // Distractor pools. Only kana need `data` (script, rōmaji); vocab and
+      // kanji pools are built from display / reading / meaning alone.
+      this.prisma.item.findMany({
+        where: { language: LANGUAGE, type: 'KANA' },
+        select: RECALLABLE_ITEM_SELECT,
+      }),
       this.prisma.item.findMany({
         where: {
           language: LANGUAGE,
-          type: { in: tier === 'KANA' ? ['KANA'] : ['KANA', 'VOCAB', 'KANJI'] },
+          // The kana tier asks kana only: no word pool needed.
+          type: { in: tier === 'FULL' ? ['VOCAB', 'KANJI'] : [] },
         },
-        select: RECALLABLE_ITEM_SELECT,
+        select: {
+          id: true,
+          type: true,
+          display: true,
+          reading: true,
+          meaning: true,
+        },
       }),
     ]);
 
@@ -246,7 +275,11 @@ export class PlacementService {
       if (last?.id === id) last.items.push(item);
       else chapters.push({ id, items: [item] });
     }
-    return samplePlacement(chapters, tier, buildPools(poolItems), this.random);
+    const pools = buildPools([
+      ...kanaPool,
+      ...wordPool.map((i) => ({ ...i, data: null })),
+    ]);
+    return samplePlacement(chapters, tier, pools, this.random);
   }
 
   /** Record a correct, non-final answer (compare-and-set on `answered`). */
@@ -275,8 +308,16 @@ export class PlacementService {
       answers,
     );
     const now = new Date();
-    const testedCorrect = answers.filter((a) => a.correct).map((a) => a.itemId);
-    const untested = await this.inferable(skippedChapterIds, testedCorrect);
+    // Evidence is seeded only for skipped chapters: from the start chapter on,
+    // items are taught normally (I.4.f) and their lessons record them.
+    const skipped = new Set(skippedChapterIds);
+    const testedCorrect = answers
+      .filter((a, i) => a.correct && skipped.has(questions[i].chapterId))
+      .map((a) => a.itemId);
+    const untested = await this.inferable(
+      skippedChapterIds,
+      answers.map((a) => a.itemId),
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const done = await this.claim(tx, attempt, {
@@ -385,6 +426,26 @@ export class PlacementService {
       answered: attempt.answered,
     };
   }
+}
+
+/** Any lesson completed or chapter passed — the learner is past signup. */
+export async function learnerHasProgress(
+  prisma: PrismaService,
+  userId: string,
+): Promise<boolean> {
+  const [completions, marks] = await Promise.all([
+    prisma.lessonCompletion.findMany({
+      where: { userId },
+      select: { lessonId: true },
+      take: 1,
+    }),
+    prisma.userChapterMark.findMany({
+      where: { userId },
+      select: { chapterId: true },
+      take: 1,
+    }),
+  ]);
+  return completions.length > 0 || marks.length > 0;
 }
 
 const questionsOf = (a: Attempt) =>

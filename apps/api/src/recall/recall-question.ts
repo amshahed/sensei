@@ -41,7 +41,7 @@ export interface RecallQuestion {
   check: AnswerCheck;
 }
 
-function dataString(data: unknown, key: string): string | undefined {
+export function dataString(data: unknown, key: string): string | undefined {
   if (data && typeof data === 'object') {
     const v = (data as Record<string, unknown>)[key];
     if (typeof v === 'string') return v;
@@ -49,7 +49,7 @@ function dataString(data: unknown, key: string): string | undefined {
   return undefined;
 }
 
-function dataStrings(data: unknown, key: string): string[] {
+export function dataStrings(data: unknown, key: string): string[] {
   if (data && typeof data === 'object') {
     const v = (data as Record<string, unknown>)[key];
     if (Array.isArray(v)) {
@@ -57,6 +57,23 @@ function dataStrings(data: unknown, key: string): string[] {
     }
   }
   return [];
+}
+
+/**
+ * One KANJIDIC2 reading, markers resolved: "-" marks a prefix/suffix use
+ * (ひと- → ひと), "." separates the stem from okurigana (ひと.つ). `answer` is
+ * what a learner types (ひとつ); `label` is how it's shown (ひと(つ)).
+ * Null for an empty reading.
+ */
+export function kanjiReading(
+  raw: string,
+): { answer: string; label: string } | null {
+  const bare = raw.replace(/-/g, '').trim();
+  if (!bare) return null;
+  const [stem, okurigana] = bare.split('.');
+  return okurigana
+    ? { answer: stem + okurigana, label: `${stem}(${okurigana})` }
+    : { answer: stem, label: stem };
 }
 
 /**
@@ -76,12 +93,10 @@ export function kanjiReadings(item: RecallableItem): {
   const accepted = new Set<string>();
   const shown: string[] = [];
   for (const r of raw) {
-    const bare = r.replace(/-/g, '').trim();
-    if (!bare) continue;
-    const [stem, okurigana] = bare.split('.');
-    accepted.add(okurigana ? stem + okurigana : stem);
-    const label = okurigana ? `${stem}(${okurigana})` : stem;
-    if (!shown.includes(label)) shown.push(label);
+    const reading = kanjiReading(r);
+    if (!reading) continue;
+    accepted.add(reading.answer);
+    if (!shown.includes(reading.label)) shown.push(reading.label);
   }
   return { accepted: [...accepted], shown: shown.join('・') };
 }
