@@ -10,6 +10,11 @@ import type {
   LessonCompletionDto,
   LessonDetailDto,
   MeDto,
+  PracticeAnswerRequest,
+  PracticeResultDto,
+  PracticeScopesDto,
+  PracticeSessionDto,
+  PracticeStartRequest,
   ProgressDto,
   RelocateRequest,
   ReviewResultDto,
@@ -163,6 +168,32 @@ export const api = {
     const body: AssessmentSubmitRequest = { answers };
     return request<AssessmentResultDto>(
       `/assessments/${encodeURIComponent(attemptId)}/submit`,
+      { method: 'POST', body: JSON.stringify(body) },
+    );
+  },
+
+  /** What Practice can drill: learned items per module / chapter / type (J.1). */
+  practiceScopes(): Promise<PracticeScopesDto> {
+    return request<PracticeScopesDto>('/practice/scopes');
+  },
+
+  /** Start a drill over a scope, weakest first; sessionId null = nothing learned there. */
+  startPractice(body: PracticeStartRequest): Promise<PracticeSessionDto> {
+    return request<PracticeSessionDto>('/practice/sessions', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** Answer one drill item; only the session's first answer per item counts (J.1.c). */
+  answerPractice(
+    sessionId: string,
+    itemId: string,
+    answer: string,
+  ): Promise<PracticeResultDto> {
+    const body: PracticeAnswerRequest = { itemId, answer };
+    return request<PracticeResultDto>(
+      `/practice/sessions/${encodeURIComponent(sessionId)}/answer`,
       { method: 'POST', body: JSON.stringify(body) },
     );
   },

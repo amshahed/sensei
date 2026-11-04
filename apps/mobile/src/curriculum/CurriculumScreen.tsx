@@ -42,14 +42,18 @@ const LESSON_STATE = {
  * "Continue", which opens the learner's next step. Chapter actions: the
  * Assessment (skip-test ahead, or the exit Assessment once the lessons are
  * done, I.4.d.a) and relocate position (skipped chapters → learn them
- * properly), undone from the "revisiting" banner. Review arrives with #17.
+ * properly), undone from the "revisiting" banner. Once the learner has
+ * learned items from a chapter (server flag `actions.practice`), "Practise
+ * this chapter" drills them (J.1.b) — practice never moves their position.
  */
 export function CurriculumScreen({
   onContinue,
   onAssessment,
+  onPractice,
 }: {
   onContinue: (step: NextStepDto) => void;
   onAssessment: (chapterId: string) => void;
+  onPractice: (chapterId: string, title: string) => void;
 }) {
   const [data, setData] = useState<CurriculumDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +187,7 @@ export function CurriculumScreen({
                   : 'Already know this? Take the skip test'
               }
               onAssessment={() => onAssessment(c.id)}
+              onPractice={() => onPractice(c.id, c.title)}
             />
           ))}
         </View>
@@ -208,6 +213,7 @@ function ChapterRow({
   onRelocate,
   assessmentLabel,
   onAssessment,
+  onPractice,
 }: {
   chapter: CurriculumChapterDto;
   open: boolean;
@@ -217,6 +223,7 @@ function ChapterRow({
   onRelocate: () => void;
   assessmentLabel: string;
   onAssessment: () => void;
+  onPractice: () => void;
 }) {
   const st = CHAPTER_STATE[c.state];
   const locked = c.state === 'locked';
@@ -256,6 +263,15 @@ function ChapterRow({
               accessibilityRole="button"
             >
               <Text style={styles.actionText}>{assessmentLabel}</Text>
+            </Pressable>
+          ) : null}
+          {c.actions.practice ? (
+            <Pressable
+              style={styles.action}
+              onPress={onPractice}
+              accessibilityRole="button"
+            >
+              <Text style={styles.actionText}>Practise this chapter</Text>
             </Pressable>
           ) : null}
           {c.actions.relocate ? (

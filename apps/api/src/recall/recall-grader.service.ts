@@ -20,6 +20,24 @@ export interface RecallGrade {
   feedback?: string;
 }
 
+/**
+ * The surface-independent part of a graded recall answer (Reviews, Practice):
+ * the verdict, the revealed answer, whether it counts, and AI feedback.
+ */
+export function recallResult(
+  itemId: string,
+  question: RecallQuestion,
+  graded: RecallGrade,
+) {
+  return {
+    itemId,
+    correct: graded.correct,
+    correctAnswer: question.expected,
+    scored: graded.scored,
+    ...(graded.feedback ? { feedback: graded.feedback } : {}),
+  };
+}
+
 /** Grades a typed answer to a {@link RecallQuestion} (one rule set for every surface). */
 @Injectable()
 export class RecallGraderService {

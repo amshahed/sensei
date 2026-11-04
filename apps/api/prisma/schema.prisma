@@ -194,6 +194,7 @@ model User {
   chapterMarks       UserChapterMark[]
   lessonSkips        UserLessonSkip[]
   assessmentAttempts AssessmentAttempt[]
+  practiceSessions   PracticeSession[]
 }
 
 /// How a chapter was passed (I.4.e.a / I.4.d.a). Lesson completions alone
@@ -302,4 +303,33 @@ model ItemMasteryState {
 
   @@unique([userId, itemId])
   @@index([userId, due])
+}
+
+/// A Practice Mode drill (J.1): learned items in a learner-picked scope,
+/// weakest first. Never advances the curriculum (J.1.a).
+model PracticeSession {
+  id        String   @id @default(cuid())
+  userId    String
+  /// The scope picked: { kind: 'weakest' | 'module' | 'chapter', id?, types? }
+  scope     Json
+  itemIds   String[]
+  createdAt DateTime @default(now())
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts PracticeAttempt[]
+
+  @@index([userId, createdAt])
+}
+
+/// First answer to an item within a Practice session — the double-count
+/// guardrail (J.1.c): only this one updates FSRS; repeats are exposure-only.
+model PracticeAttempt {
+  sessionId String
+  itemId    String
+  correct   Boolean
+  createdAt DateTime @default(now())
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, itemId])
 }

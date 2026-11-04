@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { ItemType, ProgressDto } from '@sensei/types';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import type { ItemType, ItemTypeCounts, ProgressDto } from '@sensei/types';
 import { api } from '../api';
 import { PrimaryButton, ui } from '../ui';
 
-const TYPE_LABELS = {
-  KANA: 'Kana',
-  VOCAB: 'Vocab',
-  KANJI: 'Kanji',
-  GRAMMAR: 'Grammar',
-} satisfies Record<ItemType, string>;
+import { TYPE_LABELS } from '../practice/practice';
 
 /** Round a 0-1 value to a display percentage. */
 function pct(v: number) {
@@ -18,12 +20,22 @@ function pct(v: number) {
 
 /**
  * Progress Dashboard (J.2): aggregate mastery, per-type breakdown, modality
- * profile, and weekly learning-rate callout.
+ * profile, and weekly learning-rate callout. Each item type links to a
+ * Practice drill of that type (J.2.b → J.1.b).
  */
-export function ProgressScreen({ onBack }: { onBack?: () => void }) {
+export function ProgressScreen({
+  onBack,
+  onPractice,
+}: {
+  onBack?: () => void;
+  onPractice?: (type: ItemType) => void;
+}) {
   const [data, setData] = useState<ProgressDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Learned, drillable items per type: a "Practise" link only where there is
+  // something to drill (J.1.e). Best-effort — no links if it can't load.
+  const [learned, setLearned] = useState<ItemTypeCounts | null>(null);
 
   const load = useCallback(() => {
     let active = true;
@@ -47,6 +59,19 @@ export function ProgressScreen({ onBack }: { onBack?: () => void }) {
   }, []);
 
   useEffect(load, [load]);
+  // A boolean dep: the parent passes a fresh callback on every render.
+  const canPractice = !!onPractice;
+  useEffect(() => {
+    if (!canPractice) return;
+    let active = true;
+    api
+      .practiceScopes()
+      .then((s) => active && setLearned(s.learned))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [canPractice]);
 
   if (loading) {
     return (
@@ -102,6 +127,16 @@ export function ProgressScreen({ onBack }: { onBack?: () => void }) {
           <Text style={styles.rowValue}>
             {t.masteredCount}/{t.totalItems}
           </Text>
+          {onPractice && (learned?.[t.type] ?? 0) > 0 ? (
+            <Pressable
+              onPress={() => onPractice(t.type)}
+              accessibilityRole="button"
+              accessibilityLabel={`Practise ${TYPE_LABELS[t.type]}`}
+              hitSlop={8}
+            >
+              <Text style={styles.drill}>Practise ▸</Text>
+            </Pressable>
+          ) : null}
         </View>
       ))}
 
@@ -182,6 +217,7 @@ const styles = StyleSheet.create({
   },
   barFill: { height: '100%', backgroundColor: '#4A6CF7', borderRadius: 4 },
   rowValue: { width: 48, fontSize: 13, color: '#555', textAlign: 'right' },
+  drill: { fontSize: 13, color: '#4A6CF7', fontWeight: '600' },
   modalityGrid: {
     flexDirection: 'row',
     gap: 12,

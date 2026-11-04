@@ -6,7 +6,10 @@ import {
 import type { DueReviewItemDto, ReviewResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
-import { RecallGraderService } from '../recall/recall-grader.service';
+import {
+  RecallGraderService,
+  recallResult,
+} from '../recall/recall-grader.service';
 import { recallQuestionFor } from '../recall/recall-question';
 
 /** G.4 session cap — matches the ~5–10 min micro-session length. */
@@ -49,22 +52,15 @@ export class ReviewsService {
     }
 
     const graded = await this.recall.grade(question, answer);
-    const base = {
-      itemId,
-      correct: graded.correct,
-      correctAnswer: question.expected,
-      scored: graded.scored,
-      ...(graded.feedback ? { feedback: graded.feedback } : {}),
-    };
+    const base = recallResult(itemId, question, graded);
     if (!graded.scored) {
       // AI grader down and its fallback said "wrong": show the answer and
       // move on, but don't record a miss that may not be one (same as
       // lesson Checks).
-      const current = await this.prisma.itemMasteryState.findUnique({
-        where: { userId_itemId: { userId, itemId } },
-        select: { mastery: true },
-      });
-      return { ...base, mastery: current?.mastery ?? 0 };
+      return {
+        ...base,
+        mastery: await this.mastery.currentMastery(userId, itemId),
+      };
     }
 
     const state = await this.mastery.recordCheckResult({

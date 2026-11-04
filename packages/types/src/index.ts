@@ -267,8 +267,11 @@ export interface CurriculumChapterActionsDto {
    * lessons are all done (`CurriculumDto.next.kind === 'assessment'`).
    */
   assessment: boolean;
-  /** Review this chapter's items. */
-  review: boolean;
+  /**
+   * Practice can drill this chapter (J.1.b): it has items the learner has
+   * learned and that can be quizzed (J.1.e). Never true for unlearned content.
+   */
+  practice: boolean;
 }
 
 export interface CurriculumChapterDto {
@@ -380,4 +383,70 @@ export interface AssessmentResultDto {
   results: AssessmentItemResultDto[];
   /** Lessons a failed skip-test collapsed (every key item tested + correct). */
   skippedLessonIds: string[];
+}
+
+// ---------------- Practice Mode (J.1) ----------------
+
+/** What to drill (J.1.b): a module / chapter from the outline, or the weakest learned items anywhere. */
+export type PracticeScope =
+  | { kind: "weakest" }
+  | { kind: "module"; id: string }
+  | { kind: "chapter"; id: string };
+
+/** `POST /practice/sessions`. */
+export interface PracticeStartRequest {
+  scope: PracticeScope;
+  /** Item-type filter; omitted or empty = every type. */
+  types?: ItemType[];
+}
+
+export interface PracticeItemDto {
+  itemId: string;
+  type: ItemType;
+  display: string;
+  prompt: string;
+}
+
+/** Learned items in scope, weakest first. `sessionId` is null when there is nothing to drill. */
+export interface PracticeSessionDto {
+  sessionId: string | null;
+  items: PracticeItemDto[];
+}
+
+/** `POST /practice/sessions/:id/answer`. */
+export interface PracticeAnswerRequest {
+  itemId: string;
+  answer: string;
+}
+
+/** Scored like a review (J.1.c). */
+export interface PracticeResultDto extends ReviewResultDto {
+  /**
+   * True only for the first scored answer to this item in the session: that
+   * one updates FSRS. Repeats are practice only (J.1.c double-count guardrail).
+   */
+  counted: boolean;
+}
+
+/** Learned, quizzable item counts per type. */
+export type ItemTypeCounts = Record<ItemType, number>;
+
+export interface PracticeScopeChapterDto {
+  id: string;
+  title: string;
+  learned: ItemTypeCounts;
+}
+
+export interface PracticeScopeModuleDto {
+  id: string;
+  title: string;
+  learned: ItemTypeCounts;
+  /** Only chapters with at least one learned item. */
+  chapters: PracticeScopeChapterDto[];
+}
+
+/** `GET /practice/scopes` — what the learner can drill (J.1.e: learned items only). */
+export interface PracticeScopesDto {
+  learned: ItemTypeCounts;
+  modules: PracticeScopeModuleDto[];
 }

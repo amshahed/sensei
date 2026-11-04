@@ -241,20 +241,16 @@ describe('deriveCurriculumState — actions', () => {
     expect(s.chapterActions.get('c2')?.relocate).toBe(false);
   });
 
-  it('assessment on current + available only; review on completed + skipped only', () => {
+  it('assessment on current + available only', () => {
     const s = derive({
       completed: done(1),
       marks: { ...assessed(1), ...placed(2) },
     });
     const flags = (id: string) => s.chapterActions.get(id);
-    expect(flags('c1')).toMatchObject({ assessment: false, review: true });
-    expect(flags('c2')).toMatchObject({ assessment: false, review: true });
-    expect(flags('c3')).toMatchObject({ assessment: true, review: false });
-    expect(flags('c4')).toMatchObject({ assessment: true, review: false });
-    expect(flags('c5')).toMatchObject({
-      assessment: false,
-      review: false,
-      relocate: false,
-    });
+    expect(flags('c1')).toMatchObject({ assessment: false });
+    expect(flags('c2')).toMatchObject({ assessment: false });
+    expect(flags('c3')).toMatchObject({ assessment: true });
+    expect(flags('c4')).toMatchObject({ assessment: true });
+    expect(flags('c5')).toMatchObject({ assessment: false, relocate: false });
   });
 });

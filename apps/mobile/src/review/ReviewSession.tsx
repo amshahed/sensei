@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import type { DueReviewItemDto, ReviewResultDto } from '@sensei/types';
-import { api, isPermanent } from '../api';
-import { PrimaryButton, Screen, ui } from '../ui';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import type { DueReviewItemDto } from '@sensei/types';
+import { api } from '../api';
+import { RecallCard } from '../recall/RecallCard';
+import { PrimaryButton, ui } from '../ui';
 
 /**
  * Runs a spaced-repetition review session (#7 / G.4): pulls the due queue
@@ -99,12 +94,15 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
   const { queue, index, correct } = phase;
   const item = queue[index];
   return (
-    <ReviewCard
+    <RecallCard
       key={item.itemId}
-      item={item}
-      index={index}
-      total={queue.length}
-      onNext={(wasCorrect) => {
+      kicker={`Review ${index + 1} of ${queue.length}`}
+      display={item.display}
+      prompt={item.prompt}
+      last={index + 1 >= queue.length}
+      grade={(answer) => api.gradeReview(item.itemId, answer)}
+      onNext={(result) => {
+        const wasCorrect = !!result?.correct && result.scored;
         const nextCorrect = correct + (wasCorrect ? 1 : 0);
         const next = index + 1;
         if (next < queue.length) {
@@ -122,112 +120,6 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
   );
 }
 
-function ReviewCard({
-  item,
-  index,
-  total,
-  onNext,
-}: {
-  item: DueReviewItemDto;
-  index: number;
-  total: number;
-  onNext: (correct: boolean) => void;
-}) {
-  const [answer, setAnswer] = useState('');
-  const [result, setResult] = useState<ReviewResultDto | null>(null);
-  const [grading, setGrading] = useState(false);
-  // 'retry': a blip — don't score it, let the learner retry.
-  // 'skip': the server says this item can't be reviewed (4xx) — retrying
-  // won't help, so let them move on.
-  const [failed, setFailed] = useState<'retry' | 'skip' | null>(null);
-
-  async function submit() {
-    if (result || grading || answer.trim().length === 0) return;
-    setGrading(true);
-    setFailed(null);
-    try {
-      const r = await api.gradeReview(item.itemId, answer);
-      setResult(r);
-    } catch (err) {
-      setFailed(isPermanent(err) ? 'skip' : 'retry');
-    } finally {
-      setGrading(false);
-    }
-  }
-
-  return (
-    <Screen
-      footer={
-        result || failed === 'skip' ? (
-          <PrimaryButton
-            label={
-              failed === 'skip'
-                ? 'Skip'
-                : index + 1 < total
-                  ? 'Next →'
-                  : 'Finish'
-            }
-            onPress={() => onNext(!!result?.correct && result.scored)}
-          />
-        ) : (
-          <PrimaryButton
-            label={failed === 'retry' ? 'Retry' : 'Check'}
-            onPress={submit}
-            disabled={grading || answer.trim().length === 0}
-          />
-        )
-      }
-    >
-      <Text style={ui.kicker}>
-        Review {index + 1} of {total}
-      </Text>
-      <Text style={styles.glyph}>{item.display}</Text>
-      <Text style={ui.body}>{item.prompt}</Text>
-
-      <TextInput
-        style={styles.input}
-        value={answer}
-        editable={!result && !grading}
-        onChangeText={setAnswer}
-        placeholder="Type your answer"
-        autoCapitalize="none"
-        autoCorrect={false}
-        onSubmitEditing={submit}
-      />
-
-      {failed === 'retry' ? (
-        <Text style={ui.err}>Couldn’t reach the grader — tap Retry.</Text>
-      ) : null}
-      {failed === 'skip' ? (
-        <Text style={ui.err}>This item can’t be reviewed right now.</Text>
-      ) : null}
-
-      {result && !result.scored ? (
-        <Text style={ui.hint}>
-          Couldn’t grade that right now, so it doesn’t count. Answer:{' '}
-          {result.correctAnswer || '—'}
-        </Text>
-      ) : result ? (
-        <Text style={result.correct ? ui.ok : ui.err}>
-          {result.correct
-            ? 'Correct!'
-            : `Answer: ${result.correctAnswer || '—'}`}
-        </Text>
-      ) : null}
-      {result?.feedback ? <Text style={ui.hint}>{result.feedback}</Text> : null}
-    </Screen>
-  );
-}
-
 const styles = StyleSheet.create({
   emoji: { fontSize: 48 },
-  glyph: { fontSize: 64, fontWeight: '600', textAlign: 'center' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-  },
 });

@@ -9,6 +9,9 @@ import type {
   CurriculumDto,
   LessonCompletionDto,
   LessonDetailDto,
+  PracticeResultDto,
+  PracticeScopesDto,
+  PracticeSessionDto,
   ReviewResultDto,
 } from '@sensei/types';
 import { AppModule } from './app.module';
@@ -81,6 +84,24 @@ function fakePrisma() {
   }> = [];
   const marks = new Map<string, { chapterId: string; kind: string }>();
   const attempts = new Map<string, Record<string, unknown>>();
+  const practiceSessions = new Map<string, Record<string, unknown>>();
+  const practiceAttempts = new Set<string>();
+  const lessonItems = [
+    {
+      lessonId: lessonRow.id,
+      itemId: kanaA.id,
+      role: 'TARGET',
+      item: kanaA,
+      lesson: {
+        chapter: {
+          id: lessonRow.chapter.id,
+          title: lessonRow.chapter.title,
+          position: 1,
+          module: { ...lessonRow.chapter.module, position: 1 },
+        },
+      },
+    },
+  ];
   const fake: Record<string, unknown> = {
     // Interactive transactions run against the same in-memory fake.
     $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(fake),
@@ -114,11 +135,39 @@ function fakePrisma() {
         ]),
     },
     lessonItem: {
-      // Real Prisma applies `select`; the fake returns the full item.
-      findMany: () =>
-        Promise.resolve([
-          { lessonId: lessonRow.id, itemId: kanaA.id, item: kanaA },
-        ]),
+      // Real Prisma applies `select`; the fake returns the full row.
+      findMany: ({ where }: { where?: { itemId?: { in: string[] } } } = {}) =>
+        Promise.resolve(
+          lessonItems.filter(
+            (r) => !where?.itemId || where.itemId.in.includes(r.itemId),
+          ),
+        ),
+    },
+    chapter: {
+      findUnique: ({ where: { id } }: { where: { id: string } }) =>
+        Promise.resolve(id === lessonRow.chapter.id ? { id } : null),
+    },
+    practiceSession: {
+      create: ({ data }: { data: Record<string, unknown> }) => {
+        const id = `ps-${practiceSessions.size + 1}`;
+        practiceSessions.set(id, { id, ...data });
+        return Promise.resolve({ id });
+      },
+      findUnique: ({ where: { id } }: { where: { id: string } }) =>
+        Promise.resolve(practiceSessions.get(id) ?? null),
+    },
+    practiceAttempt: {
+      createMany: ({
+        data: [row],
+      }: {
+        data: Array<{ sessionId: string; itemId: string }>;
+      }) => {
+        const key = `${row.sessionId}:${row.itemId}`;
+        if (practiceAttempts.has(key)) return Promise.resolve({ count: 0 });
+        practiceAttempts.add(key);
+        return Promise.resolve({ count: 1 });
+      },
+      deleteMany: () => Promise.resolve({ count: 0 }),
     },
     userLessonSkip: {
       findMany: () => Promise.resolve([]),
@@ -235,7 +284,29 @@ function fakePrisma() {
         masteryStates.set(`${userId}:${itemId}`, row);
         return Promise.resolve(row);
       },
-      findMany: () => Promise.resolve([]),
+      // Joined with the (only) item; real Prisma applies select/include.
+      findMany: ({
+        where,
+      }: {
+        where: {
+          userId: string;
+          itemId?: { in: string[] };
+          due?: { lte: Date };
+        };
+      }) =>
+        Promise.resolve(
+          [...masteryStates]
+            .filter(([key]) => key.startsWith(`${where.userId}:`))
+            .map(([key, row]) => ({
+              ...row,
+              itemId: key.slice(where.userId.length + 1),
+              item: kanaA,
+            }))
+            .filter((r) => !where.itemId || where.itemId.in.includes(r.itemId))
+            .filter(
+              (r) => !where.due || (r as { due?: Date }).due! <= where.due.lte,
+            ),
+        ),
     },
   };
   return fake;
@@ -532,6 +603,155 @@ describe('API (HTTP integration)', () => {
         results: [{ itemId: 'ja:kana:a', answer: 'a', correct: true }],
       });
       await startIt().expect(400);
+    });
+  });
+
+  describe('Practice Mode (J.1)', () => {
+    const user = 'user_practice';
+    const post = (path: string, body: unknown) =>
+      request(app.getHttpServer())
+        .post(path)
+        .set(DEV_USER_HEADER, user)
+        .send(body as object);
+
+    it('a learner with nothing learned has nothing to drill', async () => {
+      const outline = await request(app.getHttpServer())
+        .get('/curriculum')
+        .set(DEV_USER_HEADER, user)
+        .expect(200);
+      expect(
+        (outline.body as CurriculumDto).modules[0].chapters[0].actions.practice,
+      ).toBe(false);
+
+      const res = await request(app.getHttpServer())
+        .get('/practice/scopes')
+        .set(DEV_USER_HEADER, user)
+        .expect(200);
+      expect(res.body).toEqual({
+        learned: { KANA: 0, VOCAB: 0, KANJI: 0, GRAMMAR: 0 },
+        modules: [],
+      });
+      const start = await post('/practice/sessions', {
+        scope: { kind: 'weakest' },
+      }).expect(201);
+      expect(start.body).toEqual({ sessionId: null, items: [] });
+    });
+
+    it('POST /practice/sessions 400s on a malformed scope', async () => {
+      for (const body of [
+        {},
+        { scope: { kind: 'random' } },
+        { scope: { kind: 'chapter' } },
+        { scope: { kind: 'weakest' }, types: ['VERB'] },
+      ]) {
+        await post('/practice/sessions', body).expect(400);
+      }
+    });
+
+    it('POST /practice/sessions 404s for an unknown chapter', async () => {
+      await post('/practice/sessions', {
+        scope: { kind: 'chapter', id: 'nope' },
+      }).expect(404);
+    });
+
+    describe('after learning an item', () => {
+      let sessionId: string;
+
+      beforeAll(async () => {
+        // A review answer creates the learner's mastery record for あ.
+        await post(`/reviews/${encodeURIComponent(kanaA.id)}/answer`, {
+          answer: 'a',
+        }).expect(201);
+      });
+
+      it('GET /practice/scopes lists it under its module and chapter', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/practice/scopes')
+          .set(DEV_USER_HEADER, user)
+          .expect(200);
+        const body = res.body as PracticeScopesDto;
+        expect(body.learned.KANA).toBe(1);
+        expect(body.modules).toEqual([
+          {
+            id: 'mod-1',
+            title: 'Foundation (Japanese)',
+            learned: { KANA: 1, VOCAB: 0, KANJI: 0, GRAMMAR: 0 },
+            chapters: [
+              {
+                id: 'ch-1',
+                title: 'Hiragana — Vowels',
+                learned: { KANA: 1, VOCAB: 0, KANJI: 0, GRAMMAR: 0 },
+              },
+            ],
+          },
+        ]);
+      });
+
+      it('the Curriculum Outline offers to practise the chapter', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/curriculum')
+          .set(DEV_USER_HEADER, user)
+          .expect(200);
+        const body = res.body as CurriculumDto;
+        expect(body.modules[0].chapters[0].actions.practice).toBe(true);
+      });
+
+      it('POST /practice/sessions drills the chapter without leaking answers', async () => {
+        const res = await post('/practice/sessions', {
+          scope: { kind: 'chapter', id: 'ch-1' },
+          types: ['KANA'],
+        }).expect(201);
+        const body = res.body as PracticeSessionDto;
+        expect(body.items).toEqual([
+          {
+            itemId: kanaA.id,
+            type: 'KANA',
+            display: 'あ',
+            prompt: 'Type the rōmaji for 「あ」',
+          },
+        ]);
+        expect(JSON.stringify(body)).not.toContain('"a"');
+        sessionId = body.sessionId!;
+      });
+
+      it('the first answer counts; a repeat in the same session is practice only', async () => {
+        const answer = (a: string) =>
+          post(`/practice/sessions/${sessionId}/answer`, {
+            itemId: kanaA.id,
+            answer: a,
+          }).expect(201);
+
+        const first = (await answer('a')).body as PracticeResultDto;
+        expect(first).toMatchObject({
+          itemId: kanaA.id,
+          correct: true,
+          correctAnswer: 'a',
+          scored: true,
+          counted: true,
+        });
+
+        const repeat = (await answer('i')).body as PracticeResultDto;
+        expect(repeat).toMatchObject({ correct: false, counted: false });
+        expect(repeat.mastery).toBe(first.mastery);
+      });
+
+      it('answer 400s on a malformed body or an item outside the session', async () => {
+        await post(`/practice/sessions/${sessionId}/answer`, {
+          itemId: kanaA.id,
+        }).expect(400);
+        await post(`/practice/sessions/${sessionId}/answer`, {
+          itemId: 'ja:kana:i',
+          answer: 'i',
+        }).expect(400);
+      });
+
+      it("answer 404s for another learner's session", async () => {
+        await request(app.getHttpServer())
+          .post(`/practice/sessions/${sessionId}/answer`)
+          .set(DEV_USER_HEADER, 'someone_else')
+          .send({ itemId: kanaA.id, answer: 'a' })
+          .expect(404);
+      });
     });
   });
 });

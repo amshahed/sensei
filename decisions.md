@@ -1022,6 +1022,20 @@ Surfaces the "practice outside the curriculum" job (PRD v1 §9). Resolved as a r
 
 **What's OUT / deferred for J.1:** interaction with daily target / streak (Phase K — soft signals); whether Practice contributes to any "goal met today" signal deferred there.
 
+#### J.1.f Practice Mode — build rules (implements J.1.a–e; 2026-11-04)
+
+**Decision:** how the #17 build turns J.1 into behaviour:
+- **Questions and grading = Reviews.** Practice asks the shared typed-recall question and uses the shared grader (G.4.a), so the same item is asked and judged the same way on every surface. Unscored answers (grader outage) are shown but never written or counted.
+- **"Learned" = has an FSRS record** (J.1.e). This includes items seeded `Hard` by a passed Assessment (I.4.d.a), since the learner proved them. Non-quizzable items (e.g. grammar shells with no meaning) are never offered.
+- **Scopes:** "weakest across everything", a module, or a chapter (TARGET items of its lessons), each narrowed by an optional item-type filter. The Practice tab lists only modules and chapters with learned items, with per-type counts. The Curriculum Outline offers "Practise this chapter" once the learner has learned a quizzable item the chapter teaches (server flag `actions.practice`, replacing the unused `actions.review`). Each Progress item type with learned items links straight to a weakest drill of that type (J.2.b).
+- **Order and size:** lowest FSRS retrievability first, ties broken by the weakest modality breadcrumb (G.4). One shared ranking serves Reviews and Practice. Capped at **20** items per drill, a little above the review cap because drilling is opt-in.
+- **Double-count guardrail (J.1.c) is server-enforced.** A drill is a stored `PracticeSession` with its item list. The first *scored* answer to an item claims a `(session, item)` row and writes FSRS **in one transaction**, so a failed write never strands a claim. Any later answer in that session is exposure-only (`counted: false`). Answers to items outside the session are rejected.
+- **Why per session is enough across sessions too.** "Practice again" or overlapping scopes can re-ask an item minutes later in a new session, and that answer counts. That is safe: with `enable_short_term: false`, FSRS gives a review minutes after the last one no stability gain (verified, and pinned by tests in `fsrs.spec.ts`). Massed successes therefore can't inflate the interval, and a genuine miss still lowers it, which is real evidence. No extra cooldown is needed. Revisit if short-term scheduling is ever enabled.
+- **Misses come back once.** A scored miss is re-asked once at the end of the drill, as exposure only. There is no score report (J.1.d), just "Practice done". It says whether anything was recorded, and "Practice again" starts a fresh weakest-first pick.
+- **No curriculum effect** (J.1.a): Practice never writes lesson completions, chapter marks or the curriculum pointer.
+
+**Why:** reusing the review question, grader and FSRS path keeps Practice honest "voluntary reviews". A server-side claim makes the guardrail hold across retries, double taps and restarts, not just in one client.
+
 ### J.2 Progress Dashboard (complete)
 
 A lean "scoreboard" surface answering *how much do I know, and am I improving?* — distinct from the Curriculum Outline's *where am I in the path?*
