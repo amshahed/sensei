@@ -5,14 +5,16 @@ import { api } from '../api';
 import { ui } from '../ui';
 import {
   applyPlan,
+  clearScheduled,
   formatMinute,
   notificationsAllowed,
   remindersSupported,
   requestNotificationPermission,
+  syncReminders,
 } from './reminders';
 
-/** Reminder time presets (K.3.g). */
-const TIMES = [8 * 60, 12 * 60 + 30, 18 * 60, 20 * 60];
+/** Reminder time presets (K.3.g) — each leaves room for the 21:00 last call. */
+const TIMES = [8 * 60, 12 * 60 + 30, 18 * 60];
 const QUIET_STARTS = [21 * 60, 22 * 60, 23 * 60];
 const QUIET_ENDS = [7 * 60, 8 * 60, 9 * 60];
 const LAST_CALL = '21:00';
@@ -31,17 +33,15 @@ export function RemindersCard() {
 
   const load = useCallback(() => {
     let active = true;
-    api
-      .reminders()
-      .then(async (d) => {
-        const ok = await notificationsAllowed();
-        if (!active) return;
-        setData(d);
-        setAllowed(ok);
-        setPick(d.settings.minute);
-        void applyPlan(d);
-      })
-      .catch(() => undefined); // secondary: hide on failure
+    // The shared sync: fetches and schedules once, even with app start.
+    void syncReminders().then(async (d) => {
+      if (!d) return; // secondary: hide on failure
+      const ok = await notificationsAllowed();
+      if (!active) return;
+      setData(d);
+      setAllowed(ok);
+      setPick(d.settings.minute);
+    });
     return () => {
       active = false;
     };
@@ -62,24 +62,21 @@ export function RemindersCard() {
     save(() => api.updateReminders(body));
 
   /** "Turn on": ask the OS first; a refusal still answers the offer. */
-  const turnOn = (minute: number) => {
-    setBusy(true);
-    requestNotificationPermission()
-      .catch(() => false)
-      .then((ok) => {
-        setAllowed(ok);
-        return api.updateReminders(ok ? { on: true, minute } : { on: false });
-      })
-      .then((d) => {
-        setData(d);
-        void applyPlan(d);
-      })
-      .catch(() => undefined)
-      .finally(() => setBusy(false));
+  const turnOn = (minute: number) =>
+    save(async () => {
+      const ok = await requestNotificationPermission().catch(() => false);
+      setAllowed(ok);
+      return api.updateReminders(ok ? { on: true, minute } : { on: false });
+    });
+
+  /** One tap off: cancel on the phone first, so it works offline too. */
+  const turnOff = () => {
+    void clearScheduled();
+    update({ on: false });
   };
 
   if (!remindersSupported || !data) return null;
-  const { settings, offer } = data;
+  const { settings, offer, fires } = data;
 
   if (offer) {
     return (
@@ -141,7 +138,7 @@ export function RemindersCard() {
     <View style={styles.card}>
       <Text style={ui.hint}>
         {`Reminders · ${formatMinute(settings.minute)}`}
-        {settings.evening ? ` · last call ${LAST_CALL}` : ''}
+        {fires.lastCall ? ` · last call ${LAST_CALL}` : ''}
         {'  '}
         <Text
           style={styles.link}
@@ -153,13 +150,18 @@ export function RemindersCard() {
         {'  '}
         <Text
           style={styles.link}
-          onPress={busy ? undefined : () => update({ on: false })}
+          onPress={busy ? undefined : turnOff}
           accessibilityRole="button"
         >
           Turn off
         </Text>
       </Text>
       {!allowed ? <Blocked /> : null}
+      {!fires.primary ? (
+        <Text style={ui.hint}>
+          {`${formatMinute(settings.minute)} is inside your quiet hours, so that reminder won’t ring. Pick another time or change quiet hours.`}
+        </Text>
+      ) : null}
 
       {editing ? (
         <View style={styles.edit}>
@@ -173,6 +175,9 @@ export function RemindersCard() {
           />
           <Text style={styles.label}>
             Last call at {LAST_CALL} (only if the day isn’t done)
+            {settings.evening && !fires.lastCall
+              ? ' — won’t ring with these quiet hours'
+              : ''}
           </Text>
           <Chips
             options={[1, 0]}

@@ -12,9 +12,11 @@ import {
   isValidTimeZone,
   localDate,
 } from '../streak/streak-rules';
+import { StreakService } from '../streak/streak.service';
 import {
   buildPlan,
   DEFAULT_REMINDER_SETTINGS,
+  firingSlots,
   PLAN_DAYS,
   zonedInstant,
 } from './reminder-rules';
@@ -40,11 +42,13 @@ export class RemindersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mastery: MasteryService,
+    private readonly streak: StreakService,
   ) {}
 
   /**
-   * Settings, the one-time offer, and the next days' reminders. `timeZone`
-   * is the device's: it decides when that device's notifications fire.
+   * Settings, the one-time offer, and the next days' reminders. Days are the
+   * streak's days: the device's `timeZone` is stored like a streak read
+   * does, so "is today done?" reads the same row the credits wrote.
    */
   async get(
     userId: string,
@@ -64,34 +68,44 @@ export class RemindersService {
           quietEndMinute: user.quietEndMinute,
         }
       : DEFAULT_REMINDER_SETTINGS;
-    // Offered once, in context: after the first completed lesson.
-    const offer =
-      !!user &&
-      !user.remindersOn &&
-      !user.remindersAskedAt &&
-      (await this.prisma.lessonCompletion.findFirst({
-        where: { userId },
-        select: { lessonId: true },
-      })) !== null;
-    if (!settings.on) return { settings, offer, plan: [] };
+    const slots = firingSlots(settings);
+    const fires = {
+      primary: slots.some((s) => s.kind === 'primary'),
+      lastCall: slots.some((s) => s.kind === 'lastCall'),
+    };
+    if (!settings.on) {
+      // Offered once, in context: after the first completed lesson.
+      const offer =
+        !!user &&
+        !user.remindersAskedAt &&
+        (await this.prisma.lessonCompletion.findFirst({
+          where: { userId },
+          select: { lessonId: true },
+        })) !== null;
+      return { settings, offer, fires, plan: [] };
+    }
 
-    const tz =
-      timeZone && isValidTimeZone(timeZone)
+    const tz = user
+      ? await this.streak.rememberTimeZone(userId, user.timezone, timeZone)
+      : timeZone && isValidTimeZone(timeZone)
         ? timeZone
-        : (user?.timezone ?? null);
+        : null;
     const today = localDate(now, tz);
-    const day = await this.prisma.studyDay.findUnique({
-      where: { userId_localDate: { userId, localDate: today } },
-      select: { done: true, reviewsAnswered: true },
-    });
-    const dueTimes = await this.mastery.dueTimes(
-      userId,
-      zonedInstant(addDays(today, PLAN_DAYS), 0, tz),
-      REVIEW_SESSION_CAP,
-    );
+    const [day, dueTimes] = await Promise.all([
+      this.prisma.studyDay.findUnique({
+        where: { userId_localDate: { userId, localDate: today } },
+        select: { done: true, reviewsAnswered: true },
+      }),
+      this.mastery.dueTimes(
+        userId,
+        zonedInstant(addDays(today, PLAN_DAYS), 0, tz),
+        REVIEW_SESSION_CAP,
+      ),
+    ]);
     return {
       settings,
-      offer,
+      offer: false,
+      fires,
       plan: buildPlan({
         settings,
         timeZone: tz,

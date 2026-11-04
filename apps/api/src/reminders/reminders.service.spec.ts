@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { isValidTimeZone } from '../streak/streak-rules';
+import { StreakService } from '../streak/streak.service';
 import { isReminderSettingsRequest } from './reminders.controller';
 import { RemindersService } from './reminders.service';
 
@@ -52,6 +54,27 @@ describe('RemindersService', () => {
           },
         },
         { provide: MasteryService, useValue: { dueTimes } },
+        {
+          // Same contract as the streak's: store a valid, changed zone.
+          provide: StreakService,
+          useValue: {
+            rememberTimeZone: (
+              _u: string,
+              stored: string | null,
+              reported?: string,
+            ) => {
+              if (
+                reported &&
+                reported !== stored &&
+                isValidTimeZone(reported)
+              ) {
+                user!.timezone = reported;
+                return Promise.resolve(reported);
+              }
+              return Promise.resolve(stored);
+            },
+          },
+        },
       ],
     }).compile();
     service = moduleRef.get(RemindersService);
@@ -89,7 +112,7 @@ describe('RemindersService', () => {
       expect(dueTimes).not.toHaveBeenCalled();
     });
 
-    it('uses the device timezone, today’s row and the session cap', async () => {
+    it('stores the device timezone, then reads today’s row, the session cap and due times', async () => {
       user!.remindersOn = true;
       day = { done: false, reviewsAnswered: 0 };
       dueTimes.mockResolvedValue([new Date('2026-11-04T00:00:00Z')]);
@@ -110,6 +133,8 @@ describe('RemindersService', () => {
         at: '2026-11-04T23:00:00.000Z',
         title: '1 item is starting to fade',
       });
+      // Stored like a streak read: credits and this lookup share one day.
+      expect(user!.timezone).toBe('America/New_York');
     });
 
     it('falls back to the stored timezone for a missing or bad one', async () => {
@@ -126,6 +151,24 @@ describe('RemindersService', () => {
       expect(res.plan[0]).toMatchObject({
         at: '2026-11-05T23:00:00.000Z',
         title: 'Today’s 20 minutes',
+      });
+    });
+  });
+
+  describe('what fires', () => {
+    it('reports the reminders these settings actually fire', async () => {
+      expect((await service.get('u1', 'UTC', NOW)).fires).toEqual({
+        primary: true,
+        lastCall: true,
+      });
+      user!.reminderMinute = 20 * 60; // under 2 h before the last call
+      expect((await service.get('u1', 'UTC', NOW)).fires.lastCall).toBe(false);
+      user!.reminderMinute = 8 * 60;
+      user!.quietStartMinute = 21 * 60; // quiet from 21:00
+      user!.quietEndMinute = 9 * 60; // ...until 09:00 swallows 08:00
+      expect((await service.get('u1', 'UTC', NOW)).fires).toEqual({
+        primary: false,
+        lastCall: false,
       });
     });
   });

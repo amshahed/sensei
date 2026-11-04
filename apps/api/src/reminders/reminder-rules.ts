@@ -79,6 +79,28 @@ export function inQuietHours(
     : minute >= start || minute < end; // wraps midnight, e.g. 22:00–08:00
 }
 
+type Slot = { kind: PlannedReminderDto['kind']; minute: number };
+
+/**
+ * The reminders these settings actually fire each day: the primary at the
+ * learner's time, and the 21:00 last call when it's on and at least
+ * {@link LAST_CALL_MIN_GAP_MINUTES} after the primary — minus anything in
+ * quiet hours. One rule for the plan and for what the app tells the learner.
+ */
+export function firingSlots(settings: ReminderSettingsDto): Slot[] {
+  const slots: Slot[] = [{ kind: 'primary', minute: settings.minute }];
+  if (
+    settings.evening &&
+    LAST_CALL_MINUTE - settings.minute >= LAST_CALL_MIN_GAP_MINUTES
+  ) {
+    slots.push({ kind: 'lastCall', minute: LAST_CALL_MINUTE });
+  }
+  return slots.filter(
+    ({ minute }) =>
+      !inQuietHours(minute, settings.quietStartMinute, settings.quietEndMinute),
+  );
+}
+
 export interface PlanInput {
   settings: ReminderSettingsDto;
   timeZone: string | null;
@@ -104,15 +126,7 @@ export interface PlanInput {
 export function buildPlan(input: PlanInput): PlannedReminderDto[] {
   const { settings, now } = input;
   if (!settings.on) return [];
-  const slots: Array<{ kind: PlannedReminderDto['kind']; minute: number }> = [
-    { kind: 'primary', minute: settings.minute },
-  ];
-  if (
-    settings.evening &&
-    LAST_CALL_MINUTE - settings.minute >= LAST_CALL_MIN_GAP_MINUTES
-  ) {
-    slots.push({ kind: 'lastCall', minute: LAST_CALL_MINUTE });
-  }
+  const slots = firingSlots(settings);
 
   const plan: PlannedReminderDto[] = [];
   for (let k = 0; k < PLAN_DAYS; k++) {
@@ -123,11 +137,6 @@ export function buildPlan(input: PlanInput): PlannedReminderDto[] {
         ? Math.max(0, input.sessionCap - input.reviewsAnsweredToday)
         : input.sessionCap;
     for (const { kind, minute } of slots) {
-      if (
-        inQuietHours(minute, settings.quietStartMinute, settings.quietEndMinute)
-      ) {
-        continue;
-      }
       const at = zonedInstant(date, minute, input.timeZone);
       if (at <= now) continue;
       const due = Math.min(

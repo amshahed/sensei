@@ -598,6 +598,11 @@ export interface RemindersDto {
   settings: ReminderSettingsDto;
   /** Show the one-time in-context offer (after the first completed lesson). */
   offer: boolean;
+  /**
+   * Which reminders these settings actually fire. The last call needs room
+   * after the primary, and quiet hours drop either one.
+   */
+  fires: { primary: boolean; lastCall: boolean };
   /** The next 7 days of reminders, soonest first; empty when off. */
   plan: PlannedReminderDto[];
 }

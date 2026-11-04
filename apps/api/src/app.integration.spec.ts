@@ -1345,6 +1345,7 @@ describe('API (HTTP integration)', () => {
           quietEndMinute: 480,
         },
         offer: false,
+        fires: { primary: true, lastCall: true },
         plan: [],
       });
     });

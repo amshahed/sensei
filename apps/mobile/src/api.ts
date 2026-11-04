@@ -50,9 +50,9 @@ export function setAuthTokenProvider(
 }
 
 /**
- * Called after any successful write outside `/reminders` — learning activity
- * that may have finished the day — so the reminders layer can re-sync
- * (K.3.g). Kept as a hook so this module doesn't depend on notifications.
+ * Called after a successful learning write — one that credits the streak and
+ * so may have finished the day — so the reminders layer can re-sync (K.3.g).
+ * Kept as a hook so this module doesn't depend on notifications.
  */
 let activityListener: (() => void) | null = null;
 
@@ -76,7 +76,11 @@ export function isPermanent(err: unknown): boolean {
   return err instanceof ApiError && err.status >= 400 && err.status < 500;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  opts?: { activity?: boolean },
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -97,14 +101,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       );
     }
     const body = (await res.json()) as T;
-    if ((init?.method ?? 'GET') !== 'GET' && !path.startsWith('/reminders')) {
-      activityListener?.();
-    }
+    if (opts?.activity) activityListener?.();
     return body;
   } finally {
     clearTimeout(timer);
   }
 }
+
+/** Marks a write that credits the learning streak (see setActivityListener). */
+const LEARNING = { activity: true } as const;
 
 export const api = {
   baseUrl: API_URL,
@@ -137,6 +142,7 @@ export const api = {
     return request<LessonCompletionDto>(
       `/lessons/${encodeURIComponent(idOrSlug)}/complete`,
       { method: 'POST' },
+      LEARNING,
     );
   },
 
@@ -148,6 +154,7 @@ export const api = {
     return request<ReviewResultDto>(
       `/reviews/${encodeURIComponent(itemId)}/answer`,
       { method: 'POST', body: JSON.stringify({ answer }) },
+      LEARNING,
     );
   },
 
@@ -194,6 +201,7 @@ export const api = {
     return request<AssessmentResultDto>(
       `/assessments/${encodeURIComponent(attemptId)}/submit`,
       { method: 'POST', body: JSON.stringify(body) },
+      LEARNING,
     );
   },
 
@@ -220,6 +228,7 @@ export const api = {
     return request<PracticeResultDto>(
       `/practice/sessions/${encodeURIComponent(sessionId)}/answer`,
       { method: 'POST', body: JSON.stringify(body) },
+      LEARNING,
     );
   },
 
