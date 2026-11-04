@@ -262,24 +262,35 @@ export class MasteryService {
    * without loading and ranking the whole backlog like {@link getDue}.
    */
   async dueCount(userId: string, now: Date, limit: number): Promise<number> {
+    return (await this.dueTimes(userId, now, limit)).length;
+  }
+
+  /**
+   * Due instants of the first `limit` quizzable items due by `until`,
+   * soonest first. Pages past non-quizzable rows (grammar without a meaning)
+   * with the same filter as {@link getDue}.
+   */
+  async dueTimes(userId: string, until: Date, limit: number): Promise<Date[]> {
     const PAGE = 50;
-    let found = 0;
-    for (let skip = 0; found < limit; skip += PAGE) {
+    const out: Date[] = [];
+    for (let skip = 0; out.length < limit; skip += PAGE) {
       const page = await this.prisma.itemMasteryState.findMany({
         where: {
           userId,
-          due: { lte: now },
+          due: { lte: until },
           NOT: { item: { type: 'GRAMMAR', meaning: null } },
         },
-        orderBy: { itemId: 'asc' },
+        orderBy: [{ due: 'asc' }, { itemId: 'asc' }],
         skip,
         take: PAGE,
-        select: { item: { select: RECALLABLE_ITEM_SELECT } },
+        select: { due: true, item: { select: RECALLABLE_ITEM_SELECT } },
       });
-      found += page.filter((s) => recallQuestionFor(s.item) !== null).length;
+      for (const s of page) {
+        if (s.due && recallQuestionFor(s.item)) out.push(s.due);
+      }
       if (page.length < PAGE) break;
     }
-    return Math.min(found, limit);
+    return out.slice(0, limit);
   }
 
   /**

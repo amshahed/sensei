@@ -64,22 +64,15 @@ export class StreakService {
     timeZone?: string,
     now: Date = new Date(),
   ): Promise<StreakDto> {
-    let user = await this.loadUser(userId);
-    if (
-      user &&
-      timeZone &&
-      timeZone !== user.timezone &&
-      isValidTimeZone(timeZone)
-    ) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { timezone: timeZone },
-      });
-      user = { ...user, timezone: timeZone };
-    }
+    const user = await this.loadUser(userId);
     const target = (user?.dailyTargetMinutes ??
       DEFAULT_TARGET_MINUTES) as DailyTargetMinutes;
-    const today = localDate(now, user?.timezone ?? timeZone ?? null);
+    const today = localDate(
+      now,
+      user
+        ? await this.rememberTimeZone(userId, user.timezone, timeZone)
+        : (timeZone ?? null),
+    );
     const bank = await this.applyFreezes(
       userId,
       today,
@@ -168,6 +161,26 @@ export class StreakService {
       data: { targetSuggestionDismissedAt: now },
     });
     return this.status(userId, timeZone, now);
+  }
+
+  /**
+   * The timezone the learner's days are counted in (K.3.f): the app's
+   * reported zone, stored when valid and changed, else the stored one (UTC
+   * until known). Shared with reminders so both read the same calendar day.
+   */
+  async rememberTimeZone(
+    userId: string,
+    stored: string | null,
+    reported?: string,
+  ): Promise<string | null> {
+    if (reported && reported !== stored && isValidTimeZone(reported)) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { timezone: reported },
+      });
+      return reported;
+    }
+    return stored;
   }
 
   // ── internals ────────────────────────────────────────────────────────────

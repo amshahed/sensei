@@ -16,6 +16,7 @@ import {
   PracticeScreen,
 } from './src/practice/PracticeScreen';
 import { PracticeSession } from './src/practice/PracticeSession';
+import { ReminderSync } from './src/reminders/ReminderSync';
 import { TYPE_LABELS } from './src/practice/practice';
 import { type Tab, TabBar } from './src/TabBar';
 
@@ -57,6 +58,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <AuthGate>
         <OnboardingGate>
+          <ReminderSync />
           {flow?.kind === 'lesson' ? (
             <LessonPlayer key={flow.slug} slug={flow.slug} onExit={endFlow} />
           ) : flow?.kind === 'chapterIntro' ? (

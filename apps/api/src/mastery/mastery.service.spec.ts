@@ -265,6 +265,7 @@ describe('MasteryService', () => {
 
   describe('dueCount', () => {
     const kana = (n: number) => ({
+      due: NOW,
       item: {
         type: 'KANA',
         display: 'あ',
@@ -274,6 +275,7 @@ describe('MasteryService', () => {
       },
     });
     const shell = {
+      due: NOW,
       item: {
         type: 'GRAMMAR',
         display: 'です',
@@ -301,6 +303,27 @@ describe('MasteryService', () => {
       stateFindMany.mockResolvedValue(page);
       expect(await service.dueCount('dev-user', NOW, 15)).toBe(15);
       expect(stateFindMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('dueTimes: soonest first (stable paging), quizzable only, up to the limit', async () => {
+      const later = new Date(NOW.getTime() + 3_600_000);
+      stateFindMany.mockResolvedValueOnce([
+        kana(1),
+        shell,
+        { ...kana(2), due: later },
+      ]);
+      expect(await service.dueTimes('dev-user', later, 15)).toEqual([
+        NOW,
+        later,
+      ]);
+      const [[args]] = stateFindMany.mock.calls as [
+        [{ where: Record<string, unknown>; orderBy: unknown }],
+      ];
+      expect(args.where).toMatchObject({ due: { lte: later } });
+      expect(args.orderBy).toEqual([{ due: 'asc' }, { itemId: 'asc' }]);
+
+      stateFindMany.mockResolvedValueOnce([kana(1), kana(2), kana(3)]);
+      expect(await service.dueTimes('dev-user', later, 2)).toHaveLength(2);
     });
 
     it('pages past non-quizzable rows to find enough', async () => {

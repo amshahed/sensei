@@ -13,10 +13,14 @@
   "dependencies": {
     "@clerk/clerk-expo": "^2.20.0",
     "@sensei/types": "workspace:*",
-    "expo": "~56.0.11",
-    "expo-secure-store": "^58.0.2",
+    "expo": "~56.0.24",
+    "expo-auth-session": "~56.0.20",
+    "expo-notifications": "~56.0.26",
+    "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",
+    "expo-web-browser": "~56.0.6",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.85.3"
   },
   "devDependencies": {
