@@ -46,7 +46,14 @@ describe('ReviewsService', () => {
             itemMasteryState: { findUnique: stateFindUnique },
           },
         },
-        { provide: MasteryService, useValue: { getDue, recordCheckResult } },
+        {
+          provide: MasteryService,
+          useValue: {
+            getDue,
+            recordCheckResult,
+            currentMastery: jest.fn().mockResolvedValue(0.4),
+          },
+        },
         RecallGraderService, // real shared grader over mocked AI + normaliser
         { provide: GradingService, useValue: { gradeOpen } },
         {

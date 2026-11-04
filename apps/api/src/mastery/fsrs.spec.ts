@@ -100,4 +100,38 @@ describe('fsrs helpers', () => {
       expect(reviveCard('nope')).toBeNull();
     });
   });
+
+  describe('massed reviews (why the Practice guardrail can be per session, J.1.f)', () => {
+    const MIN = 60_000;
+    /** A mature review-state card, reviewed Good on schedule a few times. */
+    function matureCard() {
+      let t = new Date('2026-01-01T00:00:00Z');
+      let c = applyRating(emptyCard(t), Rating.Good, t);
+      for (let i = 0; i < 4; i++) {
+        t = new Date(c.due.getTime());
+        c = applyRating(c, Rating.Good, t);
+      }
+      return { card: c, at: t };
+    }
+
+    it('re-answering Good minutes later does not grow stability', () => {
+      const { card, at } = matureCard();
+      let c = card;
+      for (let i = 1; i <= 3; i++) {
+        c = applyRating(c, Rating.Good, new Date(at.getTime() + i * 3 * MIN));
+      }
+      expect(c.stability).toBeCloseTo(card.stability, 6);
+    });
+
+    it('cramming Good right after a lapse does not rebuild the interval', () => {
+      const { card } = matureCard();
+      const t = new Date(card.due.getTime());
+      const lapsed = applyRating(card, Rating.Again, t);
+      let c = lapsed;
+      for (let i = 1; i <= 4; i++) {
+        c = applyRating(c, Rating.Good, new Date(t.getTime() + i * 3 * MIN));
+      }
+      expect(c.stability).toBeCloseTo(lapsed.stability, 6);
+    });
+  });
 });

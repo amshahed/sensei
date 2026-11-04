@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurriculumService } from './curriculum.service';
 
@@ -73,6 +74,7 @@ describe('CurriculumService', () => {
   let userFindUnique: jest.Mock;
   let userUpsert: jest.Mock;
   let userUpdateMany: jest.Mock;
+  let learnedQuizzable: jest.Mock;
 
   beforeEach(async () => {
     moduleFindMany = jest.fn().mockResolvedValue(modules);
@@ -83,6 +85,7 @@ describe('CurriculumService', () => {
     userFindUnique = jest.fn().mockResolvedValue(null);
     userUpsert = jest.fn().mockResolvedValue({});
     userUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
+    learnedQuizzable = jest.fn().mockResolvedValue([]);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -102,6 +105,7 @@ describe('CurriculumService', () => {
             },
           },
         },
+        { provide: MasteryService, useValue: { learnedQuizzable } },
       ],
     }).compile();
     service = moduleRef.get(CurriculumService);
@@ -132,6 +136,21 @@ describe('CurriculumService', () => {
       );
     });
 
+    it('a chapter is practisable once one of its taught items is learned', async () => {
+      // い is taught in l1 (chapter c1); nothing from c2 / c3 is learned.
+      learnedQuizzable.mockResolvedValue([{ item: { id: 'i' } }]);
+      const dto = await service.getCurriculum('u1');
+      const practice = dto.modules.flatMap((m) =>
+        m.chapters.map((c) => [c.id, c.actions.practice]),
+      );
+      expect(practice).toEqual([
+        ['c1', true],
+        ['c2', false],
+        ['c3', false],
+      ]);
+      expect(learnedQuizzable).toHaveBeenCalledWith('u1');
+    });
+
     it('hides chapters without lessons and modules left empty', async () => {
       const dto = await service.getCurriculum('u1');
       expect(dto.modules.map((m) => m.id)).toEqual(['m1', 'm2']);
@@ -148,7 +167,7 @@ describe('CurriculumService', () => {
         lessonCount: 2,
         estimatedMinutes: 4, // null minutes count as 0
         state: 'current',
-        actions: { relocate: false, assessment: true, review: false },
+        actions: { relocate: false, assessment: true, practice: false },
       });
       expect(c1.lessons[0]).toEqual({
         id: 'l1',

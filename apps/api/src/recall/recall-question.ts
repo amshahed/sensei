@@ -1,7 +1,18 @@
+import type { Prisma } from '@prisma/client';
 import type { ItemType } from '@sensei/types';
 import { hasKanji } from '../common/japanese-script';
 
 /** The minimal item shape needed to build a recall question. */
+/** Prisma `select` for exactly the fields {@link recallQuestionFor} reads (plus id). */
+export const RECALLABLE_ITEM_SELECT = {
+  id: true,
+  type: true,
+  display: true,
+  reading: true,
+  meaning: true,
+  data: true,
+} satisfies Prisma.ItemSelect;
+
 export interface RecallableItem {
   type: ItemType;
   display: string;

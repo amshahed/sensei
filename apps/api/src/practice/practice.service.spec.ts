@@ -8,6 +8,7 @@ import { GradingService } from '../grading/grading.service';
 import { RecallGraderService } from '../recall/recall-grader.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { applyRating, emptyCard, serializeCard } from '../mastery/fsrs';
+import type { ItemMasteryDto } from '@sensei/types';
 
 const NOW = new Date('2026-11-04T12:00:00.000Z');
 const DAY = 86_400_000;
@@ -69,10 +70,10 @@ describe('PracticeService', () => {
   let sessionCreate: jest.Mock;
   let sessionFindUnique: jest.Mock;
   let attemptCreateMany: jest.Mock;
-  let attemptDeleteMany: jest.Mock;
   let itemFindUnique: jest.Mock;
-  let recordCheckResult: jest.Mock;
+  let recordCheckResult: jest.SpyInstance;
   let gradeOpen: jest.Mock;
+  let prisma: Record<string, unknown>;
 
   beforeEach(async () => {
     statesFindMany = jest.fn().mockResolvedValue([]);
@@ -83,36 +84,31 @@ describe('PracticeService', () => {
     sessionCreate = jest.fn().mockResolvedValue({ id: 'ps-1' });
     sessionFindUnique = jest.fn();
     attemptCreateMany = jest.fn().mockResolvedValue({ count: 1 });
-    attemptDeleteMany = jest.fn().mockResolvedValue({ count: 1 });
     itemFindUnique = jest.fn();
-    recordCheckResult = jest.fn().mockResolvedValue({ mastery: 0.6 });
     gradeOpen = jest.fn();
+    prisma = {
+      // Interactive transactions run against the same mock (the tx client).
+      $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+      itemMasteryState: {
+        findMany: statesFindMany,
+        findUnique: stateFindUnique,
+      },
+      lessonItem: { findMany: lessonItemFindMany },
+      chapter: { findUnique: chapterFindUnique },
+      module: { findUnique: moduleFindUnique },
+      practiceSession: {
+        create: sessionCreate,
+        findUnique: sessionFindUnique,
+      },
+      practiceAttempt: { createMany: attemptCreateMany },
+      item: { findUnique: itemFindUnique },
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         PracticeService,
-        {
-          provide: PrismaService,
-          useValue: {
-            itemMasteryState: {
-              findMany: statesFindMany,
-              findUnique: stateFindUnique,
-            },
-            lessonItem: { findMany: lessonItemFindMany },
-            chapter: { findUnique: chapterFindUnique },
-            module: { findUnique: moduleFindUnique },
-            practiceSession: {
-              create: sessionCreate,
-              findUnique: sessionFindUnique,
-            },
-            practiceAttempt: {
-              createMany: attemptCreateMany,
-              deleteMany: attemptDeleteMany,
-            },
-            item: { findUnique: itemFindUnique },
-          },
-        },
-        { provide: MasteryService, useValue: { recordCheckResult } },
+        { provide: PrismaService, useValue: prisma },
+        MasteryService, // real learned-item query + ranking over the mock
         RecallGraderService, // real shared grader over mocked AI + normaliser
         { provide: GradingService, useValue: { gradeOpen } },
         {
@@ -122,6 +118,9 @@ describe('PracticeService', () => {
       ],
     }).compile();
     service = moduleRef.get(PracticeService);
+    recordCheckResult = jest
+      .spyOn(moduleRef.get(MasteryService), 'recordCheckResult')
+      .mockResolvedValue({ mastery: 0.6 } as ItemMasteryDto);
   });
 
   describe('scopes', () => {
@@ -364,13 +363,17 @@ describe('PracticeService', () => {
         data: [{ sessionId: 'ps-1', itemId: 'ja:kana:a', correct: true }],
         skipDuplicates: true,
       });
-      expect(recordCheckResult).toHaveBeenCalledWith({
-        userId: 'u1',
-        itemId: 'ja:kana:a',
-        format: 'TYPED',
-        correct: true,
-        rating: undefined,
-      });
+      // Written through the transaction client the claim was made on.
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        {
+          userId: 'u1',
+          itemId: 'ja:kana:a',
+          format: 'TYPED',
+          correct: true,
+          rating: undefined,
+        },
+        prisma,
+      );
     });
 
     it('a repeat in the same session is exposure-only (double-count guardrail)', async () => {
@@ -411,14 +414,17 @@ describe('PracticeService', () => {
       expect(recordCheckResult).not.toHaveBeenCalled();
     });
 
-    it('releases the claim if the FSRS write fails, so a retry still counts', async () => {
+    it('a failed FSRS write fails the claim with it (one transaction)', async () => {
+      const tx = jest.fn((fn: (t: unknown) => Promise<unknown>) => fn(prisma));
+      prisma.$transaction = tx;
       recordCheckResult.mockRejectedValue(new Error('db down'));
+
       await expect(
         service.answer('u1', 'ps-1', { itemId: 'ja:kana:a', answer: 'a' }),
       ).rejects.toThrow('db down');
-      expect(attemptDeleteMany).toHaveBeenCalledWith({
-        where: { sessionId: 'ps-1', itemId: 'ja:kana:a' },
-      });
+      // The claim was made inside the transaction that then rolled back.
+      expect(tx).toHaveBeenCalledTimes(1);
+      expect(attemptCreateMany).toHaveBeenCalledTimes(1);
     });
 
     it('404s for a missing session or another learner’s', async () => {

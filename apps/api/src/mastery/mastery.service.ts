@@ -8,7 +8,10 @@ import type {
 } from '@sensei/types';
 import { type Grade, Rating } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
-import { recallQuestionFor } from '../recall/recall-question';
+import {
+  RECALLABLE_ITEM_SELECT,
+  recallQuestionFor,
+} from '../recall/recall-question';
 import {
   applyRating,
   emptyCard,
@@ -35,6 +38,38 @@ export interface RecordCheckResultInput {
   reviewedAt?: Date;
 }
 
+/** The FSRS card + modality breadcrumbs that G.4 ranks by. */
+interface RankableState {
+  fsrs: unknown;
+  recognition: number;
+  recall: number;
+  production: number;
+}
+
+/**
+ * G.4 selection order, shared by Reviews and Practice (J.1.b): lowest
+ * predicted retention first (closest to being forgotten), ties broken by the
+ * weakest modality breadcrumb.
+ */
+export function rankWeakest<T extends RankableState>(
+  states: T[],
+  now: Date,
+): Array<{ state: T; retrievability: number }> {
+  return states
+    .map((state) => {
+      const card = reviveCard(state.fsrs);
+      return {
+        state,
+        retrievability: card ? retrievability(card, now) : 0,
+        weakest: Math.min(state.recognition, state.recall, state.production),
+      };
+    })
+    .sort(
+      (a, b) => a.retrievability - b.retrievability || a.weakest - b.weakest,
+    )
+    .map(({ state, retrievability }) => ({ state, retrievability }));
+}
+
 /** Pick the weakest of the three modality breadcrumbs (G.4 targeting). */
 function weakestModality(state: {
   recognition: number;
@@ -57,21 +92,23 @@ export class MasteryService {
    * Write-back path (G.3): a graded Check updates the learner's FSRS schedule
    * and the modality breadcrumb the Check exercised, then recomputes the 0–1
    * mastery score. Idempotently ensures the user row exists first (dev-user
-   * phase; real users arrive with #3).
+   * phase; real users arrive with #3). Pass `db` to run inside a caller's
+   * transaction.
    */
   async recordCheckResult(
     input: RecordCheckResultInput,
+    db: Prisma.TransactionClient = this.prisma,
   ): Promise<ItemMasteryDto> {
     const now = input.reviewedAt ?? new Date();
     const { userId, itemId } = input;
 
-    await this.prisma.user.upsert({
+    await db.user.upsert({
       where: { id: userId },
       update: {},
       create: { id: userId },
     });
 
-    const existing = await this.prisma.itemMasteryState.findUnique({
+    const existing = await db.itemMasteryState.findUnique({
       where: { userId_itemId: { userId, itemId } },
     });
 
@@ -97,7 +134,7 @@ export class MasteryService {
       production: modality === 'production' ? breadcrumb : undefined,
     };
 
-    const saved = await this.prisma.itemMasteryState.upsert({
+    const saved = await db.itemMasteryState.upsert({
       where: { userId_itemId: { userId, itemId } },
       update: writable,
       create: { userId, itemId, ...writable },
@@ -152,6 +189,37 @@ export class MasteryService {
     return count;
   }
 
+  /** The learner's current 0–1 mastery of an item (0 if never seen). */
+  async currentMastery(userId: string, itemId: string): Promise<number> {
+    const state = await this.prisma.itemMasteryState.findUnique({
+      where: { userId_itemId: { userId, itemId } },
+      select: { mastery: true },
+    });
+    return state?.mastery ?? 0;
+  }
+
+  /**
+   * The learner's learned (has an FSRS record, J.1.e) items that can be
+   * quizzed right now, optionally limited to `itemIds`. What Practice drills.
+   */
+  async learnedQuizzable(userId: string, itemIds?: string[]) {
+    const states = await this.prisma.itemMasteryState.findMany({
+      where: {
+        userId,
+        ...(itemIds ? { itemId: { in: itemIds } } : {}),
+        NOT: { item: { type: 'GRAMMAR', meaning: null } },
+      },
+      select: {
+        fsrs: true,
+        recognition: true,
+        recall: true,
+        production: true,
+        item: { select: RECALLABLE_ITEM_SELECT },
+      },
+    });
+    return states.filter((s) => recallQuestionFor(s.item) !== null);
+  }
+
   /**
    * Due-review queue (G.4): items whose next review has come up, sorted by
    * lowest predicted retention first (closest to being forgotten). Items not
@@ -174,22 +242,19 @@ export class MasteryService {
 
     // Items with no quizzable question yet (e.g. a grammar shell without a
     // meaning) stay scheduled but aren't surfaced until their content exists.
-    return states
-      .flatMap((s) => {
-        const question = recallQuestionFor(s.item);
-        if (!question) return [];
-        const card = reviveCard(s.fsrs);
-        return {
-          itemId: s.itemId,
-          type: s.item.type,
-          display: s.item.display,
-          mastery: s.mastery,
-          retrievability: card ? retrievability(card, now) : 0,
-          due: (s.due ?? now).toISOString(),
-          weakestModality: weakestModality(s),
-          prompt: question.prompt,
-        };
-      })
-      .sort((a, b) => a.retrievability - b.retrievability);
+    const quizzable = states.flatMap((s) => {
+      const question = recallQuestionFor(s.item);
+      return question ? { ...s, prompt: question.prompt } : [];
+    });
+    return rankWeakest(quizzable, now).map(({ state: s, retrievability }) => ({
+      itemId: s.itemId,
+      type: s.item.type,
+      display: s.item.display,
+      mastery: s.mastery,
+      retrievability,
+      due: (s.due ?? now).toISOString(),
+      weakestModality: weakestModality(s),
+      prompt: s.prompt,
+    }));
   }
 }

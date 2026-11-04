@@ -30,7 +30,8 @@ export type NextStep =
 
 export type CurriculumState = {
   chapterStates: Map<string, ChapterState>;
-  chapterActions: Map<string, CurriculumChapterActionsDto>;
+  /** `practice` depends on the learner's mastery records, not curriculum state: the service adds it. */
+  chapterActions: Map<string, Omit<CurriculumChapterActionsDto, 'practice'>>;
   lessonStates: Map<string, LessonState>;
   /** Chapters whose lessons are all completed or skipped (an Assessment then is EXIT, not SKIP). */
   lessonsDoneChapterIds: Set<string>;
@@ -97,7 +98,10 @@ export function deriveCurriculumState(
   const currentIdx = relocationValid ? relocatedIdx : frontierIdx;
 
   const chapterStates = new Map<string, ChapterState>();
-  const chapterActions = new Map<string, CurriculumChapterActionsDto>();
+  const chapterActions = new Map<
+    string,
+    Omit<CurriculumChapterActionsDto, 'practice'>
+  >();
   const lessonStates = new Map<string, LessonState>();
   const lessonsDoneChapterIds = new Set<string>();
   let next: NextStep | null = null;
@@ -132,7 +136,6 @@ export function deriveCurriculumState(
       // back to learn it), so there is nothing to skip or exit.
       assessment:
         (state === 'current' && !passed(chapter)) || state === 'available',
-      review: state === 'completed' || state === 'skipped_via_placement',
     });
 
     for (const lessonId of chapter.lessonIds) {

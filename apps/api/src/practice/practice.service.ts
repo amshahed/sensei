@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import type {
   ItemType,
   ItemTypeCounts,
@@ -13,25 +12,21 @@ import type {
   PracticeSessionDto,
   PracticeStartRequest,
 } from '@sensei/types';
-import { retrievability, reviveCard } from '../mastery/fsrs';
-import { MasteryService } from '../mastery/mastery.service';
+import { MasteryService, rankWeakest } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RecallGraderService } from '../recall/recall-grader.service';
-import { recallQuestionFor } from '../recall/recall-question';
+import {
+  RecallGraderService,
+  recallResult,
+} from '../recall/recall-grader.service';
+import {
+  RECALLABLE_ITEM_SELECT,
+  recallQuestionFor,
+} from '../recall/recall-question';
 
 /** Foundation is Japanese-only today (CC.1: modules are language-scoped). */
 const LANGUAGE = 'ja';
-/** One drill ≈ one review session (G.4: 10–15 items, ~5–10 min). */
+/** Items per drill (J.1.f): a little above the G.4 review cap, since drilling is opt-in. */
 export const PRACTICE_SESSION_SIZE = 20;
-
-const ITEM_SELECT = {
-  id: true,
-  type: true,
-  display: true,
-  reading: true,
-  meaning: true,
-  data: true,
-} satisfies Prisma.ItemSelect;
 
 const zeroCounts = (): ItemTypeCounts => ({
   KANA: 0,
@@ -57,7 +52,7 @@ export class PracticeService {
 
   /** What can be drilled: learned, quizzable item counts per module / chapter / type. */
   async scopes(userId: string): Promise<PracticeScopesDto> {
-    const learned = await this.learnedItems(userId);
+    const learned = await this.mastery.learnedQuizzable(userId);
     const learnedById = new Map(learned.map((s) => [s.item.id, s.item.type]));
 
     const rows = await this.prisma.lessonItem.findMany({
@@ -147,21 +142,13 @@ export class PracticeService {
   ): Promise<PracticeSessionDto> {
     const scopeItemIds = await this.scopeItemIds(req.scope);
     const types = req.types?.length ? new Set<ItemType>(req.types) : null;
-    const learned = await this.learnedItems(userId, scopeItemIds);
+    const learned = await this.mastery.learnedQuizzable(userId, scopeItemIds);
 
-    // J.1.b: always lowest-retention first (G.4), then weakest modality.
-    const ranked = learned
-      .filter((s) => !types || types.has(s.item.type))
-      .map((s) => {
-        const card = reviveCard(s.fsrs);
-        return {
-          state: s,
-          retention: card ? retrievability(card, now) : 0,
-          weakest: Math.min(s.recognition, s.recall, s.production),
-        };
-      })
-      .sort((a, b) => a.retention - b.retention || a.weakest - b.weakest)
-      .slice(0, PRACTICE_SESSION_SIZE);
+    // J.1.b: always the G.4 order — lowest retention, then weakest modality.
+    const ranked = rankWeakest(
+      learned.filter((s) => !types || types.has(s.item.type)),
+      now,
+    ).slice(0, PRACTICE_SESSION_SIZE);
 
     if (ranked.length === 0) return { sessionId: null, items: [] };
 
@@ -205,7 +192,7 @@ export class PracticeService {
     }
     const item = await this.prisma.item.findUnique({
       where: { id: itemId },
-      select: ITEM_SELECT,
+      select: RECALLABLE_ITEM_SELECT,
     });
     const question = item ? recallQuestionFor(item) : null;
     if (!question) {
@@ -215,70 +202,39 @@ export class PracticeService {
     }
 
     const graded = await this.recall.grade(question, answer);
-    const base = {
-      itemId,
-      correct: graded.correct,
-      correctAnswer: question.expected,
-      scored: graded.scored,
-      ...(graded.feedback ? { feedback: graded.feedback } : {}),
-    };
+    const base = recallResult(itemId, question, graded);
+    const current = async () => ({
+      ...base,
+      counted: false,
+      mastery: await this.mastery.currentMastery(userId, itemId),
+    });
+    // Grader outage (unscored): nothing is written and the slot stays open.
+    if (!graded.scored) return current();
 
     // Double-count guardrail (J.1.c): the first scored answer claims the
-    // (session, item) slot and updates FSRS; repeats are exposure-only. An
-    // unscored answer (grader outage) never claims it.
-    let counted = false;
-    if (graded.scored) {
-      const { count } = await this.prisma.practiceAttempt.createMany({
+    // (session, item) row and writes FSRS in the same transaction, so a
+    // failed write never leaves a claim behind; repeats find the row taken
+    // and are exposure-only.
+    const state = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.practiceAttempt.createMany({
         data: [{ sessionId, itemId, correct: graded.correct }],
         skipDuplicates: true,
       });
-      counted = count === 1;
-    }
-    if (counted) {
-      const state = await this.mastery
-        .recordCheckResult({
+      if (count === 0) return null;
+      return this.mastery.recordCheckResult(
+        {
           userId,
           itemId,
           format: 'TYPED',
           correct: graded.correct,
           rating: graded.rating,
-        })
-        .catch(async (err: unknown) => {
-          // Release the claim so a retry still counts (the write never landed).
-          await this.prisma.practiceAttempt
-            .deleteMany({ where: { sessionId, itemId } })
-            .catch(() => undefined);
-          throw err;
-        });
-      return { ...base, counted, mastery: state.mastery };
-    }
-    const current = await this.prisma.itemMasteryState.findUnique({
-      where: { userId_itemId: { userId, itemId } },
-      select: { mastery: true },
+        },
+        tx,
+      );
     });
-    return { ...base, counted, mastery: current?.mastery ?? 0 };
-  }
-
-  /**
-   * The learner's learned (has FSRS state, J.1.e) and quizzable items,
-   * optionally limited to a set of ids.
-   */
-  private async learnedItems(userId: string, itemIds?: string[]) {
-    const states = await this.prisma.itemMasteryState.findMany({
-      where: {
-        userId,
-        ...(itemIds ? { itemId: { in: itemIds } } : {}),
-        NOT: { item: { type: 'GRAMMAR', meaning: null } },
-      },
-      select: {
-        fsrs: true,
-        recognition: true,
-        recall: true,
-        production: true,
-        item: { select: ITEM_SELECT },
-      },
-    });
-    return states.filter((s) => recallQuestionFor(s.item) !== null);
+    return state
+      ? { ...base, counted: true, mastery: state.mastery }
+      : current();
   }
 
   /** Item ids a module / chapter scope covers (undefined = everything). */

@@ -615,6 +615,14 @@ describe('API (HTTP integration)', () => {
         .send(body as object);
 
     it('a learner with nothing learned has nothing to drill', async () => {
+      const outline = await request(app.getHttpServer())
+        .get('/curriculum')
+        .set(DEV_USER_HEADER, user)
+        .expect(200);
+      expect(
+        (outline.body as CurriculumDto).modules[0].chapters[0].actions.practice,
+      ).toBe(false);
+
       const res = await request(app.getHttpServer())
         .get('/practice/scopes')
         .set(DEV_USER_HEADER, user)
@@ -677,6 +685,15 @@ describe('API (HTTP integration)', () => {
             ],
           },
         ]);
+      });
+
+      it('the Curriculum Outline offers to practise the chapter', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/curriculum')
+          .set(DEV_USER_HEADER, user)
+          .expect(200);
+        const body = res.body as CurriculumDto;
+        expect(body.modules[0].chapters[0].actions.practice).toBe(true);
       });
 
       it('POST /practice/sessions drills the chapter without leaking answers', async () => {

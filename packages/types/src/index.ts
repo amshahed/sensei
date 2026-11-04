@@ -267,8 +267,11 @@ export interface CurriculumChapterActionsDto {
    * lessons are all done (`CurriculumDto.next.kind === 'assessment'`).
    */
   assessment: boolean;
-  /** Review this chapter's items. */
-  review: boolean;
+  /**
+   * Practice can drill this chapter (J.1.b): it has items the learner has
+   * learned and that can be quizzed (J.1.e). Never true for unlearned content.
+   */
+  practice: boolean;
 }
 
 export interface CurriculumChapterDto {
@@ -447,4 +450,3 @@ export interface PracticeScopesDto {
   learned: ItemTypeCounts;
   modules: PracticeScopeModuleDto[];
 }
-

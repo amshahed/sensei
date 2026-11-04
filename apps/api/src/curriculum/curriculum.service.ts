@@ -9,6 +9,7 @@ import type {
   CurriculumNextDto,
   NextStepDto,
 } from '@sensei/types';
+import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   type CurriculumState,
@@ -30,15 +31,19 @@ type ModuleRow = CurriculumData['modules'][number];
  */
 @Injectable()
 export class CurriculumService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mastery: MasteryService,
+  ) {}
 
   /** The full outline, with each lesson's key items. */
   async getCurriculum(userId: string): Promise<CurriculumDto> {
-    const [{ modules, state }, keyItems] = await Promise.all([
+    const [{ modules, state }, keyItems, learned] = await Promise.all([
       this.getState(userId),
       this.loadKeyItems(),
+      this.loadLearnedItemIds(userId),
     ]);
-    return toDto(modules, state, keyItems);
+    return toDto(modules, state, keyItems, learned);
   }
 
   /** Just what "Continue" should open — Home needs nothing else. */
@@ -56,9 +61,10 @@ export class CurriculumService {
     userId: string,
     chapterId: string | null,
   ): Promise<CurriculumDto> {
-    const [data, keyItems] = await Promise.all([
+    const [data, keyItems, learned] = await Promise.all([
       this.loadData(userId),
       this.loadKeyItems(),
+      this.loadLearnedItemIds(userId),
     ]);
     if (chapterId !== null) {
       const actions = derive(data, data.pointer).chapterActions.get(chapterId);
@@ -76,7 +82,7 @@ export class CurriculumService {
       update: { currentChapterId: chapterId },
       create: { id: userId, currentChapterId: chapterId },
     });
-    return toDto(data.modules, derive(data, chapterId), keyItems);
+    return toDto(data.modules, derive(data, chapterId), keyItems, learned);
   }
 
   /**
@@ -166,6 +172,12 @@ export class CurriculumService {
     };
   }
 
+  /** Items Practice could drill for this learner (learned + quizzable, J.1.e). */
+  private async loadLearnedItemIds(userId: string): Promise<Set<string>> {
+    const learned = await this.mastery.learnedQuizzable(userId);
+    return new Set(learned.map((s) => s.item.id));
+  }
+
   /** TARGET items per lesson, in teaching order (outline only). */
   private async loadKeyItems(): Promise<Map<string, CurriculumKeyItemDto[]>> {
     const rows = await this.prisma.lessonItem.findMany({
@@ -246,6 +258,7 @@ function toDto(
   modules: ModuleRow[],
   state: CurriculumState,
   keyItems: Map<string, CurriculumKeyItemDto[]>,
+  learnedItemIds: ReadonlySet<string>,
 ): CurriculumDto {
   return {
     currentChapterId: state.currentChapterId,
@@ -267,7 +280,14 @@ function toDto(
           0,
         ),
         state: state.chapterStates.get(c.id)!,
-        actions: state.chapterActions.get(c.id)!,
+        actions: {
+          ...state.chapterActions.get(c.id)!,
+          // Practice drills learned items only (J.1.e), so a chapter is
+          // practisable once one of its taught items has been learned.
+          practice: c.lessons.some((l) =>
+            keyItems.get(l.id)?.some((it) => learnedItemIds.has(it.id)),
+          ),
+        },
         lessons: c.lessons.map((l) => ({
           id: l.id,
           slug: l.slug,
