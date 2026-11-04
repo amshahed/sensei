@@ -161,7 +161,7 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 
 **Live infra provisioned (2026-11-02):**
 - **Clerk** — dev instance `ins_3LZBi0bt…`; keys set in `apps/api/.env` (`CLERK_SECRET_KEY`) + `apps/mobile/.env` (`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`).
-- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; migrations through `20261103180000_chapter_assessment` (#15) applied + seeded (the-five-vowels). The #14/#15 pair was verified on a throwaway branch first, then deployed (2026-11-03); the test branch is deleted. **Not yet deployed:** `20261104090000_practice_mode` (#17: two new tables, no data changes). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
+- **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; all migrations through `20261104090000_practice_mode` (#17) applied + seeded (the-five-vowels). The #14/#15 pair was verified on a throwaway branch first, then deployed (2026-11-03); the test branch is deleted. #17's migration (two new tables) was deployed 2026-11-04. Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
 - **Item + reference data in Neon (2026-11-03):** 92 kana · 1,358 vocab (N5 702 / N4 656) · 103 N5 kanji · 40 grammar shells · 9,694 Tatoeba sentences embedded (Voyage, ~72k tokens ≈ $0.004). Voyage is on its no-payment-method tier (3 RPM): every batch hit a 429 and got through on the last retry.
 
 **No AFK issues left.** Every open issue is `hitl`: #22 content, #20 notifications, #19 streak, #13 signup + placement, #11 speaking, #10 listening (and epic #1). The next build step needs the founder to pick which one to unblock. #13 (placement) will write the `SKIPPED_VIA_PLACEMENT` marks the outline already renders.
@@ -170,7 +170,6 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 - **#3 last-mile (optional):** drive sign-up/sign-in through the mobile UI on a device/simulator via EAS (the token→API path is already verified; only the on-device UI walkthrough is unexercised).
 - **#22 skeleton blocked on Anthropic credits:** `authoring:skeleton` failed with "credit balance is too low". Top up console.anthropic.com → Plans & Billing, then rerun `pnpm authoring:skeleton` from `apps/api` (the item data it reads is already in Neon).
 - **Optional — Voyage payment method:** lifts the 3 RPM / 10K TPM cap. The free token allowance still applies. It only matters for re-ingests and retrieval at authoring scale.
-- **Deploy the #17 migration to Neon** (`pnpm prisma:deploy` from `apps/api`): `20261104090000_practice_mode`, adding only the `PracticeSession` + `PracticeAttempt` tables.
 - **Content gap for Practice/Reviews:** grammar items have no meaning yet, so they can't be quizzed (G.4.a). #22 authoring must write one per taught grammar item.
 - provision Railway · Azure · R2 (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `GEMINI_API_KEY` are set).
 
