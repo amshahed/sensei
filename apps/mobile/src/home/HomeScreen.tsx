@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CurriculumNextDto, NextStepDto } from '@sensei/types';
 import { api } from '../api';
+import { StreakCard } from '../streak/StreakCard';
 import { ui } from '../ui';
 
 type Next = CurriculumNextDto['next'];
@@ -10,7 +11,8 @@ type Next = CurriculumNextDto['next'];
  * Home / launcher: "Continue" opens the learner's next step from the
  * Curriculum Outline (I.4.e) — a lesson, or a chapter's exit Assessment
  * (I.4.d.a) — and the Reviews tile shows the live due count
- * (G.4 entry point). Curriculum and Progress live in their own tabs.
+ * (G.4 entry point). Below them, a calm learning-streak line (K.2).
+ * Curriculum, Practice and Progress live in their own tabs.
  */
 export function HomeScreen({
   onContinue,
@@ -86,6 +88,9 @@ export function HomeScreen({
               : `${dueCount} item${dueCount === 1 ? '' : 's'} due now`}
         </Text>
       </Pressable>
+
+      {/* Secondary by design (K.2): learning progress is the hero, not this. */}
+      <StreakCard />
     </View>
   );
 }

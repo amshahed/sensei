@@ -1,3 +1,4 @@
+import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Rating } from 'ts-fsrs';
@@ -61,6 +62,7 @@ function state(
 }
 
 describe('PracticeService', () => {
+  const streakRecord = jest.fn().mockResolvedValue(undefined);
   let service: PracticeService;
   let statesFindMany: jest.Mock;
   let stateFindUnique: jest.Mock;
@@ -107,6 +109,7 @@ describe('PracticeService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         PracticeService,
+        { provide: StreakService, useValue: { record: streakRecord } },
         { provide: PrismaService, useValue: prisma },
         MasteryService, // real learned-item query + ranking over the mock
         RecallGraderService, // real shared grader over mocked AI + normaliser
@@ -374,6 +377,18 @@ describe('PracticeService', () => {
         },
         prisma,
       );
+    });
+
+    it('every answer counts as effort toward the daily target, repeats included (K.3.b)', async () => {
+      streakRecord.mockClear();
+      await service.answer('u1', 'ps-1', { itemId: 'ja:kana:a', answer: 'a' });
+      attemptCreateMany.mockResolvedValue({ count: 0 });
+      await service.answer('u1', 'ps-1', { itemId: 'ja:kana:a', answer: 'a' });
+      expect(streakRecord).toHaveBeenCalledTimes(2);
+      expect(streakRecord).toHaveBeenLastCalledWith('u1', {
+        kind: 'answers',
+        count: 1,
+      });
     });
 
     it('a repeat in the same session is exposure-only (double-count guardrail)', async () => {

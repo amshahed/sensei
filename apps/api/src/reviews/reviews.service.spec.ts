@@ -1,3 +1,4 @@
+import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReviewsService, REVIEW_SESSION_CAP } from './reviews.service';
@@ -22,12 +23,14 @@ function dueItem(itemId: string): DueReviewItemDto {
 }
 
 describe('ReviewsService', () => {
+  const streakRecord = jest.fn().mockResolvedValue(undefined);
   let service: ReviewsService;
   let itemFindUnique: jest.Mock;
   let getDue: jest.Mock;
   let recordCheckResult: jest.Mock;
   let gradeOpen: jest.Mock;
   let stateFindUnique: jest.Mock;
+  let stateFindFirst: jest.Mock;
 
   beforeEach(async () => {
     itemFindUnique = jest.fn();
@@ -35,15 +38,21 @@ describe('ReviewsService', () => {
     recordCheckResult = jest.fn().mockResolvedValue({ mastery: 0.25 });
     gradeOpen = jest.fn();
     stateFindUnique = jest.fn().mockResolvedValue({ mastery: 0.4 });
+    // The item was due when answered (the normal review case).
+    stateFindFirst = jest.fn().mockResolvedValue({ itemId: 'x' });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         ReviewsService,
+        { provide: StreakService, useValue: { record: streakRecord } },
         {
           provide: PrismaService,
           useValue: {
             item: { findUnique: itemFindUnique },
-            itemMasteryState: { findUnique: stateFindUnique },
+            itemMasteryState: {
+              findUnique: stateFindUnique,
+              findFirst: stateFindFirst,
+            },
           },
         },
         {
@@ -110,6 +119,46 @@ describe('ReviewsService', () => {
         format: 'TYPED',
         correct: true,
         rating: undefined,
+      });
+    });
+
+    it('a scored answer to a due item is credited to the streak as a review (K.3.f)', async () => {
+      itemFindUnique.mockResolvedValue(kana);
+      streakRecord.mockClear();
+      await service.grade('dev-user', 'ja:kana:a', 'i');
+      expect(streakRecord).toHaveBeenCalledWith('dev-user', {
+        kind: 'answers',
+        count: 1,
+        review: true,
+      });
+      // Due-ness is read before the FSRS write moves it...
+      expect(stateFindFirst).toHaveBeenCalledWith({
+        where: {
+          userId: 'dev-user',
+          itemId: 'ja:kana:a',
+          due: { lte: expect.any(Date) as Date },
+        },
+        select: { itemId: true },
+      });
+      expect(stateFindFirst.mock.invocationCallOrder[0]).toBeLessThan(
+        recordCheckResult.mock.invocationCallOrder[0],
+      );
+      // ...and the credit lands after it, so "reviews cleared" sees it as done.
+      expect(recordCheckResult.mock.invocationCallOrder[0]).toBeLessThan(
+        streakRecord.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('a not-due item (or a repeat of one just answered) is effort, not a review', async () => {
+      itemFindUnique.mockResolvedValue(kana);
+      stateFindFirst.mockResolvedValue(null);
+      streakRecord.mockClear();
+      await service.grade('dev-user', 'ja:kana:a', 'a');
+      expect(recordCheckResult).toHaveBeenCalled();
+      expect(streakRecord).toHaveBeenCalledWith('dev-user', {
+        kind: 'answers',
+        count: 1,
+        review: false,
       });
     });
 
@@ -191,6 +240,12 @@ describe('ReviewsService', () => {
         mastery: 0.4, // unchanged, read back
       });
       expect(recordCheckResult).not.toHaveBeenCalled();
+      // Still effort — but the item stays due, so it can't clear a review.
+      expect(streakRecord).toHaveBeenLastCalledWith('dev-user', {
+        kind: 'answers',
+        count: 1,
+        review: false,
+      });
     });
 
     it('400s for an item with nothing to check against (e.g. a grammar shell)', async () => {

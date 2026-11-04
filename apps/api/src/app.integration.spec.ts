@@ -15,6 +15,7 @@ import type {
   PlacementStartDto,
   PracticeResultDto,
   PracticeScopesDto,
+  StreakDto,
   PracticeSessionDto,
   ReviewResultDto,
 } from '@sensei/types';
@@ -130,6 +131,7 @@ function fakePrisma() {
   ];
   const users = new Map<string, Record<string, unknown>>();
   const placements = new Map<string, Record<string, unknown>>();
+  const studyDays = new Map<string, Record<string, unknown>>();
   /** Prisma-style `where` equality (null matches a missing value). */
   const matches = (row: Record<string, unknown>, where: object) =>
     Object.entries(where).every(([k, v]) =>
@@ -138,6 +140,7 @@ function fakePrisma() {
   const fake: Record<string, unknown> = {
     // Interactive transactions run against the same in-memory fake.
     $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(fake),
+    $queryRaw: () => Promise.resolve([]),
     module: {
       findMany: () =>
         Promise.resolve([
@@ -333,8 +336,17 @@ function fakePrisma() {
         ),
     },
     user: {
-      upsert: ({ create }: { create: { id: string } }) => {
-        const row = users.get(create.id) ?? { interests: [], ...create };
+      upsert: ({
+        create,
+        update,
+      }: {
+        create: { id: string };
+        update: Record<string, unknown>;
+      }) => {
+        const existing = users.get(create.id);
+        const row = existing
+          ? { ...existing, ...update }
+          : { interests: [], streakFreezes: 0, ...create };
         users.set(create.id, row);
         return Promise.resolve(row);
       },
@@ -343,6 +355,17 @@ function fakePrisma() {
         if (!row) return Promise.resolve(null);
         const attempt = [...placements.values()].find((p) => p.userId === id);
         return Promise.resolve({ ...row, placementAttempt: attempt ?? null });
+      },
+      update: ({
+        where: { id },
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }) => {
+        const row = { ...users.get(id), ...data };
+        users.set(id, row);
+        return Promise.resolve(row);
       },
       updateMany: ({
         where,
@@ -364,16 +387,99 @@ function fakePrisma() {
             .filter((c) => c.userId === userId)
             .map(({ lessonId }) => ({ lessonId })),
         ),
-      upsert: ({
-        where,
+      createMany: ({
+        data: [row],
+      }: {
+        data: Array<{ userId: string; lessonId: string }>;
+      }) => {
+        if (
+          completions.some(
+            (c) => c.userId === row.userId && c.lessonId === row.lessonId,
+          )
+        ) {
+          return Promise.resolve({ count: 0 });
+        }
+        completions.push({ ...row, completedAt: new Date() });
+        return Promise.resolve({ count: 1 });
+      },
+      findUniqueOrThrow: ({
+        where: { userId_lessonId: k },
       }: {
         where: { userId_lessonId: { userId: string; lessonId: string } };
+      }) =>
+        Promise.resolve(
+          completions.find(
+            (c) => c.userId === k.userId && c.lessonId === k.lessonId,
+          ),
+        ),
+      update: ({
+        where: { userId_lessonId: k },
+        data,
+      }: {
+        where: { userId_lessonId: { userId: string; lessonId: string } };
+        data: { completedAt: Date };
       }) => {
-        const { userId, lessonId } = where.userId_lessonId;
-        const row = { userId, lessonId, completedAt: new Date() };
-        completions.push(row);
+        const row = completions.find(
+          (c) => c.userId === k.userId && c.lessonId === k.lessonId,
+        )!;
+        row.completedAt = data.completedAt;
         return Promise.resolve(row);
       },
+    },
+    studyDay: {
+      upsert: ({
+        where: { userId_localDate: k },
+        create,
+        update,
+      }: {
+        where: { userId_localDate: { userId: string; localDate: string } };
+        create: Record<string, unknown>;
+        update: Record<string, { increment: number }>;
+      }) => {
+        const key = `${k.userId}:${k.localDate}`;
+        const row = studyDays.get(key);
+        const next = row
+          ? {
+              ...row,
+              effortSeconds:
+                (row.effortSeconds as number) + update.effortSeconds.increment,
+              reviewsAnswered:
+                (row.reviewsAnswered as number) +
+                update.reviewsAnswered.increment,
+            }
+          : {
+              effortSeconds: 0,
+              reviewsAnswered: 0,
+              done: false,
+              doneAt: null,
+              frozen: false,
+              freezeEarned: false,
+              ...create,
+            };
+        studyDays.set(key, next);
+        return Promise.resolve(next);
+      },
+      updateMany: ({
+        where,
+        data,
+      }: {
+        where: { userId: string; localDate: string };
+        data: Record<string, unknown>;
+      }) => {
+        const key = `${where.userId}:${where.localDate}`;
+        const row = studyDays.get(key);
+        if (!row || !matches(row, where)) return Promise.resolve({ count: 0 });
+        studyDays.set(key, { ...row, ...data });
+        return Promise.resolve({ count: 1 });
+      },
+      findMany: ({ where: { userId } }: { where: { userId: string } }) =>
+        Promise.resolve(
+          [...studyDays.values()]
+            .filter((d) => d.userId === userId)
+            .sort((a, b) =>
+              (b.localDate as string).localeCompare(a.localDate as string),
+            ),
+        ),
     },
     itemMasteryState: {
       createMany: ({
@@ -396,6 +502,21 @@ function fakePrisma() {
           count++;
         }
         return Promise.resolve({ count });
+      },
+      findFirst: ({
+        where,
+      }: {
+        where: { userId: string; itemId: string; due?: { lte: Date } };
+      }) => {
+        const row = masteryStates.get(`${where.userId}:${where.itemId}`) as
+          | { due?: Date | null }
+          | undefined;
+        const due = row?.due ?? null;
+        return Promise.resolve(
+          row && (!where.due || (due !== null && due <= where.due.lte))
+            ? row
+            : null,
+        );
       },
       findUnique: ({
         where,
@@ -1108,6 +1229,67 @@ describe('API (HTTP integration)', () => {
         intakeDone: true,
         placement: 'done',
       });
+    });
+  });
+
+  describe('learning streak (K.2, K.3.f)', () => {
+    const user = 'user_streak';
+    const get = () =>
+      request(app.getHttpServer())
+        .get('/streak?tz=Europe/Berlin')
+        .set(DEV_USER_HEADER, user);
+
+    it('a new learner starts at zero with the default target', async () => {
+      const res = await get().expect(200);
+      expect(res.body as StreakDto).toEqual({
+        days: 0,
+        today: {
+          done: false,
+          effortMinutes: 0,
+          targetMinutes: 10,
+          reviewsRemaining: 0,
+        },
+        freezes: 0,
+        freezeCap: 2,
+        suggestion: null,
+      });
+    });
+
+    it('a completed lesson credits its estimated minutes, once', async () => {
+      for (let i = 0; i < 2; i++) {
+        await request(app.getHttpServer())
+          .post('/lessons/the-five-vowels/complete')
+          .set(DEV_USER_HEADER, user)
+          .expect(201);
+      }
+      const body = (await get().expect(200)).body as StreakDto;
+      expect(body.today).toMatchObject({ effortMinutes: 5, done: false });
+      expect(body.days).toBe(0);
+    });
+
+    it('PUT /streak/target validates, and a lower target completes the day', async () => {
+      await request(app.getHttpServer())
+        .put('/streak/target')
+        .set(DEV_USER_HEADER, user)
+        .send({ minutes: 7 })
+        .expect(400);
+      const res = await request(app.getHttpServer())
+        .put('/streak/target')
+        .set(DEV_USER_HEADER, user)
+        .send({ minutes: 5 })
+        .expect(200);
+      expect(res.body as StreakDto).toMatchObject({
+        days: 1,
+        today: { done: true, effortMinutes: 5, targetMinutes: 5 },
+      });
+    });
+
+    it('POST /streak/suggestion/dismiss returns the status', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/streak/suggestion/dismiss')
+        .set(DEV_USER_HEADER, user)
+        .expect(201);
+      expect((res.body as StreakDto).days).toBe(1);
     });
   });
 });

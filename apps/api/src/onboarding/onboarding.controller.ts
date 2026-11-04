@@ -6,13 +6,13 @@ import {
   Post,
 } from '@nestjs/common';
 import type {
-  DailyTargetMinutes,
   IntakeRequest,
   Interest,
   OnboardingDto,
   PriorExperience,
 } from '@sensei/types';
 import { CurrentUserId } from '../auth/current-user.decorator';
+import { DAILY_TARGETS, isDailyTarget } from '../streak/streak-rules';
 import { OnboardingService } from './onboarding.service';
 
 const INTERESTS: readonly Interest[] = [
@@ -29,7 +29,6 @@ const PRIOR: readonly PriorExperience[] = [
   'FAIR_AMOUNT',
   'REFRESHER',
 ];
-const TARGETS: readonly DailyTargetMinutes[] = [5, 10, 20, 30];
 
 export function isIntakeRequest(body: unknown): body is IntakeRequest {
   if (!body || typeof body !== 'object') return false;
@@ -39,8 +38,7 @@ export function isIntakeRequest(body: unknown): body is IntakeRequest {
     b.interests.length > 0 &&
     b.interests.every((i) => INTERESTS.includes(i as Interest)) &&
     PRIOR.includes(b.priorExperience as PriorExperience) &&
-    (b.dailyTargetMinutes === undefined ||
-      TARGETS.includes(b.dailyTargetMinutes as DailyTargetMinutes))
+    (b.dailyTargetMinutes === undefined || isDailyTarget(b.dailyTargetMinutes))
   );
 }
 
@@ -62,7 +60,7 @@ export class OnboardingController {
   ): Promise<OnboardingDto> {
     if (!isIntakeRequest(body)) {
       throw new BadRequestException(
-        `Body must be { "interests": [one or more of ${INTERESTS.join(', ')}], "priorExperience": ${PRIOR.join(' | ')}, "dailyTargetMinutes"?: ${TARGETS.join(' | ')} }.`,
+        `Body must be { "interests": [one or more of ${INTERESTS.join(', ')}], "priorExperience": ${PRIOR.join(' | ')}, "dailyTargetMinutes"?: ${DAILY_TARGETS.join(' | ')} }.`,
       );
     }
     return this.onboarding.submitIntake(userId, {

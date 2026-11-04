@@ -38,6 +38,9 @@ export interface RecordCheckResultInput {
   reviewedAt?: Date;
 }
 
+/** G.4 session cap — matches the ~5–10 min micro-session length. */
+export const REVIEW_SESSION_CAP = 15;
+
 /** The FSRS card + modality breadcrumbs that G.4 ranks by. */
 interface RankableState {
   fsrs: unknown;
@@ -251,6 +254,32 @@ export class MasteryService {
       },
     });
     return states.filter((s) => recallQuestionFor(s.item) !== null);
+  }
+
+  /**
+   * How many quizzable items are due, counting no further than `limit` —
+   * enough to answer "is anything due?" or "how much of a session is left?"
+   * without loading and ranking the whole backlog like {@link getDue}.
+   */
+  async dueCount(userId: string, now: Date, limit: number): Promise<number> {
+    const PAGE = 50;
+    let found = 0;
+    for (let skip = 0; found < limit; skip += PAGE) {
+      const page = await this.prisma.itemMasteryState.findMany({
+        where: {
+          userId,
+          due: { lte: now },
+          NOT: { item: { type: 'GRAMMAR', meaning: null } },
+        },
+        orderBy: { itemId: 'asc' },
+        skip,
+        take: PAGE,
+        select: { item: { select: RECALLABLE_ITEM_SELECT } },
+      });
+      found += page.filter((s) => recallQuestionFor(s.item) !== null).length;
+      if (page.length < PAGE) break;
+    }
+    return Math.min(found, limit);
   }
 
   /**

@@ -22,6 +22,7 @@ import { CurriculumService } from '../curriculum/curriculum.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecallGraderService } from '../recall/recall-grader.service';
+import { StreakService } from '../streak/streak.service';
 import {
   type RecallQuestion,
   recallQuestionFor,
@@ -80,6 +81,7 @@ export class AssessmentsService {
     private readonly mastery: MasteryService,
     private readonly recall: RecallGraderService,
     @Inject(ASSESSMENT_RANDOM) private readonly random: () => number,
+    private readonly streak: StreakService,
   ) {}
 
   async start(userId: string, chapterId: string): Promise<AssessmentStartDto> {
@@ -299,6 +301,12 @@ export class AssessmentsService {
     if (passed) {
       await this.seedUntested(userId, attempt.chapterId, attempt.itemIds, now);
     }
+    // Answering the Assessment was real effort (K.3.f) — first submit only.
+    await this.streak.record(
+      userId,
+      { kind: 'answers', count: stored.items.length },
+      now,
+    );
 
     return {
       attemptId,
