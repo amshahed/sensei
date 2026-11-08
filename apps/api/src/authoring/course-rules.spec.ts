@@ -317,6 +317,60 @@ describe('sound lessons (P2, P3)', () => {
   });
 });
 
+describe('particles in a typed answer (H.2.a, test.md F3)', () => {
+  const typedCheck = (
+    correctAnswer: string,
+    n: number,
+    over: Partial<LessonDraft['check']['questions'][number]> = {},
+  ) =>
+    checkCourseRules(
+      draftWith('', n, {
+        check: {
+          questions: [
+            {
+              id: 'q1',
+              targetItemId: lessons[n - 1].itemIds[0],
+              prompt: 'Type it',
+              answerType: 'typed',
+              correctAnswer,
+              ...over,
+            },
+          ],
+        },
+      }),
+      ctxAt(n),
+    ).errors;
+
+  it('fails a closed typed answer with the particle joined to a word', () => {
+    expect(typedCheck('わたしは がくせい です', 43).join()).toMatch(
+      /particle in "わたしは"/,
+    );
+  });
+
+  it.each([
+    ['わたし は がくせい です', 43],
+    ['ごはん を たべます', 89],
+    ['こんにちは', 21],
+  ])('passes %s', (answer, n) => {
+    expect(typedCheck(answer, n)).toEqual([]);
+  });
+
+  it('does not check an open typed question', () => {
+    expect(
+      typedCheck('わたしは がくせい です', 43, { grading: 'open' }),
+    ).toEqual([]);
+  });
+
+  it('does not check a multiple-choice answer', () => {
+    expect(
+      typedCheck('わたしは がくせい です', 43, {
+        answerType: 'multiple-choice',
+        choices: ['わたしは がくせい です', 'b', 'c', 'd'],
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('open checks', () => {
   it('fails an open multiple-choice check', () => {
     const draft = draftWith('', 120, {

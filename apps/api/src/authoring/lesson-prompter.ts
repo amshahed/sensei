@@ -167,7 +167,7 @@ ${kanji}
 ${note}${cards}${typed}
 Course rules:
 - Every piece of Japanese you write (examples, passages, questions, choices, answers, hints) uses only the kana, grammar and words listed above
-- Write Japanese in kana, with a space between words
+- Write Japanese in kana, with a space between words, including in a typed correctAnswer
 - Kanji appear only in F-Kanji lessons${kanaReading}
 - A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for
 `;

@@ -160,7 +160,9 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     expect(prompt).toContain('Long vowels: NOT taught yet');
     expect(prompt).toContain('GRAMMAR TAUGHT SO FAR: です');
     expect(prompt).toContain('WORDS THE LEARNER KNOWS: かぎ');
-    expect(prompt).toContain('with a space between words');
+    expect(prompt).toContain(
+      'with a space between words, including in a typed correctAnswer',
+    );
     expect(prompt).toContain('Kanji appear only in F-Kanji lessons');
   });
 

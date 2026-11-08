@@ -12,6 +12,28 @@ async function buildService({
   return svc;
 }
 
+const SPOKEN_ACCEPTED: Array<[string, string]> = [
+  ['konnichiwa', 'こんにちは'],
+  ['Konnichiwa', 'こんにちは'],
+  ['konnichi wa', 'こんにちは'],
+  ['konnichiwa!', 'こんにちは'],
+  ['konbanwa', 'こんばんは'],
+  ['watashi wa gakusei desu', 'わたし は がくせい です'],
+  ['watashi ha gakusei desu', 'わたし は がくせい です'],
+  ['kore o kudasai', 'これ を ください'],
+  ['kore wo kudasai', 'これ を ください'],
+  ['eki e ikimasu', 'えき へ いきます'],
+  ['watashi wa hon wo yomimasu', 'わたし は ほん を よみます'],
+];
+
+const SPOKEN_REJECTED: Array<[string, string]> = [
+  ['wana', 'はな'],
+  ['wai', 'はい'],
+  ['eya', 'へや'],
+  ['こんにちわ', 'こんにちは'],
+  ['watashi ga gakusei desu', 'わたし は がくせい です'],
+];
+
 describe('WritingEvalService — normalizeJapanese', () => {
   let svc: WritingEvalService;
   beforeAll(async () => {
@@ -57,6 +79,14 @@ describe('WritingEvalService — exactMatch (with tokenizer)', () => {
     expect(svc.exactMatch(typed, word)).toBe(true);
   });
 
+  it.each(SPOKEN_ACCEPTED)('accepts %s for %s (H.2.a)', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(true);
+  });
+
+  it.each(SPOKEN_REJECTED)('rejects %s for %s (H.2.a)', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(false);
+  });
+
   it('matches identical hiragana strings', () => {
     expect(svc.exactMatch('ねこ', 'ねこ')).toBe(true);
   });
@@ -86,6 +116,14 @@ describe('WritingEvalService — exactMatch (tokenizer not loaded)', () => {
   let svc: WritingEvalService;
   beforeAll(async () => {
     svc = await buildService({ skipInit: true });
+  });
+
+  it.each(SPOKEN_ACCEPTED)('accepts %s for %s (H.2.a)', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(true);
+  });
+
+  it.each(SPOKEN_REJECTED)('rejects %s for %s (H.2.a)', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(false);
   });
 
   it('still matches via whitespace-removal fallback', () => {

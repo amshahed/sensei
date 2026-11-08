@@ -5,6 +5,29 @@ import {
   type JapaneseTokenizer,
 } from '../common/japanese-tokenizer';
 
+/** は, へ and を as spoken, and how rōmaji usually spells them (H.2.a). */
+const SPOKEN: Record<string, string> = {
+  は: '[はわ]',
+  へ: '[へえ]',
+  を: '[をお]',
+  こんにちは: 'こんにち[はわ]',
+  こんばんは: 'こんばん[はわ]',
+};
+const SEPARATORS = /[\s、。,.!?！？]/g;
+
+/**
+ * Whole words only, so wana stays wrong for はな. Each position is independent,
+ * so watashi wa hon wo yomimasu passes.
+ */
+function matchesSpoken(answer: string, exemplar: string): boolean {
+  const pattern = exemplar
+    .split(/[\s、。]+/)
+    .filter(Boolean)
+    .map((w) => SPOKEN[w] ?? w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
+    .join('');
+  return new RegExp(`^${pattern}$`).test(answer.replace(SEPARATORS, ''));
+}
+
 /**
  * Japanese writing-answer evaluation (H.2).
  *
@@ -13,6 +36,7 @@ import {
  *   2. Tokenize: kuromoji morpheme split → surface forms joined.
  *   3. Compare the joined token strings so whitespace in the learner's input
  *      doesn't cause false negatives (e.g. "ねこ が いる" == "ねこがいる").
+ *   4. Rōmaji input only: accept は, へ and を typed as they sound (H.2.a).
  *
  * Open TYPED checks (no fixed answer) are AI-graded by GradingService.
  */
@@ -55,13 +79,15 @@ export class WritingEvalService implements OnModuleInit {
   /**
    * Exact-match comparison for closed TYPED checks (H.2).
    * Normalizes both sides (romaji/katakana → hiragana) and compares joined
-   * token strings so spacing differences don't cause false negatives.
+   * token strings so spacing differences don't cause false negatives. Rōmaji
+   * input also passes when it spells a particle as it sounds (H.2.a).
    */
   exactMatch(answer: string, exemplar: string): boolean {
     const normAnswer = this.normalizeJapanese(answer);
     const normExemplar = this.normalizeJapanese(exemplar);
     const joinedAnswer = this.tokenize(normAnswer).join('');
     const joinedExemplar = this.tokenize(normExemplar).join('');
-    return joinedAnswer === joinedExemplar;
+    if (joinedAnswer === joinedExemplar) return true;
+    return /[a-z]/i.test(answer) && matchesSpoken(normAnswer, normExemplar);
   }
 }

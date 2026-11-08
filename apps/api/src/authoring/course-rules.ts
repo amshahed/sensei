@@ -218,9 +218,20 @@ export function checkCourseRules(
     });
   }
 
+  const words = new Set(ctx.words);
   for (const q of draft.check.questions) {
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
+    }
+    // Rōmaji particles are only accepted as whole words (H.2.a).
+    if (q.answerType === 'typed' && q.grading !== 'open') {
+      for (const w of q.correctAnswer.split(/[\s、。]+/)) {
+        if (w && !words.has(w) && /[はへを]/.test(w.slice(1))) {
+          errors.add(
+            `check ${q.id}: put the particle in "${w}" in its own word`,
+          );
+        }
+      }
     }
   }
 
