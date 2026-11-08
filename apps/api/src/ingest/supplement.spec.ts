@@ -213,9 +213,10 @@ describe('ingestSupplement', () => {
         where,
         data,
       }: {
-        where: { id: string };
+        where: { id: string; meaning?: null };
         data: { meaning: string };
       }) => {
+        if (where.meaning !== null) throw new Error('fill only empty meanings');
         if (!store.has(where.id) || store.get(where.id) !== null)
           return Promise.resolve({ count: 0 });
         store.set(where.id, data.meaning);
