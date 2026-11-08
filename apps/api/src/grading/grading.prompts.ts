@@ -9,7 +9,8 @@
  * fairness, not linguistic correctness — correctness comes from the exemplar
  * and rubric supplied per-Check by canonical content.
  *
- * Prompt is tuned for Gemini 2.5 Flash (L.4.a): concise few-shot examples,
+ * Prompt was tuned for Gemini 2.5 Flash (L.4.a) and re-checked on the current
+ * default, 3.5 Flash-Lite (L.4.b): concise few-shot examples,
  * single-sentence feedback rule, explicit tie-goes-lower instruction. Flash
  * handles these well without long chain-of-thought scaffolding.
  */

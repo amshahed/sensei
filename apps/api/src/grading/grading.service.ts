@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { LLM_CLIENT, type LlmClient } from '../llm/llm-client';
+import { LLM_CLIENT, LlmCallError, type LlmClient } from '../llm/llm-client';
 import { exactMatch } from '../common/normalize-answer';
 import {
   buildGradingUser,
@@ -47,9 +47,15 @@ export interface OpenGradeResult {
 /** Grading must never hang the lesson — cap the model call. */
 const GRADE_TIMEOUT_MS = 12_000;
 
+class GradeTimeoutError extends Error {
+  constructor() {
+    super('LLM grading timed out');
+  }
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('LLM grading timed out')), ms);
+    const t = setTimeout(() => reject(new GradeTimeoutError()), ms);
     p.then(
       (v) => {
         clearTimeout(t);
@@ -107,9 +113,7 @@ export class GradingService {
         // it as a pass while ratingFromLabel maps it to Again would desync the
         // learner-facing result from the FSRS write. Fall back instead.
         if (!isRatingLabel(res.rating)) {
-          throw new Error(
-            `grader returned an invalid rating: ${String(res.rating)}`,
-          );
+          throw new Error('grader returned a rating outside the allowed set');
         }
         return {
           rating: res.rating,
@@ -120,11 +124,29 @@ export class GradingService {
           scored: true,
         };
       } catch (err) {
-        this.logger.error(`AI grading failed, falling back: ${String(err)}`);
+        this.logDegraded(err);
       }
     }
 
     return this.fallback(input, exemplar);
+  }
+
+  /**
+   * One searchable line per grade that lost the model (L.4.b). Never includes
+   * the learner's answer.
+   */
+  private logDegraded(err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err);
+    const reason =
+      err instanceof LlmCallError
+        ? err.reason
+        : err instanceof GradeTimeoutError
+          ? 'timeout'
+          : 'bad_response';
+    const model = err instanceof LlmCallError ? err.model : 'unknown';
+    this.logger.error(
+      `GRADING_DEGRADED reason=${reason} model=${model}: ${message}`,
+    );
   }
 
   /**
