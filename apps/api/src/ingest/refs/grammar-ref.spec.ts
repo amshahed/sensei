@@ -47,6 +47,24 @@ describe('generateGrammarRef', () => {
       generateGrammarRef(client as AnthropicLike, 'は', 'N5'),
     ).rejects.toThrow('No text returned');
   });
+
+  it('refuses a passage cut off at the token limit (it would be embedded as reference)', async () => {
+    const client = {
+      messages: {
+        create: jest.fn().mockResolvedValue({
+          content: [
+            { type: 'text', text: 'は marks the topic. Example: 私は' },
+          ],
+          stop_reason: 'max_tokens',
+        }),
+      },
+    };
+    await expect(
+      generateGrammarRef(client as AnthropicLike, 'は', 'N5'),
+    ).rejects.toThrow(
+      'Grammar reference "は" hit the 512-token output limit, so its reply was cut off.',
+    );
+  });
 });
 
 describe('ingestGrammarRefs', () => {

@@ -14,7 +14,12 @@ export interface GeminiModelLike {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     systemInstruction?: string;
     generationConfig?: Record<string, unknown>;
-  }): Promise<{ response: { text(): string } }>;
+  }): Promise<{
+    response: {
+      text(): string;
+      candidates?: Array<{ finishReason?: string }>;
+    };
+  }>;
 }
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
@@ -79,15 +84,24 @@ export class GeminiLlmClient implements LlmClient {
       );
     }
 
+    const maxTokens = opts.maxTokens ?? 1024;
     const result = await this.model.generateContent({
       contents: [{ role: 'user', parts: [{ text: opts.user }] }],
       systemInstruction: opts.system,
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: toGeminiSchema(opts.schema) as unknown as GeminiSchema,
-        maxOutputTokens: opts.maxTokens ?? 1024,
+        maxOutputTokens: maxTokens,
       },
     });
+
+    // Checked first: the SDK's text() lets MAX_TOKENS through, and thinking
+    // shares this budget, so a cut-off reply may be partial or empty.
+    if (result.response.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      throw new Error(
+        `Gemini reply hit the ${maxTokens}-token limit, so its JSON was cut off.`,
+      );
+    }
 
     let text: string;
     try {

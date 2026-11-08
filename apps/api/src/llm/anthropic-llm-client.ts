@@ -2,6 +2,11 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmClient, LlmTask, ParseJsonOptions } from './llm-client';
+import {
+  DEFAULT_AUTHORING_MODEL,
+  DEFAULT_GRADING_MODEL,
+  modelOrDefault,
+} from './model-defaults';
 
 /**
  * Minimal structural view of the Anthropic SDK surface we use. Keeping the seam
@@ -12,14 +17,18 @@ export interface AnthropicLike {
   messages: {
     create(body: unknown): Promise<{
       content: Array<{ type: string; text?: string }>;
+      /** The model that actually served the call: often a dated id. */
+      model?: string;
+      stop_reason?: string | null;
+      usage?: { input_tokens?: number; output_tokens?: number };
     }>;
   };
 }
 
 /** Per-task model tiering (L.4): cheap/fast at runtime, capable for authoring. */
 const DEFAULT_MODELS: Record<LlmTask, string> = {
-  grading: 'claude-haiku-4-5',
-  authoring: 'claude-opus-4-8',
+  grading: DEFAULT_GRADING_MODEL,
+  authoring: DEFAULT_AUTHORING_MODEL,
 };
 
 @Injectable()
@@ -58,7 +67,7 @@ export class AnthropicLlmClient implements LlmClient {
       task === 'authoring'
         ? this.config.get<string>('LLM_AUTHORING_MODEL')
         : this.config.get<string>('LLM_GRADING_MODEL');
-    return override ?? DEFAULT_MODELS[task];
+    return modelOrDefault(override, DEFAULT_MODELS[task]);
   }
 
   async parseJson<T>(opts: ParseJsonOptions): Promise<T> {
@@ -76,9 +85,10 @@ export class AnthropicLlmClient implements LlmClient {
       systemBlock.cache_control = { type: 'ephemeral' };
     }
 
+    const maxTokens = opts.maxTokens ?? 1024;
     const res = await this.client.messages.create({
       model: this.modelFor(opts.task),
-      max_tokens: opts.maxTokens ?? 1024,
+      max_tokens: maxTokens,
       system: [systemBlock],
       messages: [{ role: 'user', content: opts.user }],
       output_config: {
@@ -95,6 +105,11 @@ export class AnthropicLlmClient implements LlmClient {
         b.type === 'text' && typeof b.text === 'string',
     )?.text;
 
+    if (res.stop_reason === 'max_tokens') {
+      throw new Error(
+        `LLM reply hit the ${maxTokens}-token limit, so its JSON was cut off.`,
+      );
+    }
     if (!text) {
       throw new Error('LLM returned no text content to parse.');
     }
