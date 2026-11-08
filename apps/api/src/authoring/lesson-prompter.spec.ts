@@ -175,6 +175,17 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     expect(prompt).toContain('TYPED READING');
   });
 
+  it('lets a kana reading lesson use simple words made of taught kana', () => {
+    const reading = { ...COURSE_CONTEXT, lessonType: 'I-Reading' as const };
+    expect(
+      buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+        ...reading,
+        hasKanaTargets: true,
+      }),
+    ).toContain('simple everyday words spelled only with the kana listed');
+    expect(prompt).not.toContain('simple everyday words');
+  });
+
   it('is unchanged in shape with no context', () => {
     const plain = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], []);
     expect(plain).not.toContain('COURSE CONTEXT');

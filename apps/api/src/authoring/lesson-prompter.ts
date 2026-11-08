@@ -151,6 +151,11 @@ function courseContextBlock(ctx: CourseContext): string {
     ? `\nTYPED READING: for every target item, include a check with answerType "typed". Its prompt shows the word in kana and contains no rōmaji for it. Its correctAnswer is the word in kana.\n`
     : '';
   const note = ctx.authorNote ? `\nAUTHOR NOTE: ${ctx.authorNote}\n` : '';
+  // A reading lesson on kana comes before there are words to list.
+  const kanaReading =
+    ctx.hasKanaTargets && ctx.lessonType.startsWith('I-')
+      ? '\n- This lesson practises reading kana: you may also use simple everyday words spelled only with the kana listed above'
+      : '';
 
   return `
 COURSE CONTEXT: this is lesson ${ctx.position} of ${ctx.totalLessons}. The learner knows ONLY what is listed here.
@@ -163,7 +168,7 @@ ${note}${cards}${typed}
 Course rules:
 - Every piece of Japanese you write (examples, passages, questions, choices, answers, hints) uses only the kana, grammar and words listed above
 - Write Japanese in kana, with a space between words
-- Kanji appear only in F-Kanji lessons
+- Kanji appear only in F-Kanji lessons${kanaReading}
 - A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for
 `;
 }
