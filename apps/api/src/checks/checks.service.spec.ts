@@ -69,6 +69,52 @@ describe('ChecksService', () => {
     service = moduleRef.get(ChecksService);
   });
 
+  describe('rōmaji spelling of は and へ on real grading (test.md N1, N5)', () => {
+    /** A closed typed check, graded by the real WritingEvalService. */
+    const typed = (targetItemId: string, answer: string, typedIn: string) => {
+      const row = { ...check, format: 'TYPED', targetItemId, data: { answer } };
+      const prisma = {
+        check: { findUnique: () => Promise.resolve(row) },
+      };
+      return new ChecksService(
+        prisma as never,
+        { recordCheckResult } as never,
+        {} as never,
+        new WritingEvalService(),
+      ).grade('chk-1', typedIn, 'dev-user');
+    };
+
+    it.each([
+      ['ja:kana:ha', 'は', 'wa'],
+      ['ja:kana:ha', 'ha', 'wa'],
+      ['ja:kana:he', 'へ', 'e'],
+      ['ja:kana:kata-ha', 'ハ', 'wa'],
+      ['ja:kana:ha', 'は', 'wa.'],
+      ['ja:kana:ha', 'は。', 'wa'],
+      ['ja:kana:ha', 'はな', 'wana'],
+      ['ja:kana:wo', 'を', 'o'],
+    ])('marks a %s check (%s) wrong for %s', async (id, answer, typedIn) => {
+      expect((await typed(id, answer, typedIn)).correct).toBe(false);
+    });
+
+    it.each([
+      ['ja:kana:ha', 'は', 'ha'],
+      ['ja:kana:ha', 'は', 'は'],
+      ['ja:kana:kata-ha', 'ハ', 'ha'],
+      ['ja:kana:he', 'へ', 'he'],
+      ['ja:kana:ha', 'は', 'ha.'],
+      ['ja:kana:ha', 'は', 'ha!'],
+      ['ja:kana:ha', 'こんにちは', 'konnichiwa'],
+      ['ja:kana:ha', 'こんにちは！', 'konnichiwa'],
+      ['ja:kana:ha', 'はな。', 'hana'],
+      ['ja:grammar:は', 'は', 'wa'],
+      ['ja:grammar:は', 'は', 'ha'],
+      ['ja:vocab:konnichiwa', 'こんにちは', 'konnichiwa'],
+    ])('marks a %s check (%s) right for %s', async (id, answer, typedIn) => {
+      expect((await typed(id, answer, typedIn)).correct).toBe(true);
+    });
+  });
+
   it('grades a correct answer and reveals the answer', async () => {
     findUnique.mockResolvedValue(check);
 
@@ -217,6 +263,31 @@ describe('ChecksService', () => {
         correct: true,
         rating: Rating.Good,
       });
+    });
+
+    it('grades the shape the publisher writes for an open check (P10)', async () => {
+      findUnique.mockResolvedValue({
+        ...openCheck,
+        data: { exemplar: 'はじめまして', rubric: 'Greeting and name.' },
+      });
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        feedback: 'Nice.',
+        exemplar: 'はじめまして',
+        gradedBy: 'ai',
+        scored: true,
+      });
+
+      const result = await service.grade('chk-open', 'こんにちは', 'dev-user');
+
+      expect(gradeOpen).toHaveBeenCalledWith({
+        prompt: openCheck.prompt,
+        answer: 'こんにちは',
+        exemplar: 'はじめまして',
+        rubric: 'Greeting and name.',
+      });
+      expect(result.correct).toBe(true);
     });
 
     it('maps an AI "Again" to a wrong result and an FSRS Again', async () => {

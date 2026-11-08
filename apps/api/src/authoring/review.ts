@@ -52,6 +52,32 @@ function parseArgs(): {
   };
 }
 
+/** A redraft replaces a draft that exists, so it must say --force (F.2.a). */
+export function regenerateArgs(
+  lessonId: string,
+  skeletonPath: string,
+): string[] {
+  return [
+    '--filter',
+    'api',
+    'authoring:draft',
+    lessonId,
+    '--skeleton',
+    skeletonPath,
+    '--force',
+  ];
+}
+
+/** A forced redraft that fails the gate leaves the old draft in place (F.2.a). */
+export function rejectedDraftWarning(
+  outputDir: string,
+  lessonId: string,
+): string | null {
+  return fs.existsSync(path.join(outputDir, `${lessonId}.rejected.json`))
+    ? 'The last redraft of this lesson failed the course rules. You are reviewing the older draft.'
+    : null;
+}
+
 function openEditor(filePath: string): void {
   const editor = process.env['EDITOR'] ?? process.env['VISUAL'] ?? 'vi';
   const result = spawnSync(editor, [filePath], { stdio: 'inherit' });
@@ -79,6 +105,9 @@ function main(): void {
 
   const draftRaw = JSON.parse(fs.readFileSync(draftPath, 'utf8')) as unknown;
   const draft = LessonDraftSchema.parse(draftRaw);
+
+  const rejected = rejectedDraftWarning(outputDir, lessonId);
+  if (rejected) console.warn(`Warning: ${rejected}`);
 
   console.log(`authoring:review — opening "${lessonId}" (${draft.lessonType})`);
 
@@ -151,18 +180,10 @@ function main(): void {
 
     if (regenerate) {
       console.log(`\nRegenerating draft with updated corrections...`);
-      const result = spawnSync(
-        'pnpm',
-        [
-          '--filter',
-          'api',
-          'authoring:draft',
-          lessonId,
-          '--skeleton',
-          skeletonPath,
-        ],
-        { stdio: 'inherit', cwd: path.resolve(process.cwd(), '../..') },
-      );
+      const result = spawnSync('pnpm', regenerateArgs(lessonId, skeletonPath), {
+        stdio: 'inherit',
+        cwd: path.resolve(process.cwd(), '../..'),
+      });
       if (result.status !== 0) {
         console.warn(
           `Regeneration exited with status ${String(result.status ?? 1)}`,
@@ -170,15 +191,17 @@ function main(): void {
       }
     } else {
       console.log(
-        `Tip: re-run authoring:draft ${lessonId} to regenerate with updated corrections.`,
+        `Tip: re-run authoring:draft ${lessonId} --force to regenerate with updated corrections.`,
       );
     }
   }
 }
 
-try {
-  main();
-} catch (err: unknown) {
-  console.error((err as Error).message ?? err);
-  process.exit(1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (err: unknown) {
+    console.error((err as Error).message ?? err);
+    process.exit(1);
+  }
 }

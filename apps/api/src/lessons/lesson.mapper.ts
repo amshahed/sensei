@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { CheckDto, LessonDetailDto, LessonItemDto } from '@sensei/types';
+import { learnerSurface } from '../recall/learner-surface';
+import { recapBackFor } from '../recall/recall-question';
 
 /**
  * Single source of truth for the relations a lesson detail needs. Used both for
@@ -45,9 +47,10 @@ function mapLessonItem(
     id: link.item.id,
     language: link.item.language,
     type: link.item.type,
-    display: link.item.display,
+    display: learnerSurface(link.item),
     reading: link.item.reading,
     meaning: link.item.meaning,
+    recap: recapBackFor(link.item),
     role: link.role,
   };
 }

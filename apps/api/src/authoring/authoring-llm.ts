@@ -30,19 +30,28 @@ const PRICES: Record<string, [number, number]> = {
   'claude-haiku-4-5': [1, 5],
 };
 
+/** Estimated USD for a call, or null when the model's price isn't in the table. */
+export function estimateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number | null {
+  const key = Object.keys(PRICES).find(
+    (k) => model === k || model.startsWith(`${k}-`),
+  );
+  if (!key) return null;
+  const [inPrice, outPrice] = PRICES[key];
+  return (inputTokens * inPrice + outputTokens * outPrice) / 1_000_000;
+}
+
 /** "~$0.1234", or a note when the model's price isn't in the table. */
 export function formatCost(
   model: string,
   inputTokens: number,
   outputTokens: number,
 ): string {
-  const key = Object.keys(PRICES).find(
-    (k) => model === k || model.startsWith(`${k}-`),
-  );
-  if (!key) return `cost unknown for ${model}`;
-  const [inPrice, outPrice] = PRICES[key];
-  const usd = (inputTokens * inPrice + outputTokens * outPrice) / 1_000_000;
-  return `~$${usd.toFixed(4)}`;
+  const usd = estimateCost(model, inputTokens, outputTokens);
+  return usd === null ? `cost unknown for ${model}` : `~$${usd.toFixed(4)}`;
 }
 
 /**

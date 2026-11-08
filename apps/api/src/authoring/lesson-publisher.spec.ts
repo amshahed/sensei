@@ -1,6 +1,7 @@
 import { publishLesson } from './lesson-publisher';
 import type { LessonDraft } from './lesson-schema';
 import type { Skeleton } from './skeleton-schema';
+import { loadOutlineSpec } from './outline-compiler';
 import { PrismaClient } from '@prisma/client';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -184,6 +185,25 @@ describe('publishLesson', () => {
     );
   });
 
+  it('publishes the outline title, never one a draft made up (P9, P11)', async () => {
+    const mock = makeMockPrisma();
+    await publishLesson(
+      { ...MINIMAL_DRAFT, title: '食べます' },
+      MINIMAL_SKELETON,
+      mock as unknown as PrismaClient,
+    );
+    expect(mock.lesson.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          title: 'The Five Vowels',
+        }) as unknown,
+        update: expect.objectContaining({
+          title: 'The Five Vowels',
+        }) as unknown,
+      }),
+    );
+  });
+
   it('deletes and re-creates LessonItem rows (idempotent)', async () => {
     const mock = makeMockPrisma();
     await publishLesson(
@@ -292,6 +312,67 @@ describe('publishLesson', () => {
     await expect(
       publishLesson(badDraft, badSkeleton, mock as unknown as PrismaClient),
     ).rejects.toThrow(/Unknown lesson type/);
+  });
+
+  describe('open checks (P10)', () => {
+    const openQuestion = {
+      id: 'q9',
+      targetItemId: 'ja:kana:a',
+      prompt: 'Introduce yourself.',
+      answerType: 'typed' as const,
+      correctAnswer: 'はじめまして',
+      grading: 'open' as const,
+      rubric: 'Greeting and name.',
+    };
+
+    async function published(q: typeof openQuestion) {
+      const mock = makeMockPrisma(false);
+      await publishLesson(
+        { ...MINIMAL_DRAFT, check: { questions: [q] } },
+        MINIMAL_SKELETON,
+        mock as unknown as PrismaClient,
+      );
+      const [[args]] = mock.check.createMany.mock.calls as [
+        [{ data: Array<{ format: string; data: Record<string, unknown> }> }],
+      ];
+      return args.data[0];
+    }
+
+    it('stores an exemplar and rubric and no fixed answer', async () => {
+      const row = await published(openQuestion);
+      expect(row.format).toBe('TYPED');
+      expect(row.data).toEqual({
+        exemplar: 'はじめまして',
+        rubric: 'Greeting and name.',
+      });
+      expect(row.data).not.toHaveProperty('answer');
+    });
+  });
+
+  it('lesson 1 of the compiled outline lands on the tracer slugs (P11)', async () => {
+    const spec = loadOutlineSpec();
+    const [first] = spec.chapters[0].lessons;
+    const skeleton: Skeleton = {
+      ...MINIMAL_SKELETON,
+      module: { ...spec.module, chapters: spec.chapters },
+    };
+    const mock = makeMockPrisma(true);
+    await publishLesson(
+      {
+        ...MINIMAL_DRAFT,
+        lessonId: first.id,
+        title: first.title,
+        targetItemIds: first.itemIds,
+      },
+      skeleton,
+      mock as unknown as PrismaClient,
+    );
+    expect(mock.chapter.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'hiragana-vowels' } }),
+    );
+    expect(mock.lesson.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'the-five-vowels' } }),
+    );
   });
 
   it('includes check explanation in data when present', async () => {

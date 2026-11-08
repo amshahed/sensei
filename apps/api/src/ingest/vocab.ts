@@ -213,7 +213,8 @@ export function learnerSpelling(
 
 export type JlptMatch = {
   word: JmdictWord;
-  level: JlptLevel;
+  /** Null for a supplement word, which no Tanos list names (E.1.b). */
+  level: JlptLevel | null;
   /** The list's spelling (これ, not the rare 此れ) — or its kana if usually kana (居る → いる). */
   display: string;
   reading: string;
@@ -393,6 +394,17 @@ export function standardWritingForms(
     .filter((k) => !k.tags.some((t) => NON_STANDARD_KANJI_TAGS.has(t)))
     .filter((k) => usesKanji(k.text))
     .map((k) => k.text);
+}
+
+/** All English glosses of the word's first applicable sense, joined. */
+export function firstSenseMeaning(
+  word: JmdictWord,
+  display: string,
+  reading: string,
+): string | null {
+  const [first] = applicableSenses(word, display, reading);
+  const glosses = first?.gloss.filter(isEnglish).map((g) => g.text) ?? [];
+  return glosses.length > 0 ? glosses.join('; ') : null;
 }
 
 export function buildVocabItem(match: JlptMatch, id: string) {

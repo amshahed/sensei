@@ -224,15 +224,13 @@ function PracticeBeat({
       <Text style={ui.kicker}>Practice</Text>
       <Text style={ui.title}>Quick recap</Text>
       <Text style={ui.body}>
-        Tap each card to recall its sound before the check.
+        Tap each card to test yourself before the check.
       </Text>
-      {lesson.items.map((item) => (
-        <RecallCard
-          key={item.id}
-          front={item.display}
-          back={item.reading ?? ''}
-        />
-      ))}
+      {lesson.items.map((item) =>
+        item.recap ? (
+          <RecallCard key={item.id} front={item.display} back={item.recap} />
+        ) : null,
+      )}
     </Screen>
   );
 }
@@ -241,7 +239,14 @@ function RecallCard({ front, back }: { front: string; back: string }) {
   const [shown, setShown] = useState(false);
   return (
     <Pressable style={styles.recallCard} onPress={() => setShown((s) => !s)}>
-      <Text style={styles.kanaChar}>{front}</Text>
+      <Text
+        style={styles.recallFront}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
+        {front}
+      </Text>
       <Text style={styles.kanaRomaji}>{shown ? back : 'tap'}</Text>
     </Pressable>
   );
@@ -448,10 +453,9 @@ const styles = StyleSheet.create({
   kanaMeta: { gap: 2 },
   kanaChar: { fontSize: 40, fontWeight: '600' },
   kanaRomaji: { fontSize: 16, color: '#555' },
+  recallFront: { fontSize: 40, fontWeight: '600' },
   recallCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 12,

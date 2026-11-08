@@ -10,6 +10,7 @@ import type {
   NextStepDto,
 } from '@sensei/types';
 import { MasteryService } from '../mastery/mastery.service';
+import { learnerSurface } from '../recall/learner-surface';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   type CurriculumState,
@@ -189,15 +190,27 @@ export class CurriculumService {
       select: {
         lessonId: true,
         item: {
-          select: { id: true, display: true, reading: true, meaning: true },
+          select: {
+            id: true,
+            type: true,
+            display: true,
+            reading: true,
+            meaning: true,
+          },
         },
       },
     });
     const byLesson = new Map<string, CurriculumKeyItemDto[]>();
     for (const { lessonId, item } of rows) {
+      const key: CurriculumKeyItemDto = {
+        id: item.id,
+        display: learnerSurface(item),
+        reading: item.reading,
+        meaning: item.meaning,
+      };
       const list = byLesson.get(lessonId);
-      if (list) list.push(item);
-      else byLesson.set(lessonId, [item]);
+      if (list) list.push(key);
+      else byLesson.set(lessonId, [key]);
     }
     return byLesson;
   }

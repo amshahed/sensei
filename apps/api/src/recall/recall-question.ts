@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type { ItemType } from '@sensei/types';
-import { hasKanji } from '../common/japanese-script';
+import { learnerSurface } from './learner-surface';
 
 /** The minimal item shape needed to build a recall question. */
 /** Prisma `select` for exactly the fields {@link recallQuestionFor} reads (plus id). */
@@ -25,7 +25,7 @@ export interface RecallableItem {
  * How an answer is checked:
  *  - `romaji`: kana → rōmaji, plain exact match (Japanese normalisation would
  *    accept the kana itself, which is shown in the prompt).
- *  - `reading`: vocab / kanji → a kana reading; Japanese-normalised exact match
+ *  - `reading`: kanji → a kana reading; Japanese-normalised exact match
  *    against any accepted reading, so rōmaji or katakana input counts (H.2).
  *  - `meaning`: free-text meaning, graded by the AI open-answer grader with
  *    the item's meaning as the exemplar (G.3).
@@ -101,11 +101,41 @@ export function kanjiReadings(item: RecallableItem): {
   return { accepted: [...accepted], shown: shown.join('・') };
 }
 
+/** The back of the lesson recap card (B.3.a). A word never gets rōmaji. */
+export function recapBackFor(item: RecallableItem): string | null {
+  const meaning = item.meaning?.trim() || null;
+  switch (item.type) {
+    case 'KANA':
+      return dataString(item.data, 'romaji')?.trim() || null;
+    case 'VOCAB':
+    case 'GRAMMAR':
+      return meaning;
+    case 'KANJI': {
+      const { shown } = kanjiReadings(item);
+      return [meaning, shown].filter(Boolean).join('\n') || null;
+    }
+  }
+}
+
+/**
+ * Words that kana-only display makes identical to another item, keyed by
+ * `Item.display`, with the phrase that tells them apart. The outline validator
+ * fails on any new collision without an entry here.
+ */
+export const HOMOPHONE_CONTEXT: Readonly<Record<string, string>> = {
+  さん: 'after a name',
+  三: 'as a number',
+  二: 'as a number',
+};
+
 function meaningQuestion(item: RecallableItem): RecallQuestion | null {
   const meaning = item.meaning?.trim();
+  const context =
+    item.type === 'VOCAB' ? HOMOPHONE_CONTEXT[item.display] : null;
+  const asked = context ? ` mean ${context}?` : ' mean?';
   return meaning
     ? {
-        prompt: `What does 「${item.display}」 mean?`,
+        prompt: `What does 「${learnerSurface(item)}」${asked}`,
         expected: meaning,
         accepted: [meaning],
         check: 'meaning',
@@ -116,9 +146,9 @@ function meaningQuestion(item: RecallableItem): RecallQuestion | null {
 /**
  * The typed-recall question for one item — shared by Reviews (G.4), chapter
  * Assessments (I.4.d.a) and Practice (J.1.c), so every surface asks and grades
- * the same way. No question may answer itself: a kana-only word asks for its
- * meaning (its reading *is* the prompt), and an item without a usable answer
- * (e.g. a grammar shell with no meaning yet) is not quizzable (null).
+ * the same way. No question may answer itself: a word is shown in kana, so it
+ * asks for its meaning (G.4.c), and an item without a usable answer (e.g. a
+ * grammar shell with no meaning yet) is not quizzable (null).
  */
 export function recallQuestionFor(item: RecallableItem): RecallQuestion | null {
   switch (item.type) {
@@ -133,18 +163,8 @@ export function recallQuestionFor(item: RecallableItem): RecallQuestion | null {
           }
         : null;
     }
-    case 'VOCAB': {
-      const reading = item.reading?.trim();
-      if (!hasKanji(item.display) || !reading || reading === item.display) {
-        return meaningQuestion(item);
-      }
-      return {
-        prompt: `Type the reading for 「${item.display}」`,
-        expected: reading,
-        accepted: [reading],
-        check: 'reading',
-      };
-    }
+    case 'VOCAB':
+      return meaningQuestion(item);
     case 'KANJI': {
       const { accepted, shown } = kanjiReadings(item);
       return accepted.length > 0

@@ -8,6 +8,7 @@ import type {
 } from '@sensei/types';
 import { type Grade, Rating } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
+import { learnerSurface } from '../recall/learner-surface';
 import {
   RECALLABLE_ITEM_SELECT,
   recallQuestionFor,
@@ -322,7 +323,7 @@ export class MasteryService {
     return rankWeakest(quizzable, now).map(({ state: s, retrievability }) => ({
       itemId: s.itemId,
       type: s.item.type,
-      display: s.item.display,
+      display: learnerSurface(s.item),
       mastery: s.mastery,
       retrievability,
       due: (s.due ?? now).toISOString(),

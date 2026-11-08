@@ -15,6 +15,7 @@ import type {
 import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { isUniqueViolation } from '../prisma/prisma-errors';
+import { mayInferMastery } from '../recall/learner-surface';
 import {
   RECALLABLE_ITEM_SELECT,
   recallQuestionFor,
@@ -368,7 +369,10 @@ export class PlacementService {
     return db.placementAttempt.findUniqueOrThrow({ where: { id: attempt.id } });
   }
 
-  /** Untested, quizzable items taught in the skipped chapters (seeded moderate). */
+  /**
+   * Untested, quizzable items taught in the skipped chapters (seeded moderate).
+   * Never a kanji: skipping a chapter says nothing about one (G.4.d).
+   */
   private async inferable(
     chapterIds: string[],
     tested: string[],
@@ -383,7 +387,12 @@ export class PlacementService {
       ...new Set(
         rows
           .map((r) => r.item)
-          .filter((i) => !skip.has(i.id) && recallQuestionFor(i) !== null)
+          .filter(
+            (i) =>
+              !skip.has(i.id) &&
+              mayInferMastery(i) &&
+              recallQuestionFor(i) !== null,
+          )
           .map((i) => i.id),
       ),
     ];

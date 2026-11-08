@@ -1,5 +1,6 @@
 import {
   kanjiReadings,
+  recapBackFor,
   type RecallableItem,
   recallQuestionFor,
 } from './recall-question';
@@ -38,17 +39,45 @@ describe('recallQuestionFor', () => {
     ).toBeNull();
   });
 
-  it('vocab with kanji → kana reading', () => {
+  it('vocab with kanji is shown in kana and asks its meaning (G.4.c)', () => {
     expect(
       recallQuestionFor(
         item({ display: '猫', reading: 'ねこ', meaning: 'cat' }),
       ),
     ).toEqual({
-      prompt: 'Type the reading for 「猫」',
-      expected: 'ねこ',
-      accepted: ['ねこ'],
-      check: 'reading',
+      prompt: 'What does 「ねこ」 mean?',
+      expected: 'cat',
+      accepted: ['cat'],
+      check: 'meaning',
     });
+  });
+
+  it('never asks a reading for a word, and a word with no meaning is not quizzable', () => {
+    expect(
+      recallQuestionFor(item({ display: '猫', reading: 'ねこ' })),
+    ).toBeNull();
+  });
+
+  it('adds context to the words kana display makes identical', () => {
+    const prompt = (display: string, reading: string) =>
+      recallQuestionFor(item({ display, reading, meaning: 'x' }))?.prompt;
+    expect(prompt('さん', 'さん')).toBe(
+      'What does 「さん」 mean after a name?',
+    );
+    expect(prompt('三', 'さん')).toBe('What does 「さん」 mean as a number?');
+    expect(prompt('二', 'に')).toBe('What does 「に」 mean as a number?');
+    expect(
+      recallQuestionFor(item({ type: 'GRAMMAR', display: 'に', meaning: 'x' }))
+        ?.prompt,
+    ).toBe('What does 「に」 mean?');
+  });
+
+  it('grammar prompts use the learner surface', () => {
+    const prompt = (display: string) =>
+      recallQuestionFor(item({ type: 'GRAMMAR', display, meaning: 'x' }))
+        ?.prompt;
+    expect(prompt('stem +たいです')).toBe('What does 「〜たいです」 mean?');
+    expect(prompt('～ましょう')).toBe('What does 「～ましょう」 mean?');
   });
 
   it('kana-only vocab asks for the meaning; null without one', () => {
@@ -80,6 +109,74 @@ describe('recallQuestionFor', () => {
     expect(
       recallQuestionFor(item({ type: 'GRAMMAR', display: 'です' })),
     ).toBeNull();
+  });
+});
+
+describe('recapBackFor (the lesson recap card)', () => {
+  it('gives a kana its rōmaji, never the kana again', () => {
+    expect(
+      recapBackFor(
+        item({
+          type: 'KANA',
+          display: 'あ',
+          reading: 'あ',
+          data: { romaji: 'a' },
+        }),
+      ),
+    ).toBe('a');
+  });
+
+  it('gives a word its meaning, even when its data has a rōmaji', () => {
+    expect(
+      recapBackFor(
+        item({
+          display: 'かぎ',
+          reading: 'かぎ',
+          meaning: 'key',
+          data: { romaji: 'kagi' },
+        }),
+      ),
+    ).toBe('key');
+  });
+
+  it('gives a grammar point its meaning', () => {
+    expect(
+      recapBackFor(
+        item({ type: 'GRAMMAR', display: 'に', meaning: 'marks where' }),
+      ),
+    ).toBe('marks where');
+  });
+
+  it('gives a kanji its meaning, then its readings with no KANJIDIC markers', () => {
+    const back = recapBackFor(
+      item({
+        type: 'KANJI',
+        display: '一',
+        reading: 'ひと-',
+        meaning: 'one',
+        data: {
+          on_readings: ['イチ', 'イツ'],
+          kun_readings: ['ひと-', 'ひと.つ'],
+        },
+      }),
+    );
+    expect(back).toBe('one\nイチ・イツ・ひと・ひと(つ)');
+    expect(back).not.toMatch(/[-.]/);
+  });
+
+  it('is null for a shell with nothing to show', () => {
+    expect(recapBackFor(item({ display: 'かぎ', meaning: ' ' }))).toBeNull();
+    expect(recapBackFor(item({ type: 'GRAMMAR', display: 'に' }))).toBeNull();
+    expect(
+      recapBackFor(item({ type: 'KANA', display: 'あ', reading: 'あ' })),
+    ).toBeNull();
+    expect(recapBackFor(item({ type: 'KANJI', display: '一' }))).toBeNull();
+  });
+
+  it('shows a kanji with readings and no meaning yet', () => {
+    expect(
+      recapBackFor(item({ type: 'KANJI', display: '日', reading: 'ひ' })),
+    ).toBe('ひ');
   });
 });
 

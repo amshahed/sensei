@@ -1,4 +1,5 @@
 import type { ItemType, PlacementQuestionDto } from '@sensei/types';
+import { learnerSurface } from '../recall/learner-surface';
 import {
   dataString,
   dataStrings,
@@ -193,7 +194,7 @@ export function placementQuestionFor(
       return {
         ...base,
         prompt: 'What does this word mean?',
-        display: item.display,
+        display: learnerSurface(item),
         parts: [{ label: null, ...withAnswer(meaning, wrong, random) }],
       };
     }

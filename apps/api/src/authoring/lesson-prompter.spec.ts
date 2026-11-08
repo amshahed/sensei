@@ -3,7 +3,11 @@ import {
   generateDraft,
   generateCritique,
   buildVectorQuery,
+  buildDraftPrompt,
+  buildCritiquePrompt,
+  passagesFor,
 } from './lesson-prompter';
+import type { CourseContext } from './course-context';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -110,6 +114,128 @@ const MINIMAL_CRITIQUE = {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
+const COURSE_CONTEXT: CourseContext = {
+  lessonId: 'foundation-ja-ch04-l01',
+  lessonType: 'F-Vocab',
+  position: 15,
+  totalLessons: 120,
+  kana: ['か', 'ぎ'],
+  longVowelsTaught: false,
+  grammar: [{ id: 'ja:grammar:です', surface: 'です' }],
+  words: ['かぎ'],
+  kanji: [],
+  targets: [{ id: 'ja:vocab:鍵', surface: 'かぎ' }],
+  hasKanaTargets: false,
+  kanaCards: [{ char: 'ぎ', romaji: 'gi' }],
+  typedReading: true,
+  authorNote: 'One rule on shapes already known.',
+};
+const VOCAB_LESSON: Lesson = {
+  id: 'foundation-ja-ch04-l01',
+  type: 'F-Vocab',
+  title: 'Voiced sounds',
+  itemIds: ['ja:vocab:鍵'],
+  estimatedMinutes: 7,
+};
+const VOCAB_ITEM = {
+  id: 'ja:vocab:鍵',
+  display: '鍵',
+  reading: 'かぎ',
+  type: 'VOCAB',
+  data: { senses: ['key'] },
+};
+
+describe('buildDraftPrompt with course context (F.2.a)', () => {
+  const prompt = buildDraftPrompt(
+    VOCAB_LESSON,
+    [VOCAB_ITEM],
+    [],
+    [],
+    COURSE_CONTEXT,
+  );
+
+  it('lists what the learner knows and the rules for using it', () => {
+    expect(prompt).toContain('lesson 15 of 120');
+    expect(prompt).toContain('KANA THE LEARNER CAN READ: か ぎ');
+    expect(prompt).toContain('Long vowels: NOT taught yet');
+    expect(prompt).toContain('GRAMMAR TAUGHT SO FAR: です');
+    expect(prompt).toContain('WORDS THE LEARNER KNOWS: かぎ');
+    expect(prompt).toContain(
+      'with a space between words, including in a typed correctAnswer',
+    );
+    expect(prompt).toContain('Kanji appear only in F-Kanji lessons');
+  });
+
+  it('shows a target word in kana, never its kanji', () => {
+    expect(prompt).toContain('ja:vocab:鍵(かぎ・key)');
+    expect(prompt).not.toContain('鍵・');
+  });
+
+  it('carries the note, the kana cards and the typed-reading rule', () => {
+    expect(prompt).toContain('AUTHOR NOTE: One rule on shapes already known.');
+    expect(prompt).toContain('ぎ = gi');
+    expect(prompt).toContain('TYPED READING');
+  });
+
+  it('lets a kana reading lesson use simple words made of taught kana', () => {
+    const reading = { ...COURSE_CONTEXT, lessonType: 'I-Reading' as const };
+    expect(
+      buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+        ...reading,
+        hasKanaTargets: true,
+      }),
+    ).toContain('simple everyday words spelled only with the kana listed');
+    expect(prompt).not.toContain('simple everyday words');
+  });
+
+  it('is unchanged in shape with no context', () => {
+    const plain = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], []);
+    expect(plain).not.toContain('COURSE CONTEXT');
+    expect(plain).toContain('ja:vocab:鍵(鍵・かぎ・key)');
+  });
+});
+
+describe('passagesFor', () => {
+  it('drops a Tatoeba sentence that breaks the rules and keeps one that does not', () => {
+    expect(
+      passagesFor(
+        [
+          { text: '私', source: 'tatoeba' },
+          { text: 'かぎ', source: 'tatoeba' },
+          { text: 'さかな', source: 'tatoeba' },
+        ],
+        COURSE_CONTEXT,
+      ),
+    ).toEqual(['かぎ']);
+  });
+
+  it('keeps a grammar reference, marked as not to be copied', () => {
+    const [kept] = passagesFor(
+      [{ text: 'Explains 私は', source: 'grammar-ref' }],
+      COURSE_CONTEXT,
+    );
+    expect(kept).toMatch(/^\(reference only, do not copy its Japanese\) /);
+  });
+
+  it('passes everything through with no context', () => {
+    expect(passagesFor([{ text: '私', source: 'tatoeba' }])).toEqual(['私']);
+  });
+});
+
+describe('buildCritiquePrompt with course context', () => {
+  const draft = LessonDraftSchema.parse(MINIMAL_DRAFT);
+
+  it('tells the critic what grammar is taught, and keeps 9 checks', () => {
+    const prompt = buildCritiquePrompt(draft, COURSE_CONTEXT);
+    expect(prompt).toContain('grammar taught so far: です');
+    expect(CRITIQUE_CHECKLIST).toHaveLength(9);
+  });
+
+  it('adds nothing with no context', () => {
+    expect(buildCritiquePrompt(draft)).not.toContain('grammar taught so far');
+  });
+});
+
 describe('loadLessonItems', () => {
   it('queries DB for items by IDs', async () => {
     const findMany = jest
@@ -151,6 +277,15 @@ describe('generateDraft', () => {
   });
   afterEach(() => {
     process.env = { ...saved };
+  });
+
+  it('allows 8000 output tokens, so a long draft is not cut off and lost', async () => {
+    const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
+    const { voyage } = makeVoyageFake(false);
+    await generateDraft(fake, voyage, makePrisma(), TEST_LESSON, []);
+    expect(createFn).toHaveBeenCalledWith(
+      expect.objectContaining({ max_tokens: 8000 }),
+    );
   });
 
   it('returns a validated draft with token counts', async () => {

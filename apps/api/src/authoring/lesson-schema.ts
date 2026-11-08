@@ -62,8 +62,13 @@ export const CheckQuestionSchema = z.object({
   prompt: z.string().min(1),
   answerType: z.enum(['multiple-choice', 'typed', 'spoken']),
   choices: z.array(z.string()).optional(),
+  /** For an open check, a model answer rather than the only right one. */
   correctAnswer: z.string().min(1),
   explanation: z.string().optional(),
+  /** "open": no single right answer, so the AI grader marks it. */
+  grading: z.literal('open').optional(),
+  /** What the grader should look for in an open check. */
+  rubric: z.string().min(1).optional(),
 });
 export type CheckQuestion = z.infer<typeof CheckQuestionSchema>;
 
