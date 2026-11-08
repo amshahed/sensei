@@ -185,6 +185,25 @@ describe('publishLesson', () => {
     );
   });
 
+  it('publishes the outline title, never one a draft made up (P9, P11)', async () => {
+    const mock = makeMockPrisma();
+    await publishLesson(
+      { ...MINIMAL_DRAFT, title: '食べます' },
+      MINIMAL_SKELETON,
+      mock as unknown as PrismaClient,
+    );
+    expect(mock.lesson.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          title: 'The Five Vowels',
+        }) as unknown,
+        update: expect.objectContaining({
+          title: 'The Five Vowels',
+        }) as unknown,
+      }),
+    );
+  });
+
   it('deletes and re-creates LessonItem rows (idempotent)', async () => {
     const mock = makeMockPrisma();
     await publishLesson(

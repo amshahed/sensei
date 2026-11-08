@@ -78,6 +78,7 @@ interface SkeletonContext {
   chapterTitle: string;
   chapterPosition: number;
   lessonPosition: number;
+  lessonTitle: string;
   estimatedMinutes: number;
 }
 
@@ -100,6 +101,7 @@ function findSkeletonContext(
           chapterTitle: ch.title,
           chapterPosition: ci + 1,
           lessonPosition: li + 1,
+          lessonTitle: l.title,
           estimatedMinutes: l.estimatedMinutes,
         };
       }
@@ -159,7 +161,7 @@ export async function publishLesson(
     const dbLesson = await tx.lesson.upsert({
       where: { slug: draft.lessonId },
       update: {
-        title: draft.title,
+        title: ctx.lessonTitle,
         type: lessonType,
         estimatedMinutes: ctx.estimatedMinutes,
         teach: normaliseTeach(draft.teach),
@@ -167,7 +169,7 @@ export async function publishLesson(
       create: {
         slug: draft.lessonId,
         chapterId: dbChapter.id,
-        title: draft.title,
+        title: ctx.lessonTitle,
         type: lessonType,
         position: ctx.lessonPosition,
         estimatedMinutes: ctx.estimatedMinutes,
