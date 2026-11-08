@@ -135,12 +135,18 @@ export class ChecksService {
       exemplar: asString(data.exemplar),
       rubric: asString(data.rubric),
     });
+    // Same rule as RecallGrader: our outage isn't the learner's miss. A blank
+    // answer never reaches the model, so it stays a real miss.
+    const fallbackMiss =
+      result.gradedBy === 'fallback' &&
+      !result.correct &&
+      answer.trim().length > 0;
     return {
       correct: result.correct,
       correctAnswer: result.exemplar,
       rating: ratingFromLabel(result.rating),
       feedback: result.feedback,
-      scored: result.scored,
+      scored: result.scored && !fallbackMiss,
     };
   }
 }

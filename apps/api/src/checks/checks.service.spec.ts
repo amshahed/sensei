@@ -257,5 +257,63 @@ describe('ChecksService', () => {
       expect(result.correct).toBe(true);
       expect(recordCheckResult).not.toHaveBeenCalled();
     });
+
+    it('does NOT write a miss to mastery when only the fallback said wrong', async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Again',
+        correct: false,
+        feedback: 'Not quite — the expected answer was: おはようございます.',
+        exemplar: 'おはようございます',
+        gradedBy: 'fallback',
+        scored: true,
+      });
+
+      const result = await service.grade(
+        'chk-open',
+        'a right paraphrase',
+        'dev-user',
+      );
+
+      // The learner still sees the result; the schedule doesn't pay for our outage.
+      expect(result.correct).toBe(false);
+      expect(recordCheckResult).not.toHaveBeenCalled();
+    });
+
+    it('still writes an exact match the fallback marked right', async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        feedback: 'Correct.',
+        exemplar: 'おはようございます',
+        gradedBy: 'fallback',
+        scored: true,
+      });
+
+      await service.grade('chk-open', 'おはようございます', 'dev-user');
+
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ rating: Rating.Good, correct: true }),
+      );
+    });
+
+    it('still writes a blank answer as a miss, which no outage can explain', async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Again',
+        correct: false,
+        feedback: 'No answer was given.',
+        exemplar: 'おはようございます',
+        gradedBy: 'fallback',
+        scored: true,
+      });
+
+      await service.grade('chk-open', '   ', 'dev-user');
+
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        expect.objectContaining({ rating: Rating.Again, correct: false }),
+      );
+    });
   });
 });

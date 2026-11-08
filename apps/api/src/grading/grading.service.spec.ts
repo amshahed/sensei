@@ -1,6 +1,12 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { GradingService } from './grading.service';
-import { LLM_CLIENT, type LlmClient } from '../llm/llm-client';
+import {
+  LLM_CLIENT,
+  LlmCallError,
+  type LlmClient,
+  type LlmFailureReason,
+} from '../llm/llm-client';
 
 function makeService(llm: Partial<LlmClient>): Promise<GradingService> {
   return Test.createTestingModule({
@@ -68,6 +74,109 @@ describe('GradingService', () => {
       expect(result.gradedBy).toBe('fallback');
       expect(result.correct).toBe(true);
       expect(result.scored).toBe(true);
+    });
+  });
+
+  describe('when a graded answer falls back', () => {
+    let logError: jest.SpyInstance;
+    const input = {
+      prompt: 'p',
+      answer: 'the-learners-private-words',
+      exemplar: 'おはようございます',
+    };
+
+    beforeEach(() => {
+      logError = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    const loggedLine = () => logError.mock.calls[0][0] as string;
+
+    it.each<[LlmFailureReason, string]>([
+      ['model_unavailable', '[404 Not Found] no longer available'],
+      ['rate_limited', '[429 Too Many Requests] quota'],
+      ['timeout', 'Request aborted'],
+      ['provider_error', '[503 Service Unavailable] overloaded'],
+    ])(
+      'tags a %s failure and still answers the learner',
+      async (reason, msg) => {
+        const parseJson = jest
+          .fn()
+          .mockRejectedValue(new LlmCallError(msg, reason, 'gemini-x'));
+        const service = await makeService({ enabled: true, parseJson });
+
+        const result = await service.gradeOpen(input);
+
+        expect(logError).toHaveBeenCalledTimes(1);
+        expect(loggedLine()).toBe(
+          `GRADING_DEGRADED reason=${reason} model=gemini-x: ${msg}`,
+        );
+        expect(result.gradedBy).toBe('fallback');
+        expect(result.correct).toBe(false);
+      },
+    );
+
+    it('tags its own 12-second cap as a timeout', async () => {
+      jest.useFakeTimers();
+      const parseJson = jest.fn().mockReturnValue(new Promise(() => undefined));
+      const service = await makeService({ enabled: true, parseJson });
+
+      const pending = service.gradeOpen(input);
+      await jest.advanceTimersByTimeAsync(12_000);
+      const result = await pending;
+
+      expect(loggedLine()).toBe(
+        'GRADING_DEGRADED reason=timeout model=unknown: LLM grading timed out',
+      );
+      expect(result.gradedBy).toBe('fallback');
+    });
+
+    it('tags a reply cut off at the token limit as bad_response', async () => {
+      // Thinking shares the 512-token budget on models that think (test.md N2
+      // of unit 66), so this is the line that would show it happening.
+      const parseJson = jest
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'Gemini reply hit the 512-token limit, so its JSON was cut off.',
+          ),
+        );
+      const service = await makeService({ enabled: true, parseJson });
+
+      const result = await service.gradeOpen(input);
+
+      expect(loggedLine()).toMatch(/^GRADING_DEGRADED reason=bad_response /);
+      expect(loggedLine()).toContain('512-token limit');
+      expect(result.gradedBy).toBe('fallback');
+    });
+
+    it("tags an off-enum rating as bad_response, without the learner's answer", async () => {
+      const parseJson = jest
+        .fn()
+        .mockResolvedValue({ rating: input.answer, feedback: 'x' });
+      const service = await makeService({ enabled: true, parseJson });
+
+      await service.gradeOpen(input);
+
+      expect(loggedLine()).toMatch(/^GRADING_DEGRADED reason=bad_response /);
+      expect(loggedLine()).not.toContain(input.answer);
+    });
+
+    it('logs nothing tagged when the model simply is not configured', async () => {
+      const service = await makeService({
+        enabled: false,
+        parseJson: jest.fn(),
+      });
+
+      await service.gradeOpen(input);
+
+      expect(logError).not.toHaveBeenCalled();
     });
   });
 
