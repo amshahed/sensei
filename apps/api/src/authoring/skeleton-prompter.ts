@@ -216,9 +216,10 @@ export async function generateSkeleton(
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;
     // Provenance is ours to record, not the model's to echo: it fills these
-    // with placeholders, made-up numbers, or leaves them out.
+    // with placeholders, made-up numbers, or leaves them out. The API says
+    // which model served the call (often a dated id of the one requested).
     p['generatedAt'] = new Date().toISOString();
-    p['model'] = model;
+    p['model'] = res.model ?? model;
     p['tokenUsage'] = { inputTokens, outputTokens };
   }
 

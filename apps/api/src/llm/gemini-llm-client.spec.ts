@@ -8,7 +8,10 @@ function config(values: Record<string, string | undefined>): ConfigService {
 }
 
 /** Captures the request body and returns a canned text response. */
-function fakeGemini(text: string): {
+function fakeGemini(
+  text: string,
+  finishReason?: string,
+): {
   model: GeminiModelLike;
   lastRequest: () => Record<string, unknown>;
 } {
@@ -16,7 +19,9 @@ function fakeGemini(text: string): {
   const model: GeminiModelLike = {
     generateContent: (r) => {
       req = r;
-      return Promise.resolve({ response: { text: () => text } });
+      return Promise.resolve({
+        response: { text: () => text, candidates: [{ finishReason }] },
+      });
     },
   };
   return { model, lastRequest: () => req };
@@ -184,6 +189,48 @@ describe('GeminiLlmClient', () => {
         schemaName: 'x',
       }),
     ).rejects.toThrow(/no text content/);
+  });
+
+  const ask = (client: GeminiLlmClient, maxTokens?: number) =>
+    client.parseJson({
+      task: 'grading',
+      system: 's',
+      user: 'u',
+      schema: {},
+      schemaName: 'x',
+      maxTokens,
+    });
+
+  it('reports a reply cut off at the token limit as such, not as bad JSON', async () => {
+    const { model } = fakeGemini('{"a": "cut', 'MAX_TOKENS');
+    const client = new GeminiLlmClient(config({}), model);
+
+    await expect(ask(client, 512)).rejects.toThrow(
+      'Gemini reply hit the 512-token limit, so its JSON was cut off.',
+    );
+  });
+
+  it('reports the default limit when the caller sets none', async () => {
+    const { model } = fakeGemini('{"a": "cut', 'MAX_TOKENS');
+    const client = new GeminiLlmClient(config({}), model);
+
+    await expect(ask(client)).rejects.toThrow(/hit the 1024-token limit/);
+  });
+
+  it('reports the limit even when the cut-off reply has no text at all', async () => {
+    // Gemini 2.5 spends thinking tokens from the same budget, so the limit can
+    // be reached before a single character of the answer.
+    const { model } = fakeGemini('', 'MAX_TOKENS');
+    const client = new GeminiLlmClient(config({}), model);
+
+    await expect(ask(client)).rejects.toThrow(/token limit/);
+  });
+
+  it('parses normally when the model stopped on its own', async () => {
+    const { model } = fakeGemini('{"rating":"Good"}', 'STOP');
+    const client = new GeminiLlmClient(config({}), model);
+
+    await expect(ask(client)).resolves.toEqual({ rating: 'Good' });
   });
 
   it('respects LLM_GRADING_MODEL override in config (uses it when constructing real model)', () => {

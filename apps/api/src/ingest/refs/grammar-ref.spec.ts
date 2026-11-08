@@ -61,7 +61,9 @@ describe('generateGrammarRef', () => {
     };
     await expect(
       generateGrammarRef(client as AnthropicLike, 'は', 'N5'),
-    ).rejects.toThrow(/output limit/);
+    ).rejects.toThrow(
+      'Grammar reference "は" hit the 512-token output limit, so its reply was cut off.',
+    );
   });
 });
 

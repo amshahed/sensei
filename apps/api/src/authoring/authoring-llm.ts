@@ -46,8 +46,9 @@ export function formatCost(
 }
 
 /**
- * A reply cut off at `max_tokens` is truncated JSON: say so plainly instead
- * of letting it surface as a parse error.
+ * A reply cut off at `max_tokens` is unfinished, whether it was JSON or a
+ * plain-text passage: say so plainly instead of letting it surface as a parse
+ * error or get kept half-written.
  */
 export function assertComplete(
   res: { stop_reason?: string | null },
@@ -56,32 +57,20 @@ export function assertComplete(
 ): void {
   if (res.stop_reason === 'max_tokens') {
     throw new Error(
-      `${label} hit the ${maxTokens}-token output limit, so its JSON was cut off. Raise max_tokens or split the request.`,
+      `${label} hit the ${maxTokens}-token output limit, so its reply was cut off. Raise max_tokens or split the request.`,
     );
   }
 }
 
 /**
- * Parse the model's JSON. Tolerates code fences (anywhere) and prose around
- * the object — models without extended thinking sometimes reason aloud —
- * even when that prose contains braces of its own.
+ * Parse the model's JSON: the whole reply if it is JSON, otherwise the last
+ * complete top-level object in it. Models without extended thinking sometimes
+ * reason aloud, so code fences and prose (braces included) can surround the
+ * object, and a model that corrects itself ends with the correction.
  */
 export function parseLlmJson(raw: string, label: string): unknown {
   const text = raw.trim();
-  const candidates: string[] = [text];
-  for (const m of text.matchAll(/```[\w-]*\s*\n?([\s\S]*?)```/g)) {
-    candidates.push(m[1].trim());
-  }
-  // Every '{' that could open the object, against every '}' that could close
-  // it — outermost spans first. Bounded so a huge reply can't explode this.
-  const opens = indexesOf(text, '{').slice(0, 8);
-  const closes = indexesOf(text, '}').reverse().slice(0, 8);
-  for (const start of opens) {
-    for (const end of closes) {
-      if (end > start) candidates.push(text.slice(start, end + 1));
-    }
-  }
-  for (const candidate of candidates) {
+  for (const candidate of [text, ...topLevelObjects(text).reverse()]) {
     try {
       return JSON.parse(candidate) as unknown;
     } catch {
@@ -93,10 +82,39 @@ export function parseLlmJson(raw: string, label: string): unknown {
   );
 }
 
-function indexesOf(text: string, ch: string): number[] {
-  const out: number[] = [];
-  for (let i = text.indexOf(ch); i !== -1; i = text.indexOf(ch, i + 1)) {
-    out.push(i);
+/**
+ * Every balanced `{...}` span at the top level of the text, in order. A
+ * balanced span is never searched inside, because a fragment of a malformed
+ * object isn't the answer. A `{` that never closes is stray prose, so the
+ * scan moves on to the next one.
+ */
+function topLevelObjects(text: string): string[] {
+  const spans: string[] = [];
+  let start = text.indexOf('{');
+  while (start !== -1) {
+    const end = closingBrace(text, start);
+    if (end !== -1) spans.push(text.slice(start, end + 1));
+    start = text.indexOf('{', (end === -1 ? start : end) + 1);
   }
-  return out;
+  return spans;
+}
+
+/** Index of the `}` closing the `{` at `start`, or -1. Skips JSON strings. */
+function closingBrace(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}' && --depth === 0) {
+      return i;
+    }
+  }
+  return -1;
 }

@@ -144,6 +144,15 @@ describe('buildVectorQuery', () => {
 });
 
 describe('generateDraft', () => {
+  // Some tests pin the default model, so one exported in the shell mustn't leak in.
+  const saved = { ...process.env };
+  beforeEach(() => {
+    delete process.env['LLM_AUTHORING_MODEL'];
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
   it('returns a validated draft with token counts', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
     const { voyage } = makeVoyageFake(false); // disabled — skip vector search
@@ -160,6 +169,19 @@ describe('generateDraft', () => {
     expect(result.inputTokens).toBe(200);
     expect(result.outputTokens).toBe(400);
     expect(createFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the configured model when one is set', async () => {
+    process.env['LLM_AUTHORING_MODEL'] = 'test-authoring-model';
+    const { fake, createFn } = makeAnthropicFake(MINIMAL_DRAFT);
+    const { voyage } = makeVoyageFake(false);
+
+    await generateDraft(fake, voyage, makePrisma(), TEST_LESSON, []);
+
+    const callBody = (
+      createFn.mock.calls as Array<[Record<string, unknown>]>
+    )[0][0];
+    expect(callBody.model).toBe('test-authoring-model');
   });
 
   it('calls the authoring model with no sampling params (Opus 4.8 rejects them)', async () => {
@@ -277,6 +299,15 @@ describe('generateDraft', () => {
 });
 
 describe('generateCritique', () => {
+  // Some tests pin the default model, so one exported in the shell mustn't leak in.
+  const saved = { ...process.env };
+  beforeEach(() => {
+    delete process.env['LLM_CRITIC_MODEL'];
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
   it('returns a validated critique with token counts', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_CRITIQUE);
     const draft = LessonDraftSchema.parse(MINIMAL_DRAFT);
@@ -288,6 +319,18 @@ describe('generateCritique', () => {
     expect(result.inputTokens).toBe(200);
     expect(result.outputTokens).toBe(400);
     expect(createFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the configured critic when one is set', async () => {
+    process.env['LLM_CRITIC_MODEL'] = 'test-critic-model';
+    const { fake, createFn } = makeAnthropicFake(MINIMAL_CRITIQUE);
+
+    await generateCritique(fake, LessonDraftSchema.parse(MINIMAL_DRAFT));
+
+    const callBody = (
+      createFn.mock.calls as Array<[Record<string, unknown>]>
+    )[0][0];
+    expect(callBody.model).toBe('test-critic-model');
   });
 
   it('calls the Haiku critic at temperature 0, so the gate is repeatable', async () => {
@@ -314,6 +357,26 @@ describe('generateCritique', () => {
     await expect(generateCritique(fake, draft)).rejects.toThrow(
       'non-JSON output',
     );
+  });
+
+  it('takes the corrected verdict when the critic sends two', async () => {
+    const stale = { ...MINIMAL_CRITIQUE, overallPass: true };
+    const corrected = { ...MINIMAL_CRITIQUE, overallPass: false };
+    const reply = [stale, corrected]
+      .map((c) => `\`\`\`json\n${JSON.stringify(c)}\n\`\`\``)
+      .join('\nCorrection:\n');
+    const createFn = jest.fn().mockResolvedValue({
+      content: [{ type: 'text', text: reply }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+    const fake: AnthropicLike = { messages: { create: createFn } };
+
+    const { critique } = await generateCritique(
+      fake,
+      LessonDraftSchema.parse(MINIMAL_DRAFT),
+    );
+
+    expect(critique.overallPass).toBe(false);
   });
 
   it('strips markdown fences from critique output', async () => {

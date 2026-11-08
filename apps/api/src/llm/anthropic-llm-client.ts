@@ -17,6 +17,8 @@ export interface AnthropicLike {
   messages: {
     create(body: unknown): Promise<{
       content: Array<{ type: string; text?: string }>;
+      /** The model that actually served the call: often a dated id. */
+      model?: string;
       stop_reason?: string | null;
       usage?: { input_tokens?: number; output_tokens?: number };
     }>;

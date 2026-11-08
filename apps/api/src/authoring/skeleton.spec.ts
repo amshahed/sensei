@@ -105,6 +105,15 @@ describe('SkeletonSchema', () => {
 });
 
 describe('generateSkeleton', () => {
+  // Some tests pin the default model, so one exported in the shell mustn't leak in.
+  const saved = { ...process.env };
+  beforeEach(() => {
+    delete process.env['LLM_AUTHORING_MODEL'];
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
   it('calls the LLM and returns a validated skeleton', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_SKELETON);
     const data = {
@@ -121,6 +130,23 @@ describe('generateSkeleton', () => {
     expect(result.inputTokens).toBe(100);
     expect(result.outputTokens).toBe(200);
     expect(createFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the configured model when one is set', async () => {
+    process.env['LLM_AUTHORING_MODEL'] = 'test-authoring-model';
+    const { fake, createFn } = makeAnthropicFake(MINIMAL_SKELETON);
+
+    await generateSkeleton(fake, 'foundation-ja', {
+      kana: [],
+      grammar: [],
+      vocab: [],
+      kanji: [],
+    });
+
+    const callBody = (
+      createFn.mock.calls as Array<[Record<string, unknown>]>
+    )[0][0];
+    expect(callBody.model).toBe('test-authoring-model');
   });
 
   it('calls the authoring model with no sampling params (Opus 4.8 rejects them)', async () => {
@@ -176,6 +202,29 @@ describe('generateSkeleton', () => {
       inputTokens: 20808,
       outputTokens: 14714,
     });
+  });
+
+  it('records the model the API says served the call, not the one requested', async () => {
+    const createFn = jest.fn().mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ ...MINIMAL_SKELETON, model: 'gpt-made-up' }),
+        },
+      ],
+      model: 'claude-opus-4-8-20260301',
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+    const fake: AnthropicLike = { messages: { create: createFn } };
+
+    const { skeleton } = await generateSkeleton(fake, 'foundation-ja', {
+      kana: [],
+      grammar: [],
+      vocab: [],
+      kanji: [],
+    });
+
+    expect(skeleton.model).toBe('claude-opus-4-8-20260301');
   });
 
   it('a reply cut off at the token limit fails as such, not as bad JSON', async () => {
