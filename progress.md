@@ -116,6 +116,7 @@ Phases run roughly in topological dependency order — each unblocks the next. S
 - **L.3** Data stores: **Postgres + pgvector, one database** — E.3 reference corpus is small/bounded; one datastore = solo simplification; migration to dedicated vector DB is a cheap exit option
 - **L.4** AI provider: **Anthropic (Claude) primary** behind a thin swappable `LLMClient`; tiered — Opus for offline drafting, Haiku/Sonnet for runtime grading/interactivity. Not full multi-provider routing (build the seam, not the framework)
   - **L.4.a** Provider split (amends L.4, 2026-06-15): **Anthropic** for offline authoring (Opus drafter + Haiku critic — one-time, quality-sensitive); **Gemini 2.5 Flash** for runtime grading (recurring, rubric-based, ~3x cheaper than Haiku + real free tier for dev). Both behind the same `LlmClient` interface; per-task provider selection. Follow-up issue tracks `GeminiLlmClient` + switching #8 grading path
+  - **L.4.b** Runtime grading moves to Gemini 3.5 Flash-Lite (amends L.4.a, 2026-11-08), because `gemini-2.5-flash` returns 404 for this key; a lost model is now reported
 - **L.5** Speech: **Azure Neural TTS** consolidating with Azure STT/pronunciation (H.1); authored audio cached at publish, runtime TTS only for dynamic content
 - **L.6** Hosting: **low-ops managed stack** — Railway (NestJS) · Neon (Postgres+pgvector) · Cloudflare R2 (storage) · Clerk (auth) · Expo EAS (mobile distribution); hyperscaler deferred (containerized NestJS stays portable)
 
