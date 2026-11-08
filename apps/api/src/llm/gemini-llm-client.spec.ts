@@ -1,6 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GeminiLlmClient, type GeminiModelLike } from './gemini-llm-client';
+import {
+  GeminiLlmClient,
+  type GeminiModelLike,
+  type GeminiRequest,
+} from './gemini-llm-client';
 import { LlmCallError, type LlmFailureReason } from './llm-client';
 
 const mockGetGenerativeModel = jest.fn();
@@ -29,9 +33,9 @@ function fakeGemini(
   finishReason?: string,
 ): {
   model: GeminiModelLike;
-  lastRequest: () => Record<string, unknown>;
+  lastRequest: () => Partial<GeminiRequest>;
 } {
-  let req: Record<string, unknown> = {};
+  let req: Partial<GeminiRequest> = {};
   const model: GeminiModelLike = {
     generateContent: (r) => {
       req = r;
@@ -291,8 +295,8 @@ describe('GeminiLlmClient', () => {
   });
 
   /** A model whose call rejects with `err`, as the SDK would. */
-  function failing(err: unknown): GeminiModelLike {
-    return { generateContent: () => Promise.reject(err as Error) };
+  function failing(err: Error): GeminiModelLike {
+    return { generateContent: () => Promise.reject(err) };
   }
 
   describe('classifying a failed call', () => {
@@ -389,24 +393,29 @@ describe('GeminiLlmClient', () => {
 
     afterEach(() => jest.restoreAllMocks());
 
-    const serving = (modelVersion?: string): GeminiModelLike => ({
-      generateContent: jest.fn().mockResolvedValue({
+    /** Keeps the mock to hand, so assertions don't detach a method from the model. */
+    const serving = (modelVersion?: string) => {
+      const generateContent = jest.fn().mockResolvedValue({
         response: { text: () => 'pong', modelVersion },
-      }),
-    });
+      });
+      return { model: { generateContent } as GeminiModelLike, generateContent };
+    };
 
     it('sends a 5-token call with no schema', async () => {
-      const model = serving('gemini-x');
+      const { model, generateContent } = serving('gemini-x');
       await new GeminiLlmClient(requested, model).checkModel();
 
-      const [req] = (model.generateContent as jest.Mock).mock.calls[0] as [
+      const [req] = generateContent.mock.calls[0] as [
         { generationConfig: Record<string, unknown> },
       ];
       expect(req.generationConfig).toEqual({ maxOutputTokens: 5 });
     });
 
     it('reports the model that served the call', async () => {
-      await new GeminiLlmClient(requested, serving('gemini-x')).checkModel();
+      await new GeminiLlmClient(
+        requested,
+        serving('gemini-x').model,
+      ).checkModel();
 
       expect(log).toHaveBeenCalledWith(
         'GRADING_MODEL_OK requested=gemini-x served=gemini-x',
@@ -416,7 +425,7 @@ describe('GeminiLlmClient', () => {
     });
 
     it('says unknown when Google does not name the served model', async () => {
-      await new GeminiLlmClient(requested, serving()).checkModel();
+      await new GeminiLlmClient(requested, serving().model).checkModel();
 
       expect(log).toHaveBeenCalledWith(
         'GRADING_MODEL_OK requested=gemini-x served=unknown',
@@ -424,7 +433,10 @@ describe('GeminiLlmClient', () => {
     });
 
     it('warns when a different model served the call', async () => {
-      await new GeminiLlmClient(requested, serving('gemini-y')).checkModel();
+      await new GeminiLlmClient(
+        requested,
+        serving('gemini-y').model,
+      ).checkModel();
 
       expect(warn).toHaveBeenCalledWith(
         'GRADING_MODEL_REROUTED requested=gemini-x served=gemini-y',
@@ -476,23 +488,22 @@ describe('GeminiLlmClient', () => {
       });
 
       it('makes no call under test', () => {
-        const model = serving('gemini-x');
+        const { model, generateContent } = serving('gemini-x');
 
         new GeminiLlmClient(requested, model).onApplicationBootstrap();
 
-        expect(model.generateContent).not.toHaveBeenCalled();
+        expect(generateContent).not.toHaveBeenCalled();
       });
 
       it('starts the check outside test, without waiting for it', () => {
         process.env.NODE_ENV = 'production';
-        const model: GeminiModelLike = {
-          generateContent: jest.fn(() => new Promise(() => undefined)),
-        } as unknown as GeminiModelLike;
+        const generateContent = jest.fn(() => new Promise(() => undefined));
+        const model = { generateContent } as unknown as GeminiModelLike;
 
         // Returns even though the call never settles.
         new GeminiLlmClient(requested, model).onApplicationBootstrap();
 
-        expect(model.generateContent).toHaveBeenCalledTimes(1);
+        expect(generateContent).toHaveBeenCalledTimes(1);
       });
 
       it('makes no call when no key is configured', () => {

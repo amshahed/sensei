@@ -96,7 +96,7 @@ describe('GradingService', () => {
       jest.restoreAllMocks();
     });
 
-    const loggedLine = () => logError.mock.calls[0][0] as string;
+    const loggedLine = () => (logError.mock.calls as string[][])[0][0];
 
     it.each<[LlmFailureReason, string]>([
       ['model_unavailable', '[404 Not Found] no longer available'],

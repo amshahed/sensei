@@ -34,7 +34,7 @@ export interface GeminiModelLike {
   }>;
 }
 
-interface GeminiRequest {
+export interface GeminiRequest {
   contents: Array<{ role: string; parts: Array<{ text: string }> }>;
   systemInstruction?: string;
   generationConfig?: Record<string, unknown>;
