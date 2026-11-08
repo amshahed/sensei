@@ -169,6 +169,8 @@ Design grilling COMPLETE (all phases A–M locked). **Implementing** against the
 - **Neon** — org **HowCow** (`org-lucky-forest-74421541`); project **sensei-beta** (`dawn-rice-83727032`), region `aws-eu-central-1`, Postgres 18. `DATABASE_URL` set in `apps/api/.env`; all migrations through `20261104230000_reminders` (#20) applied + seeded (the-five-vowels). The #14/#15 pair was verified on a throwaway branch first, then deployed (2026-11-03); the test branch is deleted. #17 (two new tables), #13 (`20261104150000_signup_placement`: 3 enums, nullable User intake columns, `PlacementAttempt`) and #19 (`StudyDay` + User `timezone` / `streakFreezes` / `targetSuggestionDismissedAt`) were all deployed 2026-11-04 and checked against the live schema, as was #20 (`20261104230000_reminders`: six `User` reminder columns with defaults). Neon MCP (`.mcp.json`) + `neon` skill installed project-scoped.
 - **Item + reference data in Neon (2026-11-03):** 92 kana · 1,358 vocab (N5 702 / N4 656) · 103 N5 kanji · 40 grammar shells · 9,694 Tatoeba sentences embedded (Voyage, ~72k tokens ≈ $0.004). Voyage is on its no-payment-method tier (3 RPM): every batch hit a 429 and got through on the last retry.
 
+**Operating model (2026-11-08):** work now runs through the role team in `ops/`. Current state and next actions are in `ops/CHECKPOINT.md`, and founder-only items are in `ops/BLOCKERS.md`. The list below is the state before that change.
+
 **No AFK issues left.** Every open issue is `hitl`: #22 content, #20 (on-device check only), #13 (tuning review only), #11 speaking, #10 listening (and epic #1). The next build step needs the founder to pick which one to unblock.
 
 **HITL still pending from the founder:**
