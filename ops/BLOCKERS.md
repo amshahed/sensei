@@ -15,7 +15,10 @@ Things only the founder can do. Keep this current. Each entry has the exact acti
 | 7 | Optional: walk through real Clerk sign-up on a device | Last check on #3; alpha runs use dev-stub auth | Before closed beta |
 | 8 | Optional: add a Voyage payment method | Faster re-ingests; the free tier works but crawls | Only if re-ingesting at scale |
 | 9 | Enable billing on the Gemini API project. The free tier is 15 requests per minute. On the Tech Lead's reading of the terms it allows training and human review of input, permits only paid services for EEA, Swiss and UK users, and bars apps likely to reach under-18s | Real learners using AI grading | Before any real learner |
+| 10 | In the simulator panel, pick the device `Sensei 22a SE3` and grant Claude access | The recap card check that PR #70 is waiting on, the live import, the course outline, lesson drafting, and every Alpha User run | Now |
 
 ## Resolved
 
 - 2026-11-08: Xcode license accepted; git works again.
+- 2026-11-08: Founder approved throwaway Neon branches for testing data changes, created from the main session (a background agent's attempt was denied by the permission system). Branches are deleted after use.
+- 2026-11-08: Founder approved downloading Expo Go 56.0.4 (80.9 MB, github.com/expo/expo-go-releases) to run the app on the iOS simulator.

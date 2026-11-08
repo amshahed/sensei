@@ -1566,3 +1566,39 @@ Measurements and the full comparison are in `ops/work/grading-model-404/tech.md`
 **Rejected:** A read-side filter in `getDue`, `dueTimes` and `learnedQuizzable` (three queries with a per-learner lookup, and the rows would still exist). A filter inside `MasteryService.seedInferred` (it can't tell a skip-test from an Exit Assessment). An evidence column on `ItemMasteryState` (a migration for something a row's existence already says).
 
 **Reverse:** Make `mayInferMastery` return true for KANJI and remove the `writeBack` filter in `assessments.service.ts`. No data change is needed.
+
+---
+
+### H.2.a Typed rōmaji may spell particles as they sound (amends H.2) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** A closed typed answer entered in rōmaji is also accepted when は, へ or を, as whole words in the stored answer, are typed as wa, e or o, and when こんにちは and こんばんは end in wa. Each position is independent. The drafting gate rejects a closed typed answer with one of those particles joined to another word, so the rule always applies.
+
+**Why:** Rōmaji normally spells them that way, and a beginner's first phrase lesson would otherwise mark konnichiwa wrong. Whole-word matching avoids accepting `wana` for はな.
+
+**Rejected:** A gate banning typed answers with those particles (lesson 43 could no longer ask for は, and the wrong grading would stay). Finding particles by morphological analysis (unreliable on kana-only text, F.2.a). Accepting わ for は in kana input (that's a real spelling mistake).
+
+**Reverse:** Remove `matchesSpoken` from `exactMatch` and the gate rule.
+
+---
+
+### B.3.a The server supplies the back of the lesson recap card (decided by Tech Lead, 2026-11-08)
+
+**Decision:** `LessonItemDto.recap` carries the text the Practice card reveals, built by `recapBackFor` from the same helpers as the review answer: rōmaji for kana, meaning for words and grammar, meaning then clean readings for kanji. The app only prints it. The PM's ruling on what each card shows is in `ops/work/22a-outline-gaps/triage.md`.
+
+**Why:** Keeps KANJIDIC marker handling in one place, keeps `reading` meaning what it does elsewhere, and needs no data change.
+
+**Rejected:** Sending `Item.data` to the app (duplicates parsing in the client). Redefining `reading` (`CurriculumScreen` uses it). Building rōmaji in the app (wanakana gives `konnichiha`). Storing the text on `Item` (a data change for something computable).
+
+**Reverse:** Drop the field and point the card at another field. No data change is needed.
+
+---
+
+### H.2.b Particle romaji stays off for a lone kana, and the gate spares known words (amends H.2.a) (decided by Lead on the Tester's findings, 2026-11-08)
+
+**Decision:** H.2.a's rōmaji allowance for whole-word は, へ and を is off only when a kana-target check stores a single kana, so `wa` is wrong for the character は in kana lessons and right for the particle, and `konnichiwa` stays right for a stored こんにちは on any check. The gate rule against a particle joined to another word starts once any of は, へ or を is taught, and exempts known words, including a known word written across spaces such as おはよう ございます.
+
+**Why:** Accepting `wa` for は in a kana lesson teaches the wrong sound for the character (Tester N1). The rule as first written also rejected correct answers such as はは, おはな and おはよう ございます (Tester N2). It starts on any of the three particles because へ is only taught later, combined with に at lesson 90 (`ja:grammar:にへ`), so a per-particle start would leave へ unprotected until then.
+
+**Rejected:** Dropping the rōmaji allowance entirely, because lesson 43 needs `wa` for the particle and H.2.a's promise that a beginner typing watashi wa is never marked wrong would break.
+
+**Reverse:** Remove the lone-kana check at `checks.service.ts` and the known-word exemption in `course-rules.ts`.

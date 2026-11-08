@@ -87,7 +87,7 @@ items (ingest) → outline (skeleton) → draft → critique → PM review → p
 **Launching the app for an alpha run.** Use dev-stub auth so no real account is involved:
 
 1. Start the API with `CLERK_SECRET_KEY` and `CLERK_JWT_KEY` empty, so it uses the dev user.
-2. Start Expo with `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` empty, and open it on the iOS simulator.
+2. Start Expo with `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` empty, and open it on the iOS simulator. The app runs in Expo Go; the founder approved its download on 2026-11-08, and `pnpm --filter mobile ios` installs it if it is missing.
 
 Never sign up or sign in through Clerk during an alpha run. The real sign-in walkthrough stays with the founder (`ops/BLOCKERS.md`).
 
@@ -116,4 +116,6 @@ Never sign up or sign in through Clerk during an alpha run. The real sign-in wal
 - After a parent lands, replay children with `git rebase --onto origin/main <old-parent-sha> <branch>`. A plain rebase double-applies merged commits.
 
 **Machine**
+- `expo start --ios` exited on its own `osascript` call to System Events and took Metro with it. Use `expo start --offline`, then open `exp://127.0.0.1:8081` with the simulator tool's `open_url`.
+- The simulator tool needs the founder to grant access per device in the simulator panel. Reuse `Sensei 22a SE3` so it only has to happen once.
 - macOS updates can reset the Xcode license, which blocks `git` and `python3` (`/usr/bin` shims). Only the founder can fix it with `sudo xcodebuild -license accept`. Until then `gh -R amshahed/sensei ...` works and `node` can replace Python.

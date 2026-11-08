@@ -192,7 +192,7 @@ Spec item ids must use these exact rows: 私 is `私:わたし`; 人 is `人:ひ
 
 **Why the publisher changes.** Every published question currently stores a fixed `answer`, so every TYPED check is an exact match. A free self-introduction (P10) could never be marked correct. `CheckService` already has the open path, keyed on a missing `answer`, so only the authoring side needs the change.
 
-**Contracts.** No API or DTO shape changes, and no mobile changes. `display` simply carries kana for words. **No new dependencies.** `wanakana` is already present.
+**Contracts.** The first version of this plan said no API or DTO changes and no mobile changes. That was wrong for the lesson recap card, because `LessonPlayer.tsx` used `reading` as the card's back (`test.md` F2). `LessonItemDto` gains `recap`, and `LessonPlayer.tsx` changes, as set out under "Round 1 findings". Everywhere else, `display` simply carries kana for words. **No new dependencies.** `wanakana` is already present.
 
 ---
 
@@ -327,3 +327,301 @@ For the Lead to append to `decisions.md`. The id assumes no other entry has take
 **Rejected:** A read-side filter in `getDue`, `dueTimes` and `learnedQuizzable` (three queries with a per-learner lookup, and the rows would still exist). A filter inside `MasteryService.seedInferred` (it can't tell a skip-test from an Exit Assessment). An evidence column on `ItemMasteryState` (a migration for something a row's existence already says).
 
 **Reverse:** Make `mayInferMastery` return true for KANJI and remove the `writeBack` filter in `assessments.service.ts`. No data change is needed.
+
+---
+
+# Round 1 findings
+
+Tech Lead rulings on `test.md` (PR #70, commit `0dcaf2d`), including the PM's F2 ruling and constraints in `triage.md`. All paths are under `apps/api/src/` unless stated. Everything below goes in PR #70, with a commit per finding. The new commit voids the Tester's report, so section "What the Tester reruns" applies.
+
+| Finding | Ruling |
+|---|---|
+| F1 High | **Fix.** Exempt exactly あります and います, as whole words, after lessons 74 and 75 |
+| F2 Medium | **Fix**, as the PM ruled. Server sends a new `recap` field, and the card is restacked |
+| F3 Medium | **Fix in this PR**, in `exactMatch`, plus a gate rule so the fix can't be bypassed |
+| F4 Low | **Fix**, in the F1 change |
+| F5 Low | **Fix.** `authoring:review` warns |
+| F6 Low | **Fix.** Compare rōmaji loosely |
+| F7 Low | **Fix.** Publish the skeleton's title |
+| F8 Low | **Accepted.** The ingest is insert-only and idempotent, so a retry completes, and all 14 rows it needs are live |
+| F9 Low | **Fix.** The fake enforces the `where` clause |
+
+A throwaway spike of the F1, F4 and F3 rules below, using the real compiled outline, matched all 73 expected results. No repo file was changed.
+
+## F1 and F4: whole words, not spaceless text
+
+Both come from matching endings on text with its spaces removed. Exempting bare います across that text would be wrong, because かいます (buy) contains います and would pass before lesson 87. So the ます-family markers are now checked per word.
+
+てください and たいです still match across spaces, because `きて ください` and `たべたい です` are how a draft spaces them. The Tester's script shows no reachable false positive for those two.
+
+In `authoring/course-rules.ts`, add `acrossSpaces: true` to the てください and たいです entries of `MARKERS` (and `acrossSpaces?: boolean` to its type). Replace `markerProblems` with this:
+
+```ts
+/**
+ * Taught whole by があります and がいます (lessons 74, 75), so the verb on its
+ * own is not an early use of the ます lesson. Exactly these words, with か
+ * allowed after them. ありません, いました and the like stay rejected.
+ */
+const TAUGHT_VERBS = [
+  { text: 'あります', grammarId: 'ja:grammar:があります' },
+  { text: 'います', grammarId: 'ja:grammar:がいます' },
+];
+
+/** Blanks out a known string, including when a draft puts spaces inside it. */
+function maskKnown(text: string, known: string): string {
+  const pattern = [...known]
+    .map((c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
+    .join('\\s*');
+  return text.replace(new RegExp(pattern, 'g'), '|');
+}
+
+function markerProblems(text: string, ctx: CourseContext): string[] {
+  const taught = new Set(ctx.grammar.map((g) => g.id));
+  const known = knownStrings(ctx);
+  const verbs = new Set(
+    TAUGHT_VERBS.filter((v) => taught.has(v.grammarId)).map((v) => v.text),
+  );
+  return MARKERS.filter((m) => !m.grammarId || !taught.has(m.grammarId))
+    .filter((m) => {
+      const rest = known
+        .filter((k) => k !== m.text && k.includes(m.text))
+        .reduce((t, k) => maskKnown(t, k), text);
+      if (m.acrossSpaces) return spaceless(rest).includes(m.text);
+      return (rest.match(KANA_RUN) ?? [])
+        .filter((run) => !verbs.has(run.replace(/か$/, '')))
+        .some((run) => run.includes(m.text));
+    })
+    .map((m) => `uses ${m.text} before it is taught`);
+}
+```
+
+**Tests in `course-rules.spec.ts`.** Add the Tester's reproduction, and these:
+
+| Lesson | Text | Result |
+|---|---|---|
+| 77, 81, 83 | The three sentences in `test.md` F1 | Pass |
+| 75 | いますか | Passes |
+| 73 / 74 | あります | Rejected / passes |
+| 74 / 75 | います | Rejected / passes |
+| 81 | かいます, ほん を かいます, いきますか | Rejected |
+| 86 | たべ ます | Rejected |
+| 81, 87 | ありません, いません | Rejected. Pass at 88 |
+| 81, 91 | ありました, いました | Rejected. Pass at 92 |
+| 21, 22, 23, 24 | おはよう ございます, ありがとう ございます, おねがい します, よろしく おねがい します | Pass |
+| 22, 47 | すみません かばん, がくせい じゃありません か | Pass |
+| 60 | それ で した | Passes |
+| 60 | がくせい でした | Rejected |
+| 102 / 103 | きて ください | Rejected / passes |
+| 116 / 117 | たべたい です | Rejected / passes |
+
+## F2: the recap card
+
+**How the data reaches the app: the server sends the text.** Add one field, and let the app print it.
+
+`packages/types`, on `LessonItemDto`:
+
+```ts
+/** What the Practice card reveals on tap. Null if nothing can be shown yet. */
+recap: string | null;
+```
+
+`recall/recall-question.ts`, beside `kanjiReadings`, whose `shown` string is what the review answer prints:
+
+```ts
+/** The back of the lesson recap card (triage.md, F2). A word never gets rōmaji. */
+export function recapBackFor(item: RecallableItem): string | null {
+  const meaning = item.meaning?.trim() || null;
+  switch (item.type) {
+    case 'KANA':
+      return dataString(item.data, 'romaji')?.trim() || null;
+    case 'VOCAB':
+    case 'GRAMMAR':
+      return meaning;
+    case 'KANJI': {
+      const { shown } = kanjiReadings(item);
+      return [meaning, shown].filter(Boolean).join('\n') || null;
+    }
+  }
+}
+```
+
+`lessons/lesson.mapper.ts`: add `recap: recapBackFor(link.item)` in `mapLessonItem`. The query already loads the whole item, so nothing else changes on the server. Run `pnpm --filter @sensei/types build` after the type change.
+
+**Rejected**
+- Sending `Item.data` to the app. The KANJIDIC marker parsing would be duplicated in the client, and the two copies would drift apart.
+- Changing what `reading` means. `CurriculumScreen.tsx:321` relies on it.
+- Building the text in the app with wanakana. It gives `konnichiha`, as the PM found.
+- Storing the text on `Item`. That's a data change for something computable.
+
+**The card can't stay a 40pt single row.** よろしくおねがいします is the longest front in the course, and 11 characters at 40pt need 440pt, wider than any phone. So the card stacks, with the back on its own line. The front stays at 40pt and shrinks only when it wouldn't otherwise fit on one line.
+
+In `apps/mobile/src/lesson/LessonPlayer.tsx`:
+- Body text becomes "Tap each card to test yourself before the check."
+- Render only items with a `recap`, using `front={item.display}` and `back={item.recap}`. A null never reaches the card, so it can't show a blank back.
+- `RecallCard` front:
+  ```tsx
+  <Text style={styles.recallFront} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+    {front}
+  </Text>
+  ```
+- Add `recallFront: { fontSize: 40, fontWeight: '600' }`. Leave `kanaChar` alone, since the Teach beat uses it.
+- `recallCard`: remove `flexDirection`, `alignItems` and `justifyContent`, and add `gap: 6`. The back keeps `kanaRomaji` with no line limit, so it wraps and the card grows. `Screen` already scrolls.
+
+No new dependency, so the bundle check isn't required.
+
+**Tests.** `recall-question.spec.ts`, one case per type: kana gives rōmaji, a word gives its meaning even when its `data` has a `romaji`, grammar gives its meaning, and kanji gives its meaning then clean readings with no `-` or `.`. A shell with no meaning gives null. Update lesson mapper specs for the new field. Add one assertion in `app.integration.spec.ts` that a lesson's item carries `recap` over HTTP.
+
+**Simulator check.** Developer first, then the Tester independently. Nothing published today has words, grammar or kanji, so it needs a fixture on a throwaway Neon branch. **The Lead must allow this**, because the Tester was told not to use a branch last round.
+
+1. On the branch from section 3 step 2, after the ingest and step 3's checks. This also closes the Tester's "real ingest on Postgres" gap.
+2. With a SQL file in the scratchpad, not committed, add three lessons after `the-five-vowels` in `hiragana-vowels`, each with a one-question multiple-choice Check so it can be completed:
+
+   | Type | Items |
+   |---|---|
+   | The tracer, unchanged | Kana |
+   | `F_VOCAB` | よろしくおねがいします, ありがとうございます, ごちそうさまでした, かぎ |
+   | `F_GRAMMAR` | `ja:grammar:に` (longest meaning, 100 characters), `〜がすきです`, `stem-たいです` |
+   | `F_KANJI` | 生 (20 readings, the longest back), 一 |
+
+3. Run the API with `DATABASE_URL` set to the branch's direct URL and dev-stub auth, as in `ops/PROJECT.md`. Run the app on the narrowest iPhone the simulator has, preferably 375pt wide. Work through all four lessons to the Practice beat.
+4. Confirm by screenshot, before and after a tap, for each type:
+   - Back matches the PM's table, and never repeats the front or shows nothing.
+   - よろしくおねがいします is on one line with all 11 characters visible and no ellipsis. Short fronts such as あ and 一 are still at 40pt.
+   - The grammar meaning and 生's readings wrap in full. Nothing is clipped, and the last card and the button can be reached.
+   - No rōmaji on a word's card, and no `-` or `.` in a kanji reading.
+5. Record the device and result in `dev.md` and `test.md`. Let the branch expire, or leave it for the Lead to remove. Only Android stays unchecked: it isn't in this environment.
+
+## F3: particles typed in rōmaji
+
+**Ruling: accept the spoken spellings in `exactMatch`.** Rōmaji normally writes these particles as wa, e and o, so a learner who types that way is right. A gate against typed answers with は, へ or を would stop lesson 43 from asking for は, the point of that lesson, and would leave the bug in place for any later check.
+
+In `writing-eval/writing-eval.service.ts`:
+
+```ts
+/** は, へ and を as spoken, and how rōmaji usually spells them (H.2.a). */
+const SPOKEN: Record<string, string> = {
+  は: '[はわ]',
+  へ: '[へえ]',
+  を: '[をお]',
+  こんにちは: 'こんにち[はわ]',
+  こんばんは: 'こんばん[はわ]',
+};
+const SEPARATORS = /[\s、。,.!?！？]/g;
+
+function matchesSpoken(answer: string, exemplar: string): boolean {
+  const pattern = exemplar
+    .split(/[\s、。]+/)
+    .filter(Boolean)
+    .map((w) => SPOKEN[w] ?? w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
+    .join('');
+  return new RegExp(`^${pattern}$`).test(answer.replace(SEPARATORS, ''));
+}
+```
+
+`exactMatch` ends with:
+
+```ts
+if (joinedAnswer === joinedExemplar) return true;
+return /[a-z]/i.test(answer) && matchesSpoken(normAnswer, normExemplar);
+```
+
+Details that matter:
+- Each position is independent, so `watashi wa hon wo yomimasu` passes.
+- Only whole words change, so `wana` is still wrong for はな, and `wai` for はい.
+- Rōmaji input only. The app doesn't convert input, so the server sees what was typed. A learner who types こんにちわ in kana has misspelled it, and it stays wrong.
+
+**The gate closes the one gap, which makes the PM's "never" true.** The rule needs は as its own word in the stored answer, so an answer stored as わたしはがくせいです would still fail `watashi wa`. In `checkCourseRules`, for every closed typed question:
+
+```ts
+if (q.answerType === 'typed' && q.grading !== 'open') {
+  const words = new Set(ctx.words);
+  for (const w of q.correctAnswer.split(/[\s、。]+/)) {
+    if (w && !words.has(w) && /[はへを]/.test(w.slice(1))) {
+      errors.add(`check ${q.id}: put the particle in "${w}" in its own word`);
+    }
+  }
+}
+```
+
+Add "including in a typed correctAnswer" to the spacing rule at `lesson-prompter.ts:170`, so a draft rarely trips this.
+
+**Tests**
+
+| File | Case |
+|---|---|
+| `writing-eval.service.spec.ts`, with and without the tokenizer | Accepted: konnichiwa, Konnichiwa, konnichi wa, konnichiwa!, konbanwa, watashi wa gakusei desu, watashi ha gakusei desu, kore o kudasai, kore wo kudasai, eki e ikimasu, watashi wa hon wo yomimasu |
+| | Rejected: wana for はな, wai for はい, eya for へや, こんにちわ in kana for こんにちは, watashi ga gakusei desu for わたし は がくせい です |
+| `course-rules.spec.ts` | Typed answer わたしは がくせい です fails. わたし は がくせい です, ごはん を たべます and こんにちは pass. An open typed question isn't checked |
+
+**Not changed.** `arigato` for ありがとう and `sayonara` for さようなら stay wrong. Those drop a vowel that lessons 18 to 20 teach as real, and P2 tests it. It's a separate question from particles, so the PM should watch for it at Alpha.
+
+## F5: stale draft at review
+
+`authoring/review.ts`: export `rejectedDraftWarning(outputDir, lessonId): string | null`, which returns a message when `<id>.rejected.json` exists: "The last redraft of this lesson failed the course rules. You are reviewing the older draft." `main` prints it right after loading the draft. Test the helper with a temp directory. Keeping the old draft is still right, and the publish gate still runs.
+
+## F6: rōmaji with macrons
+
+`authoring/course-rules.ts`, in `typedReadingProblems`:
+
+```ts
+const looseRomaji = (s: string) =>
+  s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s/g, '')
+    .replace(/ou/g, 'o').replace(/([aeiou])\1+/g, '$1');
+```
+
+Compare `looseRomaji(q.prompt)` against `looseRomaji(romajiOf(target.surface))` and `looseRomaji(romajiOf(q.correctAnswer))`. Keep the kana `includes` check as it is. Tests: `(okāsan)`, `(okaasan)` and `(gakkō)` are all rejected.
+
+## F7: unchecked title
+
+Publish the outline's title, so a model can't change one. In `authoring/lesson-publisher.ts`, add `lessonTitle: l.title` to the context built from the skeleton, and use `ctx.lessonTitle` in both the `update` and `create` of the lesson upsert, replacing `draft.title`. Test: a draft titled 食べます publishes the skeleton's title. This also protects P11.
+
+## F9: the additive guarantee
+
+`ingest/supplement.spec.ts`: type the fake's `where` as `{ id: string; meaning?: null }`, and add as its first line:
+
+```ts
+if (where.meaning !== null) throw new Error('fill only empty meanings');
+```
+
+Changing `supplement.ts:137` to `{ id }` must then fail the suite.
+
+## Order for the Developer
+
+1. F1 and F4, then F6, F3, F5, F7, F9.
+2. F2's server and mobile change.
+3. `pnpm typecheck && pnpm lint && pnpm test`, and push.
+4. Section 3 steps 1 to 3 on a throwaway branch, then the simulator check. Steps 4 and 5 stay after the merge.
+5. Record everything in `dev.md`, including any deviation.
+
+## What the Tester reruns
+
+- Full verification on the new commit, and CI.
+- The gate probes in `test.md`, plus the F1 table above.
+- All 342 outline items on real rows: every `recap` is non-null and differs from the front, and no word's `recap` matches its rōmaji.
+- `exactMatch` with the real tokenizer on the F3 table.
+- Mutations touching the changed code, including F9's.
+- The simulator check. The live grader check needs no rerun, because no meaning, question text or model changes.
+
+## Decision to log
+
+For the Lead to append to `decisions.md`. G.4.e above is already there. The ids below are free as of now, so renumber if another entry takes one.
+
+### H.2.a Typed rōmaji may spell particles as they sound (amends H.2) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** A closed typed answer entered in rōmaji is also accepted when は, へ or を, as whole words in the stored answer, are typed as wa, e or o, and when こんにちは and こんばんは end in wa. Each position is independent. The drafting gate rejects a closed typed answer with one of those particles joined to another word, so the rule always applies.
+
+**Why:** Rōmaji normally spells them that way, and a beginner's first phrase lesson would otherwise mark konnichiwa wrong. Whole-word matching avoids accepting `wana` for はな.
+
+**Rejected:** A gate banning typed answers with those particles (lesson 43 could no longer ask for は, and the wrong grading would stay). Finding particles by morphological analysis (unreliable on kana-only text, F.2.a). Accepting わ for は in kana input (that's a real spelling mistake).
+
+**Reverse:** Remove `matchesSpoken` from `exactMatch` and the gate rule.
+
+### B.3.a The server supplies the back of the lesson recap card (decided by Tech Lead, 2026-11-08)
+
+**Decision:** `LessonItemDto.recap` carries the text the Practice card reveals, built by `recapBackFor` from the same helpers as the review answer: rōmaji for kana, meaning for words and grammar, meaning then clean readings for kanji. The app only prints it. The PM's ruling on what each card shows is in `ops/work/22a-outline-gaps/triage.md`.
+
+**Why:** Keeps KANJIDIC marker handling in one place, keeps `reading` meaning what it does elsewhere, and needs no data change.
+
+**Rejected:** Sending `Item.data` to the app (duplicates parsing in the client). Redefining `reading` (`CurriculumScreen` uses it). Building rōmaji in the app (wanakana gives `konnichiha`). Storing the text on `Item` (a data change for something computable).
+
+**Reverse:** Drop the field and point the card at another field. No data change is needed.
