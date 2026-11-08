@@ -68,6 +68,16 @@ export function regenerateArgs(
   ];
 }
 
+/** A forced redraft that fails the gate leaves the old draft in place (F.2.a). */
+export function rejectedDraftWarning(
+  outputDir: string,
+  lessonId: string,
+): string | null {
+  return fs.existsSync(path.join(outputDir, `${lessonId}.rejected.json`))
+    ? 'The last redraft of this lesson failed the course rules. You are reviewing the older draft.'
+    : null;
+}
+
 function openEditor(filePath: string): void {
   const editor = process.env['EDITOR'] ?? process.env['VISUAL'] ?? 'vi';
   const result = spawnSync(editor, [filePath], { stdio: 'inherit' });
@@ -95,6 +105,9 @@ function main(): void {
 
   const draftRaw = JSON.parse(fs.readFileSync(draftPath, 'utf8')) as unknown;
   const draft = LessonDraftSchema.parse(draftRaw);
+
+  const rejected = rejectedDraftWarning(outputDir, lessonId);
+  if (rejected) console.warn(`Warning: ${rejected}`);
 
   console.log(`authoring:review — opening "${lessonId}" (${draft.lessonType})`);
 

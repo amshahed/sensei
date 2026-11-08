@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { VoyageClient } from '../voyage/voyage-client';
 import { parseArgs, runDrafts, type DraftRunOptions } from './draft';
-import { regenerateArgs } from './review';
+import { regenerateArgs, rejectedDraftWarning } from './review';
 import type { Lesson, Skeleton } from './skeleton-schema';
 
 const lesson = (n: number): Lesson => ({
@@ -225,6 +225,20 @@ describe('parseArgs', () => {
 
   it.each(['abc', '0', '-1'])('refuses --max-cost %s', (value) => {
     expect(() => parseArgs(['l1', '--max-cost', value])).toThrow(/--max-cost/);
+  });
+});
+
+describe('review of a lesson whose last redraft failed the gate', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'review-'));
+
+  it('stays quiet when there is no rejected draft', () => {
+    expect(rejectedDraftWarning(dir, 'l1')).toBeNull();
+  });
+
+  it('warns when <id>.rejected.json sits beside the draft', () => {
+    fs.writeFileSync(path.join(dir, 'l2.rejected.json'), '{}');
+    expect(rejectedDraftWarning(dir, 'l2')).toMatch(/older draft/);
+    expect(rejectedDraftWarning(dir, 'l1')).toBeNull();
   });
 });
 
