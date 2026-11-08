@@ -83,7 +83,11 @@ Each agent starts cold, so give it pointers, not summaries:
 
 > You are acting as **\<role\>**. Read `.claude/agents/<role>.md`, `ops/OPERATING_MODEL.md` and `ops/PROJECT.md`. Work unit: `ops/work/<id>-<slug>/`. Task: \<one sentence\>. Write your output to files in the work unit. Reply in at most 10 lines: verdict, file paths, anything blocking.
 
-If the harness doesn't list the role as an agent type, start a general-purpose agent with the same prompt. Roles are defined by their files, not by the harness.
+If the harness doesn't list the role as an agent type, start a general-purpose agent with the same prompt. Roles are defined by their files, not by the harness. Newly added role files are only listed in sessions started after they were added.
+
+**Approvals don't travel.** An agent can't receive the founder's approval second-hand. Anything needing the founder's explicit yes, such as a download or a denied permission, is carried out by the Lead from the top-level session after the founder says yes there, or is granted by the founder in the app. If a permission is denied to an agent, never route around it: record it in `ops/BLOCKERS.md` and ask.
+
+**Usage is finite.** Agents are expensive and can hit the founder's plan limits. Run one at a time when usage is tight, resume an agent that already holds the context for small follow-ups, and scope re-tests to the diff since the last verified commit.
 
 ## 6. Autonomy
 
