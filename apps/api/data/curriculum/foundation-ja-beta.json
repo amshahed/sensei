@@ -1,0 +1,2254 @@
+{
+  "module": {
+    "id": "foundation-ja",
+    "title": "Foundation Japanese",
+    "language": "ja"
+  },
+  "soundStages": [
+    {
+      "lessonId": "foundation-ja-ch04-l01",
+      "label": "が and ざ rows",
+      "chars": "がぎぐげござじずぜぞ"
+    },
+    {
+      "lessonId": "foundation-ja-ch04-l02",
+      "label": "だ, ば and ぱ rows",
+      "chars": "だぢづでどばびぶべぼぱぴぷぺぽ"
+    },
+    {
+      "lessonId": "foundation-ja-ch04-l03",
+      "label": "combination sounds",
+      "chars": "ゃゅょ"
+    },
+    {
+      "lessonId": "foundation-ja-ch04-l04",
+      "label": "long vowels",
+      "longVowels": true
+    },
+    {
+      "lessonId": "foundation-ja-ch04-l05",
+      "label": "small っ",
+      "chars": "っ"
+    },
+    {
+      "lessonId": "foundation-ja-ch07-l07",
+      "label": "katakana ー, ッ, ャ and voiced marks",
+      "chars": "ーッャュョガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"
+    }
+  ],
+  "grammarPrereqs": {
+    "ja:grammar:です": [],
+    "ja:grammar:は": [],
+    "ja:grammar:か": [
+      "ja:grammar:です"
+    ],
+    "ja:grammar:の": [
+      "ja:grammar:は"
+    ],
+    "ja:grammar:じゃありません": [
+      "ja:grammar:です"
+    ],
+    "ja:grammar:も": [
+      "ja:grammar:は"
+    ],
+    "ja:grammar:があります": [],
+    "ja:grammar:がいます": [
+      "ja:grammar:があります"
+    ],
+    "ja:grammar:に": [
+      "ja:grammar:があります"
+    ],
+    "ja:grammar:ます": [],
+    "ja:grammar:ません": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:を": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:にへ": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:で": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:ました": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:ませんか": [
+      "ja:grammar:か",
+      "ja:grammar:ません"
+    ],
+    "ja:grammar:ましょう": [
+      "ja:grammar:ます",
+      "ja:grammar:ません"
+    ],
+    "ja:grammar:て-form": [
+      "ja:grammar:ます"
+    ],
+    "ja:grammar:てください": [
+      "ja:grammar:て-form"
+    ],
+    "ja:grammar:い-adjective": [
+      "ja:grammar:です"
+    ],
+    "ja:grammar:な-adjective": [
+      "ja:grammar:です"
+    ],
+    "ja:grammar:と": [],
+    "ja:grammar:がすきです": [
+      "ja:grammar:です"
+    ],
+    "ja:grammar:stem-たいです": [
+      "ja:grammar:ます"
+    ],
+    "foundation-ja-ch10-l07": [
+      "ja:grammar:か"
+    ],
+    "foundation-ja-ch10-l08": [
+      "ja:grammar:か"
+    ]
+  },
+  "surfaces": {
+    "ja:kana:a": "あ",
+    "ja:kana:i": "い",
+    "ja:kana:u": "う",
+    "ja:kana:e": "え",
+    "ja:kana:o": "お",
+    "ja:kana:ka": "か",
+    "ja:kana:ki": "き",
+    "ja:kana:ku": "く",
+    "ja:kana:ke": "け",
+    "ja:kana:ko": "こ",
+    "ja:kana:sa": "さ",
+    "ja:kana:shi": "し",
+    "ja:kana:su": "す",
+    "ja:kana:se": "せ",
+    "ja:kana:so": "そ",
+    "ja:kana:ta": "た",
+    "ja:kana:chi": "ち",
+    "ja:kana:tsu": "つ",
+    "ja:kana:te": "て",
+    "ja:kana:to": "と",
+    "ja:kana:na": "な",
+    "ja:kana:ni": "に",
+    "ja:kana:nu": "ぬ",
+    "ja:kana:ne": "ね",
+    "ja:kana:no": "の",
+    "ja:kana:ha": "は",
+    "ja:kana:hi": "ひ",
+    "ja:kana:fu": "ふ",
+    "ja:kana:he": "へ",
+    "ja:kana:ho": "ほ",
+    "ja:kana:ma": "ま",
+    "ja:kana:mi": "み",
+    "ja:kana:mu": "む",
+    "ja:kana:me": "め",
+    "ja:kana:mo": "も",
+    "ja:kana:ya": "や",
+    "ja:kana:yu": "ゆ",
+    "ja:kana:yo": "よ",
+    "ja:kana:ra": "ら",
+    "ja:kana:ri": "り",
+    "ja:kana:ru": "る",
+    "ja:kana:re": "れ",
+    "ja:kana:ro": "ろ",
+    "ja:kana:wa": "わ",
+    "ja:kana:wo": "を",
+    "ja:kana:n": "ん",
+    "ja:vocab:鍵": "かぎ",
+    "ja:vocab:御飯": "ごはん",
+    "ja:vocab:家族": "かぞく",
+    "ja:vocab:水": "みず",
+    "ja:vocab:地図": "ちず",
+    "ja:vocab:友達": "ともだち",
+    "ja:vocab:電話": "でんわ",
+    "ja:vocab:子供": "こども",
+    "ja:vocab:かばん": "かばん",
+    "ja:vocab:鉛筆": "えんぴつ",
+    "ja:vocab:医者": "いしゃ",
+    "ja:vocab:お茶": "おちゃ",
+    "ja:vocab:辞書": "じしょ",
+    "ja:vocab:写真": "しゃしん",
+    "ja:vocab:図書館": "としょかん",
+    "ja:vocab:お母さん": "おかあさん",
+    "ja:vocab:お父さん": "おとうさん",
+    "ja:vocab:お兄さん": "おにいさん",
+    "ja:vocab:お姉さん": "おねえさん",
+    "ja:vocab:映画": "えいが",
+    "ja:vocab:学校": "がっこう",
+    "ja:vocab:一緒": "いっしょ",
+    "ja:vocab:ちょっと": "ちょっと",
+    "ja:vocab:切符": "きっぷ",
+    "ja:vocab:雑誌": "ざっし",
+    "ja:vocab:こんにちは": "こんにちは",
+    "ja:vocab:おはようございます": "おはようございます",
+    "ja:vocab:こんばんは": "こんばんは",
+    "ja:vocab:さようなら": "さようなら",
+    "ja:vocab:おやすみなさい": "おやすみなさい",
+    "ja:vocab:ありがとう": "ありがとう",
+    "ja:vocab:ありがとうございます": "ありがとうございます",
+    "ja:vocab:すみません": "すみません",
+    "ja:vocab:ごめんなさい": "ごめんなさい",
+    "ja:vocab:どういたしまして": "どういたしまして",
+    "ja:vocab:はい": "はい",
+    "ja:vocab:いいえ": "いいえ",
+    "ja:vocab:どうも": "どうも",
+    "ja:vocab:どうぞ": "どうぞ",
+    "ja:vocab:おねがいします": "おねがいします",
+    "ja:vocab:はじめまして": "はじめまして",
+    "ja:vocab:よろしくおねがいします": "よろしくおねがいします",
+    "ja:vocab:こちらこそ": "こちらこそ",
+    "ja:vocab:おげんきですか": "おげんきですか",
+    "ja:vocab:そうです": "そうです",
+    "ja:vocab:いただきます": "いただきます",
+    "ja:vocab:ごちそうさまでした": "ごちそうさまでした",
+    "ja:vocab:いらっしゃいませ": "いらっしゃいませ",
+    "ja:vocab:ください": "ください",
+    "ja:vocab:もういちど": "もういちど",
+    "ja:kana:kata-a": "ア",
+    "ja:kana:kata-i": "イ",
+    "ja:kana:kata-u": "ウ",
+    "ja:kana:kata-e": "エ",
+    "ja:kana:kata-o": "オ",
+    "ja:kana:kata-ka": "カ",
+    "ja:kana:kata-ki": "キ",
+    "ja:kana:kata-ku": "ク",
+    "ja:kana:kata-ke": "ケ",
+    "ja:kana:kata-ko": "コ",
+    "ja:kana:kata-sa": "サ",
+    "ja:kana:kata-shi": "シ",
+    "ja:kana:kata-su": "ス",
+    "ja:kana:kata-se": "セ",
+    "ja:kana:kata-so": "ソ",
+    "ja:kana:kata-ta": "タ",
+    "ja:kana:kata-chi": "チ",
+    "ja:kana:kata-tsu": "ツ",
+    "ja:kana:kata-te": "テ",
+    "ja:kana:kata-to": "ト",
+    "ja:kana:kata-na": "ナ",
+    "ja:kana:kata-ni": "ニ",
+    "ja:kana:kata-nu": "ヌ",
+    "ja:kana:kata-ne": "ネ",
+    "ja:kana:kata-no": "ノ",
+    "ja:kana:kata-ha": "ハ",
+    "ja:kana:kata-hi": "ヒ",
+    "ja:kana:kata-fu": "フ",
+    "ja:kana:kata-he": "ヘ",
+    "ja:kana:kata-ho": "ホ",
+    "ja:kana:kata-ma": "マ",
+    "ja:kana:kata-mi": "ミ",
+    "ja:kana:kata-mu": "ム",
+    "ja:kana:kata-me": "メ",
+    "ja:kana:kata-mo": "モ",
+    "ja:kana:kata-ya": "ヤ",
+    "ja:kana:kata-yu": "ユ",
+    "ja:kana:kata-yo": "ヨ",
+    "ja:kana:kata-ra": "ラ",
+    "ja:kana:kata-ri": "リ",
+    "ja:kana:kata-ru": "ル",
+    "ja:kana:kata-re": "レ",
+    "ja:kana:kata-ro": "ロ",
+    "ja:kana:kata-wa": "ワ",
+    "ja:kana:kata-wo": "ヲ",
+    "ja:kana:kata-n": "ン",
+    "ja:vocab:ノート": "ノート",
+    "ja:vocab:コーヒー": "コーヒー",
+    "ja:vocab:スポーツ": "スポーツ",
+    "ja:vocab:シャツ": "シャツ",
+    "ja:vocab:ポケット": "ポケット",
+    "ja:vocab:テレビ": "テレビ",
+    "ja:vocab:ラジオ": "ラジオ",
+    "ja:vocab:カメラ": "カメラ",
+    "ja:vocab:ホテル": "ホテル",
+    "ja:vocab:レストラン": "レストラン",
+    "ja:vocab:私:わたし": "わたし",
+    "ja:vocab:あなた": "あなた",
+    "ja:vocab:さん": "さん",
+    "ja:vocab:皆さん": "みなさん",
+    "ja:vocab:人:ひと": "ひと",
+    "ja:vocab:先生": "せんせい",
+    "ja:vocab:学生": "がくせい",
+    "ja:grammar:です": "です",
+    "ja:grammar:は": "は",
+    "ja:grammar:か": "か",
+    "ja:vocab:名前": "なまえ",
+    "ja:vocab:国": "くに",
+    "ja:vocab:日本": "にほん",
+    "ja:vocab:アメリカ": "アメリカ",
+    "ja:vocab:人:じん": "じん",
+    "ja:grammar:の": "の",
+    "ja:grammar:じゃありません": "じゃありません",
+    "ja:vocab:父": "ちち",
+    "ja:vocab:母": "はは",
+    "ja:vocab:兄": "あに",
+    "ja:vocab:姉": "あね",
+    "ja:vocab:弟": "おとうと",
+    "ja:vocab:妹": "いもうと",
+    "ja:vocab:会社": "かいしゃ",
+    "ja:vocab:仕事": "しごと",
+    "ja:vocab:大学": "だいがく",
+    "ja:grammar:も": "も",
+    "ja:vocab:これ": "これ",
+    "ja:vocab:それ": "それ",
+    "ja:vocab:あれ": "あれ",
+    "ja:vocab:どれ": "どれ",
+    "ja:vocab:この": "この",
+    "ja:vocab:その": "その",
+    "ja:vocab:あの": "あの",
+    "ja:vocab:どの": "どの",
+    "ja:vocab:ここ": "ここ",
+    "ja:vocab:そこ": "そこ",
+    "ja:vocab:あそこ": "あそこ",
+    "ja:vocab:どこ": "どこ",
+    "ja:vocab:何": "なん",
+    "ja:vocab:誰": "だれ",
+    "ja:vocab:いつ": "いつ",
+    "ja:vocab:どなた": "どなた",
+    "ja:vocab:いくら": "いくら",
+    "ja:vocab:いくつ": "いくつ",
+    "ja:vocab:どう": "どう",
+    "ja:vocab:一": "いち",
+    "ja:vocab:二": "に",
+    "ja:vocab:三": "さん",
+    "ja:vocab:四": "し",
+    "ja:vocab:五": "ご",
+    "ja:vocab:六": "ろく",
+    "ja:vocab:七": "しち",
+    "ja:vocab:八": "はち",
+    "ja:vocab:九": "きゅう",
+    "ja:vocab:十": "じゅう",
+    "ja:vocab:百": "ひゃく",
+    "ja:vocab:千": "せん",
+    "ja:vocab:万": "まん",
+    "ja:vocab:ゼロ": "ゼロ",
+    "ja:vocab:円": "えん",
+    "ja:vocab:歳": "さい",
+    "ja:vocab:誕生日": "たんじょうび",
+    "ja:vocab:本": "ほん",
+    "ja:vocab:財布": "さいふ",
+    "ja:vocab:傘": "かさ",
+    "ja:vocab:めがね": "めがね",
+    "ja:vocab:時計": "とけい",
+    "ja:vocab:机": "つくえ",
+    "ja:vocab:椅子": "いす",
+    "ja:grammar:があります": "～があります",
+    "ja:grammar:がいます": "～がいます",
+    "ja:vocab:駅": "えき",
+    "ja:vocab:銀行": "ぎんこう",
+    "ja:vocab:店": "みせ",
+    "ja:vocab:病院": "びょういん",
+    "ja:vocab:トイレ": "トイレ",
+    "ja:vocab:上": "うえ",
+    "ja:vocab:下": "した",
+    "ja:vocab:中:なか": "なか",
+    "ja:vocab:外:そと": "そと",
+    "ja:vocab:前": "まえ",
+    "ja:vocab:後ろ": "うしろ",
+    "ja:vocab:隣": "となり",
+    "ja:vocab:近く": "ちかく",
+    "ja:vocab:右": "みぎ",
+    "ja:vocab:左": "ひだり",
+    "ja:grammar:に": "に",
+    "ja:vocab:食べる": "たべる",
+    "ja:vocab:飲む": "のむ",
+    "ja:vocab:見る": "みる",
+    "ja:vocab:聞く": "きく",
+    "ja:vocab:行く": "いく",
+    "ja:vocab:来る": "くる",
+    "ja:vocab:帰る": "かえる",
+    "ja:vocab:する": "する",
+    "ja:vocab:読む": "よむ",
+    "ja:vocab:書く": "かく",
+    "ja:vocab:話す": "はなす",
+    "ja:vocab:わかる": "わかる",
+    "ja:vocab:日本語": "にほんご",
+    "ja:vocab:英語": "えいご",
+    "ja:grammar:ます": "ます",
+    "ja:grammar:ません": "ません",
+    "ja:grammar:を": "を",
+    "ja:grammar:にへ": "に/へ",
+    "ja:grammar:で": "で",
+    "ja:grammar:ました": "ました",
+    "ja:vocab:朝": "あさ",
+    "ja:vocab:昼": "ひる",
+    "ja:vocab:夜": "よる",
+    "ja:vocab:今": "いま",
+    "ja:vocab:午後": "ごご",
+    "ja:vocab:時:じ": "じ",
+    "ja:vocab:分": "ふん",
+    "ja:vocab:半": "はん",
+    "ja:vocab:時間": "じかん",
+    "ja:grammar:ませんか": "～ませんか",
+    "ja:grammar:ましょう": "～ましょう",
+    "ja:grammar:て-form": "て-form",
+    "ja:grammar:てください": "～てください",
+    "ja:vocab:大きい": "おおきい",
+    "ja:vocab:小さい": "ちいさい",
+    "ja:vocab:新しい": "あたらしい",
+    "ja:vocab:古い": "ふるい",
+    "ja:vocab:いい": "いい",
+    "ja:vocab:高い": "たかい",
+    "ja:vocab:安い": "やすい",
+    "ja:vocab:暑い": "あつい",
+    "ja:vocab:寒い": "さむい",
+    "ja:vocab:おいしい": "おいしい",
+    "ja:grammar:い-adjective": "い-adjective",
+    "ja:vocab:元気": "げんき",
+    "ja:vocab:静か": "しずか",
+    "ja:vocab:綺麗": "きれい",
+    "ja:vocab:便利": "べんり",
+    "ja:vocab:有名": "ゆうめい",
+    "ja:grammar:な-adjective": "な-adjective",
+    "ja:grammar:と": "と",
+    "ja:vocab:音楽": "おんがく",
+    "ja:vocab:歌": "うた",
+    "ja:vocab:旅行": "りょこう",
+    "ja:vocab:好き": "すき",
+    "ja:vocab:大好き": "だいすき",
+    "ja:vocab:嫌い": "きらい",
+    "ja:vocab:上手": "じょうず",
+    "ja:vocab:下手": "へた",
+    "ja:grammar:がすきです": "〜がすきです",
+    "ja:grammar:stem-たいです": "〜たいです"
+  },
+  "chapters": [
+    {
+      "id": "hiragana-vowels",
+      "title": "Hiragana: vowels, K, S",
+      "lessons": [
+        {
+          "id": "the-five-vowels",
+          "type": "F-Kana",
+          "title": "The five vowels",
+          "itemIds": [
+            "ja:kana:a",
+            "ja:kana:i",
+            "ja:kana:u",
+            "ja:kana:e",
+            "ja:kana:o"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch01-l02",
+          "type": "F-Kana",
+          "title": "The K row",
+          "itemIds": [
+            "ja:kana:ka",
+            "ja:kana:ki",
+            "ja:kana:ku",
+            "ja:kana:ke",
+            "ja:kana:ko"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch01-l03",
+          "type": "F-Kana",
+          "title": "The S row",
+          "itemIds": [
+            "ja:kana:sa",
+            "ja:kana:shi",
+            "ja:kana:su",
+            "ja:kana:se",
+            "ja:kana:so"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch01-l04",
+          "type": "I-Reading",
+          "title": "Reading first syllables",
+          "itemIds": [
+            "ja:kana:a",
+            "ja:kana:ka",
+            "ja:kana:sa",
+            "ja:kana:o",
+            "ja:kana:ko",
+            "ja:kana:so"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch02",
+      "title": "Hiragana: T, N, H",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch02-l01",
+          "type": "F-Kana",
+          "title": "The T row",
+          "itemIds": [
+            "ja:kana:ta",
+            "ja:kana:chi",
+            "ja:kana:tsu",
+            "ja:kana:te",
+            "ja:kana:to"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch02-l02",
+          "type": "F-Kana",
+          "title": "The N row",
+          "itemIds": [
+            "ja:kana:na",
+            "ja:kana:ni",
+            "ja:kana:nu",
+            "ja:kana:ne",
+            "ja:kana:no"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch02-l03",
+          "type": "F-Kana",
+          "title": "The H row",
+          "itemIds": [
+            "ja:kana:ha",
+            "ja:kana:hi",
+            "ja:kana:fu",
+            "ja:kana:he",
+            "ja:kana:ho"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch02-l04",
+          "type": "I-Reading",
+          "title": "Reading simple words I",
+          "itemIds": [
+            "ja:kana:na",
+            "ja:kana:ni",
+            "ja:kana:ha",
+            "ja:kana:hi",
+            "ja:kana:te",
+            "ja:kana:to"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch03",
+      "title": "Hiragana: M, Y, R, W, N",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch03-l01",
+          "type": "F-Kana",
+          "title": "The M row",
+          "itemIds": [
+            "ja:kana:ma",
+            "ja:kana:mi",
+            "ja:kana:mu",
+            "ja:kana:me",
+            "ja:kana:mo"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch03-l02",
+          "type": "F-Kana",
+          "title": "The Y row",
+          "itemIds": [
+            "ja:kana:ya",
+            "ja:kana:yu",
+            "ja:kana:yo"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch03-l03",
+          "type": "F-Kana",
+          "title": "The R row",
+          "itemIds": [
+            "ja:kana:ra",
+            "ja:kana:ri",
+            "ja:kana:ru",
+            "ja:kana:re",
+            "ja:kana:ro"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch03-l04",
+          "type": "F-Kana",
+          "title": "W row and ん",
+          "itemIds": [
+            "ja:kana:wa",
+            "ja:kana:wo",
+            "ja:kana:n"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch03-l05",
+          "type": "I-Reading",
+          "title": "Reading simple words II",
+          "itemIds": [
+            "ja:kana:ya",
+            "ja:kana:ma",
+            "ja:kana:ri",
+            "ja:kana:wa",
+            "ja:kana:no",
+            "ja:kana:n"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch03-l06",
+          "type": "I-Writing",
+          "title": "Writing full hiragana",
+          "itemIds": [
+            "ja:kana:a",
+            "ja:kana:ka",
+            "ja:kana:sa",
+            "ja:kana:ta",
+            "ja:kana:na",
+            "ja:kana:ha",
+            "ja:kana:ma",
+            "ja:kana:ra"
+          ],
+          "estimatedMinutes": 8
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch04",
+      "title": "Hiragana: the sounds that change",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch04-l01",
+          "type": "F-Vocab",
+          "title": "Voiced sounds: が and ざ rows",
+          "itemIds": [
+            "ja:vocab:鍵",
+            "ja:vocab:御飯",
+            "ja:vocab:家族",
+            "ja:vocab:水",
+            "ja:vocab:地図"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach the change as one rule on shapes the learner already knows, with one kana card per sound and no itemId on any card. The lesson targets are the words, never a base kana. Read every target word in the Teach beat, and write the sound in rōmaji only in the cards. The rule here: two small marks turn か into が and さ into ざ.",
+          "kanaCards": [
+            {
+              "char": "が",
+              "romaji": "ga"
+            },
+            {
+              "char": "ぎ",
+              "romaji": "gi"
+            },
+            {
+              "char": "ぐ",
+              "romaji": "gu"
+            },
+            {
+              "char": "げ",
+              "romaji": "ge"
+            },
+            {
+              "char": "ご",
+              "romaji": "go"
+            },
+            {
+              "char": "ざ",
+              "romaji": "za"
+            },
+            {
+              "char": "じ",
+              "romaji": "ji"
+            },
+            {
+              "char": "ず",
+              "romaji": "zu"
+            },
+            {
+              "char": "ぜ",
+              "romaji": "ze"
+            },
+            {
+              "char": "ぞ",
+              "romaji": "zo"
+            }
+          ],
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch04-l02",
+          "type": "F-Vocab",
+          "title": "Voiced sounds: だ, ば and ぱ rows",
+          "itemIds": [
+            "ja:vocab:友達",
+            "ja:vocab:電話",
+            "ja:vocab:子供",
+            "ja:vocab:かばん",
+            "ja:vocab:鉛筆"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach the change as one rule on shapes the learner already knows, with one kana card per sound and no itemId on any card. The lesson targets are the words, never a base kana. Read every target word in the Teach beat, and write the sound in rōmaji only in the cards. The rule here: two small marks voice た and は, a small circle turns は into ぱ. Say that ぢ and づ are rare and sound like じ and ず.",
+          "kanaCards": [
+            {
+              "char": "だ",
+              "romaji": "da"
+            },
+            {
+              "char": "ぢ",
+              "romaji": "ji"
+            },
+            {
+              "char": "づ",
+              "romaji": "zu"
+            },
+            {
+              "char": "で",
+              "romaji": "de"
+            },
+            {
+              "char": "ど",
+              "romaji": "do"
+            },
+            {
+              "char": "ば",
+              "romaji": "ba"
+            },
+            {
+              "char": "び",
+              "romaji": "bi"
+            },
+            {
+              "char": "ぶ",
+              "romaji": "bu"
+            },
+            {
+              "char": "べ",
+              "romaji": "be"
+            },
+            {
+              "char": "ぼ",
+              "romaji": "bo"
+            },
+            {
+              "char": "ぱ",
+              "romaji": "pa"
+            },
+            {
+              "char": "ぴ",
+              "romaji": "pi"
+            },
+            {
+              "char": "ぷ",
+              "romaji": "pu"
+            },
+            {
+              "char": "ぺ",
+              "romaji": "pe"
+            },
+            {
+              "char": "ぽ",
+              "romaji": "po"
+            }
+          ],
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch04-l03",
+          "type": "F-Vocab",
+          "title": "Combination sounds: きゃ, しゅ, ちょ",
+          "itemIds": [
+            "ja:vocab:医者",
+            "ja:vocab:お茶",
+            "ja:vocab:辞書",
+            "ja:vocab:写真",
+            "ja:vocab:図書館"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach the change as one rule on shapes the learner already knows, with one kana card per sound and no itemId on any card. The lesson targets are the words, never a base kana. Read every target word in the Teach beat, and write the sound in rōmaji only in the cards. The rule here: a small ゃ, ゅ or ょ after an い-column kana makes one sound. Show the cards once, quickly: most of them are only for recognising, and the five target words carry the practice.",
+          "kanaCards": [
+            {
+              "char": "きゃ",
+              "romaji": "kya"
+            },
+            {
+              "char": "きゅ",
+              "romaji": "kyu"
+            },
+            {
+              "char": "きょ",
+              "romaji": "kyo"
+            },
+            {
+              "char": "しゃ",
+              "romaji": "sha"
+            },
+            {
+              "char": "しゅ",
+              "romaji": "shu"
+            },
+            {
+              "char": "しょ",
+              "romaji": "sho"
+            },
+            {
+              "char": "ちゃ",
+              "romaji": "cha"
+            },
+            {
+              "char": "ちゅ",
+              "romaji": "chu"
+            },
+            {
+              "char": "ちょ",
+              "romaji": "cho"
+            },
+            {
+              "char": "にゃ",
+              "romaji": "nya"
+            },
+            {
+              "char": "にゅ",
+              "romaji": "nyu"
+            },
+            {
+              "char": "にょ",
+              "romaji": "nyo"
+            },
+            {
+              "char": "ひゃ",
+              "romaji": "hya"
+            },
+            {
+              "char": "ひゅ",
+              "romaji": "hyu"
+            },
+            {
+              "char": "ひょ",
+              "romaji": "hyo"
+            },
+            {
+              "char": "みゃ",
+              "romaji": "mya"
+            },
+            {
+              "char": "みゅ",
+              "romaji": "myu"
+            },
+            {
+              "char": "みょ",
+              "romaji": "myo"
+            },
+            {
+              "char": "りゃ",
+              "romaji": "rya"
+            },
+            {
+              "char": "りゅ",
+              "romaji": "ryu"
+            },
+            {
+              "char": "りょ",
+              "romaji": "ryo"
+            },
+            {
+              "char": "ぎゃ",
+              "romaji": "gya"
+            },
+            {
+              "char": "ぎゅ",
+              "romaji": "gyu"
+            },
+            {
+              "char": "ぎょ",
+              "romaji": "gyo"
+            },
+            {
+              "char": "じゃ",
+              "romaji": "ja"
+            },
+            {
+              "char": "じゅ",
+              "romaji": "ju"
+            },
+            {
+              "char": "じょ",
+              "romaji": "jo"
+            },
+            {
+              "char": "びゃ",
+              "romaji": "bya"
+            },
+            {
+              "char": "びゅ",
+              "romaji": "byu"
+            },
+            {
+              "char": "びょ",
+              "romaji": "byo"
+            },
+            {
+              "char": "ぴゃ",
+              "romaji": "pya"
+            },
+            {
+              "char": "ぴゅ",
+              "romaji": "pyu"
+            },
+            {
+              "char": "ぴょ",
+              "romaji": "pyo"
+            }
+          ],
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch04-l04",
+          "type": "F-Vocab",
+          "title": "Long vowels",
+          "itemIds": [
+            "ja:vocab:お母さん",
+            "ja:vocab:お父さん",
+            "ja:vocab:お兄さん",
+            "ja:vocab:お姉さん",
+            "ja:vocab:映画"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach through the five target words, with no cards. Explain that a held vowel takes two beats and changes the word, and that えい usually sounds like a long え and おう like a long お. There is no audio yet, so describe the timing in words, for example clapping twice. Read every target word in the Teach beat.",
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch04-l05",
+          "type": "F-Vocab",
+          "title": "The small っ pause",
+          "itemIds": [
+            "ja:vocab:学校",
+            "ja:vocab:一緒",
+            "ja:vocab:ちょっと",
+            "ja:vocab:切符",
+            "ja:vocab:雑誌"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach the change as one rule on shapes the learner already knows, with one kana card per sound and no itemId on any card. The lesson targets are the words, never a base kana. Read every target word in the Teach beat, and write the sound in rōmaji only in the cards. The rule here: a small っ is a short silent beat before the next sound. There is no audio yet, so describe the beat in words.",
+          "kanaCards": [
+            {
+              "char": "っ",
+              "romaji": "short pause"
+            }
+          ],
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch04-l06",
+          "type": "I-Reading",
+          "title": "Reading real words with every sound",
+          "itemIds": [
+            "ja:vocab:友達",
+            "ja:vocab:学校",
+            "ja:vocab:お母さん",
+            "ja:vocab:写真",
+            "ja:vocab:ちょっと"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "The learner reads every target word and types how it sounds, with no rōmaji in the prompt. Use only the sounds taught in this chapter.",
+          "typedReading": true
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch05",
+      "title": "First phrases",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch05-l01",
+          "type": "F-Vocab",
+          "title": "Hello and goodbye",
+          "itemIds": [
+            "ja:vocab:こんにちは",
+            "ja:vocab:おはようございます",
+            "ja:vocab:こんばんは",
+            "ja:vocab:さようなら",
+            "ja:vocab:おやすみなさい"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "For every phrase, say when to say it and to whom, not only what it means. Each phrase gets a short real situation. At least one check gives a situation and asks which phrase fits. Phrases are learned whole: do not break them into grammar. Situations: time of day, arriving, leaving and going to bed."
+        },
+        {
+          "id": "foundation-ja-ch05-l02",
+          "type": "F-Vocab",
+          "title": "Thank you and sorry",
+          "itemIds": [
+            "ja:vocab:ありがとう",
+            "ja:vocab:ありがとうございます",
+            "ja:vocab:すみません",
+            "ja:vocab:ごめんなさい",
+            "ja:vocab:どういたしまして"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "For every phrase, say when to say it and to whom, not only what it means. Each phrase gets a short real situation. At least one check gives a situation and asks which phrase fits. Phrases are learned whole: do not break them into grammar. Situations: thanking a friend or a stranger, getting someone's attention, apologising, and answering thanks."
+        },
+        {
+          "id": "foundation-ja-ch05-l03",
+          "type": "F-Vocab",
+          "title": "Yes, no and please",
+          "itemIds": [
+            "ja:vocab:はい",
+            "ja:vocab:いいえ",
+            "ja:vocab:どうも",
+            "ja:vocab:どうぞ",
+            "ja:vocab:おねがいします"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "For every phrase, say when to say it and to whom, not only what it means. Each phrase gets a short real situation. At least one check gives a situation and asks which phrase fits. Phrases are learned whole: do not break them into grammar. Situations: answering yes or no, offering something and asking for something."
+        },
+        {
+          "id": "foundation-ja-ch05-l04",
+          "type": "F-Vocab",
+          "title": "Meeting someone",
+          "itemIds": [
+            "ja:vocab:はじめまして",
+            "ja:vocab:よろしくおねがいします",
+            "ja:vocab:こちらこそ",
+            "ja:vocab:おげんきですか",
+            "ja:vocab:そうです"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "For every phrase, say when to say it and to whom, not only what it means. Each phrase gets a short real situation. At least one check gives a situation and asks which phrase fits. Phrases are learned whole: do not break them into grammar. Situations: meeting someone for the first time and asking how someone is."
+        },
+        {
+          "id": "foundation-ja-ch05-l05",
+          "type": "F-Vocab",
+          "title": "At the table and in the shop",
+          "itemIds": [
+            "ja:vocab:いただきます",
+            "ja:vocab:ごちそうさまでした",
+            "ja:vocab:いらっしゃいませ",
+            "ja:vocab:ください",
+            "ja:vocab:もういちど"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "For every phrase, say when to say it and to whom, not only what it means. Each phrase gets a short real situation. At least one check gives a situation and asks which phrase fits. Phrases are learned whole: do not break them into grammar. Situations: before and after a meal, entering a shop, asking for something and asking someone to repeat."
+        },
+        {
+          "id": "foundation-ja-ch05-l06",
+          "type": "I-Speaking",
+          "title": "Greetings out loud",
+          "itemIds": [
+            "ja:vocab:こんにちは",
+            "ja:vocab:ありがとうございます",
+            "ja:vocab:すみません",
+            "ja:vocab:はじめまして"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch06",
+      "title": "Katakana: vowels through N",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch06-l01",
+          "type": "F-Kana",
+          "title": "Katakana vowels",
+          "itemIds": [
+            "ja:kana:kata-a",
+            "ja:kana:kata-i",
+            "ja:kana:kata-u",
+            "ja:kana:kata-e",
+            "ja:kana:kata-o"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch06-l02",
+          "type": "F-Kana",
+          "title": "Katakana K row",
+          "itemIds": [
+            "ja:kana:kata-ka",
+            "ja:kana:kata-ki",
+            "ja:kana:kata-ku",
+            "ja:kana:kata-ke",
+            "ja:kana:kata-ko"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch06-l03",
+          "type": "F-Kana",
+          "title": "Katakana S row",
+          "itemIds": [
+            "ja:kana:kata-sa",
+            "ja:kana:kata-shi",
+            "ja:kana:kata-su",
+            "ja:kana:kata-se",
+            "ja:kana:kata-so"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch06-l04",
+          "type": "F-Kana",
+          "title": "Katakana T row",
+          "itemIds": [
+            "ja:kana:kata-ta",
+            "ja:kana:kata-chi",
+            "ja:kana:kata-tsu",
+            "ja:kana:kata-te",
+            "ja:kana:kata-to"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch06-l05",
+          "type": "F-Kana",
+          "title": "Katakana N row",
+          "itemIds": [
+            "ja:kana:kata-na",
+            "ja:kana:kata-ni",
+            "ja:kana:kata-nu",
+            "ja:kana:kata-ne",
+            "ja:kana:kata-no"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch06-l06",
+          "type": "I-Reading",
+          "title": "Reading katakana loanwords I",
+          "itemIds": [
+            "ja:kana:kata-ka",
+            "ja:kana:kata-su",
+            "ja:kana:kata-te",
+            "ja:kana:kata-to",
+            "ja:kana:kata-ni"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch07",
+      "title": "Katakana: H through ン, and its sounds",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch07-l01",
+          "type": "F-Kana",
+          "title": "Katakana H row",
+          "itemIds": [
+            "ja:kana:kata-ha",
+            "ja:kana:kata-hi",
+            "ja:kana:kata-fu",
+            "ja:kana:kata-he",
+            "ja:kana:kata-ho"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch07-l02",
+          "type": "F-Kana",
+          "title": "Katakana M row",
+          "itemIds": [
+            "ja:kana:kata-ma",
+            "ja:kana:kata-mi",
+            "ja:kana:kata-mu",
+            "ja:kana:kata-me",
+            "ja:kana:kata-mo"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch07-l03",
+          "type": "F-Kana",
+          "title": "Katakana Y row",
+          "itemIds": [
+            "ja:kana:kata-ya",
+            "ja:kana:kata-yu",
+            "ja:kana:kata-yo"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch07-l04",
+          "type": "F-Kana",
+          "title": "Katakana R row",
+          "itemIds": [
+            "ja:kana:kata-ra",
+            "ja:kana:kata-ri",
+            "ja:kana:kata-ru",
+            "ja:kana:kata-re",
+            "ja:kana:kata-ro"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch07-l05",
+          "type": "F-Kana",
+          "title": "Katakana W, ヲ, ン",
+          "itemIds": [
+            "ja:kana:kata-wa",
+            "ja:kana:kata-wo",
+            "ja:kana:kata-n"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch07-l06",
+          "type": "I-Reading",
+          "title": "Reading katakana loanwords II",
+          "itemIds": [
+            "ja:kana:kata-ha",
+            "ja:kana:kata-ma",
+            "ja:kana:kata-ra",
+            "ja:kana:kata-n",
+            "ja:kana:kata-ru"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch07-l07",
+          "type": "F-Vocab",
+          "title": "Katakana sounds: ー, ッ, ャ and voiced marks",
+          "itemIds": [
+            "ja:vocab:ノート",
+            "ja:vocab:コーヒー",
+            "ja:vocab:スポーツ",
+            "ja:vocab:シャツ",
+            "ja:vocab:ポケット"
+          ],
+          "estimatedMinutes": 7,
+          "authorNote": "Teach ー, ッ, small ャ and the voiced marks as the same rules the learner met in hiragana, with one card each. Lesson targets are the words. No foreign-sound combinations such as ティ or ファ.",
+          "kanaCards": [
+            {
+              "char": "ー",
+              "romaji": "long vowel mark"
+            },
+            {
+              "char": "ッ",
+              "romaji": "short pause"
+            },
+            {
+              "char": "シャ",
+              "romaji": "sha"
+            },
+            {
+              "char": "ガ",
+              "romaji": "ga"
+            },
+            {
+              "char": "ザ",
+              "romaji": "za"
+            },
+            {
+              "char": "ダ",
+              "romaji": "da"
+            },
+            {
+              "char": "バ",
+              "romaji": "ba"
+            },
+            {
+              "char": "パ",
+              "romaji": "pa"
+            }
+          ]
+        },
+        {
+          "id": "foundation-ja-ch07-l08",
+          "type": "F-Vocab",
+          "title": "Loanword vocabulary",
+          "itemIds": [
+            "ja:vocab:テレビ",
+            "ja:vocab:ラジオ",
+            "ja:vocab:カメラ",
+            "ja:vocab:ホテル",
+            "ja:vocab:レストラン"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch08",
+      "title": "Meeting people",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch08-l01",
+          "type": "F-Vocab",
+          "title": "I and you",
+          "itemIds": [
+            "ja:vocab:私:わたし",
+            "ja:vocab:あなた",
+            "ja:vocab:さん",
+            "ja:vocab:皆さん"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch08-l02",
+          "type": "F-Vocab",
+          "title": "People around us",
+          "itemIds": [
+            "ja:vocab:人:ひと",
+            "ja:vocab:先生",
+            "ja:vocab:学生"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch08-l03",
+          "type": "F-Grammar",
+          "title": "A は B です",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:は"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch08-l04",
+          "type": "F-Grammar",
+          "title": "Questions with か",
+          "itemIds": [
+            "ja:grammar:か"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch08-l05",
+          "type": "F-Vocab",
+          "title": "Name and origin",
+          "itemIds": [
+            "ja:vocab:名前",
+            "ja:vocab:国",
+            "ja:vocab:日本",
+            "ja:vocab:アメリカ",
+            "ja:vocab:人:じん"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch08-l06",
+          "type": "F-Grammar",
+          "title": "Linking nouns with の",
+          "itemIds": [
+            "ja:grammar:の"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch08-l07",
+          "type": "F-Grammar",
+          "title": "Is not: じゃありません",
+          "itemIds": [
+            "ja:grammar:じゃありません"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch08-l08",
+          "type": "I-Speaking",
+          "title": "Saying your name",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:は",
+            "ja:vocab:私:わたし",
+            "ja:vocab:名前"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch08-l09",
+          "type": "F-Kanji",
+          "title": "Kanji: person, big, small",
+          "itemIds": [
+            "ja:kanji:人",
+            "ja:kanji:大",
+            "ja:kanji:小"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch08-l10",
+          "type": "I-Listening",
+          "title": "Hearing introductions",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:vocab:さん",
+            "ja:vocab:名前",
+            "ja:vocab:学生"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch09",
+      "title": "Family and work",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch09-l01",
+          "type": "F-Vocab",
+          "title": "Immediate family",
+          "itemIds": [
+            "ja:vocab:父",
+            "ja:vocab:母",
+            "ja:vocab:兄",
+            "ja:vocab:姉",
+            "ja:vocab:弟",
+            "ja:vocab:妹"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch09-l02",
+          "type": "F-Vocab",
+          "title": "Work and school",
+          "itemIds": [
+            "ja:vocab:会社",
+            "ja:vocab:仕事",
+            "ja:vocab:大学",
+            "ja:vocab:学校"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch09-l03",
+          "type": "F-Grammar",
+          "title": "Me too: も",
+          "itemIds": [
+            "ja:grammar:も"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch09-l04",
+          "type": "F-Kanji",
+          "title": "Kanji: mother, father, child",
+          "itemIds": [
+            "ja:kanji:母",
+            "ja:kanji:父",
+            "ja:kanji:子",
+            "ja:kanji:女",
+            "ja:kanji:男"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch09-l05",
+          "type": "I-Reading",
+          "title": "Reading about family",
+          "itemIds": [
+            "ja:grammar:は",
+            "ja:grammar:も",
+            "ja:vocab:家族",
+            "ja:vocab:父",
+            "ja:vocab:母"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch09-l06",
+          "type": "I-Speaking",
+          "title": "Talking about your job",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:vocab:仕事",
+            "ja:vocab:会社",
+            "ja:vocab:学生"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch10",
+      "title": "This, that and questions",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch10-l01",
+          "type": "F-Vocab",
+          "title": "This and that (things)",
+          "itemIds": [
+            "ja:vocab:これ",
+            "ja:vocab:それ",
+            "ja:vocab:あれ",
+            "ja:vocab:どれ"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l02",
+          "type": "F-Vocab",
+          "title": "This and that (modifiers)",
+          "itemIds": [
+            "ja:vocab:この",
+            "ja:vocab:その",
+            "ja:vocab:あの",
+            "ja:vocab:どの"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l03",
+          "type": "F-Vocab",
+          "title": "Here and there",
+          "itemIds": [
+            "ja:vocab:ここ",
+            "ja:vocab:そこ",
+            "ja:vocab:あそこ",
+            "ja:vocab:どこ"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l04",
+          "type": "F-Vocab",
+          "title": "Question words",
+          "itemIds": [
+            "ja:vocab:何",
+            "ja:vocab:誰",
+            "ja:vocab:いつ",
+            "ja:vocab:どなた"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l05",
+          "type": "F-Vocab",
+          "title": "How much and how many",
+          "itemIds": [
+            "ja:vocab:いくら",
+            "ja:vocab:いくつ",
+            "ja:vocab:どう"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l06",
+          "type": "F-Kanji",
+          "title": "Kanji: what, name, now",
+          "itemIds": [
+            "ja:kanji:何",
+            "ja:kanji:名",
+            "ja:kanji:今"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch10-l07",
+          "type": "I-Listening",
+          "title": "Hearing simple questions",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:vocab:何",
+            "ja:vocab:これ",
+            "ja:vocab:どこ"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch10-l08",
+          "type": "I-Speaking",
+          "title": "Asking what something is",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:は",
+            "ja:vocab:これ",
+            "ja:vocab:何"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch11",
+      "title": "Numbers and age",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch11-l01",
+          "type": "F-Vocab",
+          "title": "Numbers one to five",
+          "itemIds": [
+            "ja:vocab:一",
+            "ja:vocab:二",
+            "ja:vocab:三",
+            "ja:vocab:四",
+            "ja:vocab:五"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch11-l02",
+          "type": "F-Vocab",
+          "title": "Numbers six to ten",
+          "itemIds": [
+            "ja:vocab:六",
+            "ja:vocab:七",
+            "ja:vocab:八",
+            "ja:vocab:九",
+            "ja:vocab:十"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch11-l03",
+          "type": "F-Vocab",
+          "title": "Bigger numbers and yen",
+          "itemIds": [
+            "ja:vocab:百",
+            "ja:vocab:千",
+            "ja:vocab:万",
+            "ja:vocab:ゼロ",
+            "ja:vocab:円"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch11-l04",
+          "type": "F-Kanji",
+          "title": "Kanji: numbers 1 to 5",
+          "itemIds": [
+            "ja:kanji:一",
+            "ja:kanji:二",
+            "ja:kanji:三",
+            "ja:kanji:四",
+            "ja:kanji:五"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch11-l05",
+          "type": "F-Kanji",
+          "title": "Kanji: numbers 6 to 10",
+          "itemIds": [
+            "ja:kanji:六",
+            "ja:kanji:七",
+            "ja:kanji:八",
+            "ja:kanji:九",
+            "ja:kanji:十"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch11-l06",
+          "type": "F-Vocab",
+          "title": "Age and birthdays",
+          "itemIds": [
+            "ja:vocab:歳",
+            "ja:vocab:誕生日"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch11-l07",
+          "type": "I-Speaking",
+          "title": "Stating your age",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:vocab:歳",
+            "ja:vocab:誕生日",
+            "ja:vocab:一"
+          ],
+          "estimatedMinutes": 6
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch12",
+      "title": "Things around you",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch12-l01",
+          "type": "F-Vocab",
+          "title": "Things you carry",
+          "itemIds": [
+            "ja:vocab:本",
+            "ja:vocab:財布",
+            "ja:vocab:傘",
+            "ja:vocab:めがね"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch12-l02",
+          "type": "F-Vocab",
+          "title": "In the room",
+          "itemIds": [
+            "ja:vocab:時計",
+            "ja:vocab:机",
+            "ja:vocab:椅子"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch12-l03",
+          "type": "F-Grammar",
+          "title": "There is (things): があります",
+          "itemIds": [
+            "ja:grammar:があります"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch12-l04",
+          "type": "F-Grammar",
+          "title": "There is (people, animals): がいます",
+          "itemIds": [
+            "ja:grammar:がいます"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch12-l05",
+          "type": "F-Kanji",
+          "title": "Kanji: book and study",
+          "itemIds": [
+            "ja:kanji:本",
+            "ja:kanji:学",
+            "ja:kanji:校",
+            "ja:kanji:生"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch12-l06",
+          "type": "I-Reading",
+          "title": "Reading an object list",
+          "itemIds": [
+            "ja:grammar:があります",
+            "ja:vocab:本",
+            "ja:vocab:机",
+            "ja:vocab:かばん"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch13",
+      "title": "Places and directions",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch13-l01",
+          "type": "F-Vocab",
+          "title": "Around town",
+          "itemIds": [
+            "ja:vocab:駅",
+            "ja:vocab:銀行",
+            "ja:vocab:店",
+            "ja:vocab:病院",
+            "ja:vocab:トイレ"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch13-l02",
+          "type": "F-Vocab",
+          "title": "Position words",
+          "itemIds": [
+            "ja:vocab:上",
+            "ja:vocab:下",
+            "ja:vocab:中:なか",
+            "ja:vocab:外:そと",
+            "ja:vocab:前"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch13-l03",
+          "type": "F-Vocab",
+          "title": "Nearby and direction",
+          "itemIds": [
+            "ja:vocab:後ろ",
+            "ja:vocab:隣",
+            "ja:vocab:近く",
+            "ja:vocab:右",
+            "ja:vocab:左"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch13-l04",
+          "type": "F-Grammar",
+          "title": "Where things are: に",
+          "itemIds": [
+            "ja:grammar:に"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch13-l05",
+          "type": "F-Kanji",
+          "title": "Kanji: up, down, in, out",
+          "itemIds": [
+            "ja:kanji:上",
+            "ja:kanji:下",
+            "ja:kanji:中",
+            "ja:kanji:外"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch13-l06",
+          "type": "I-Reading",
+          "title": "Reading directions",
+          "itemIds": [
+            "ja:grammar:があります",
+            "ja:grammar:に",
+            "ja:vocab:駅",
+            "ja:vocab:近く",
+            "ja:vocab:右"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch14",
+      "title": "Daily actions",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch14-l01",
+          "type": "F-Vocab",
+          "title": "Basic verbs I",
+          "itemIds": [
+            "ja:vocab:食べる",
+            "ja:vocab:飲む",
+            "ja:vocab:見る",
+            "ja:vocab:聞く"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch14-l02",
+          "type": "F-Vocab",
+          "title": "Basic verbs II",
+          "itemIds": [
+            "ja:vocab:行く",
+            "ja:vocab:来る",
+            "ja:vocab:帰る",
+            "ja:vocab:する"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch14-l03",
+          "type": "F-Vocab",
+          "title": "Reading, writing and languages",
+          "itemIds": [
+            "ja:vocab:読む",
+            "ja:vocab:書く",
+            "ja:vocab:話す",
+            "ja:vocab:わかる",
+            "ja:vocab:日本語",
+            "ja:vocab:英語"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch14-l04",
+          "type": "F-Grammar",
+          "title": "Polite verbs: ます",
+          "itemIds": [
+            "ja:grammar:ます"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Teach ます only for the verbs the learner already knows from the last three lessons, with no conjugation table."
+        },
+        {
+          "id": "foundation-ja-ch14-l05",
+          "type": "F-Grammar",
+          "title": "Do not: ません",
+          "itemIds": [
+            "ja:grammar:ません"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Teach ません only for the verbs the learner already knows, and include わかりません as \"I don't understand\"."
+        },
+        {
+          "id": "foundation-ja-ch14-l06",
+          "type": "F-Grammar",
+          "title": "Object marker を",
+          "itemIds": [
+            "ja:grammar:を"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch14-l07",
+          "type": "F-Grammar",
+          "title": "Going to: に / へ",
+          "itemIds": [
+            "ja:grammar:にへ"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch14-l08",
+          "type": "F-Grammar",
+          "title": "Where you do it: で",
+          "itemIds": [
+            "ja:grammar:で"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch14-l09",
+          "type": "F-Grammar",
+          "title": "Did: ました",
+          "itemIds": [
+            "ja:grammar:ました"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Teach ました only for the verbs the learner already knows, with no conjugation table."
+        },
+        {
+          "id": "foundation-ja-ch14-l10",
+          "type": "F-Kanji",
+          "title": "Kanji: eat, drink, read, write",
+          "itemIds": [
+            "ja:kanji:食",
+            "ja:kanji:飲",
+            "ja:kanji:読",
+            "ja:kanji:書"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch14-l11",
+          "type": "F-Kanji",
+          "title": "Kanji: go, come, see, hear",
+          "itemIds": [
+            "ja:kanji:行",
+            "ja:kanji:来",
+            "ja:kanji:見",
+            "ja:kanji:聞"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch14-l12",
+          "type": "I-Reading",
+          "title": "Reading a daily routine",
+          "itemIds": [
+            "ja:grammar:ます",
+            "ja:grammar:を",
+            "ja:grammar:にへ",
+            "ja:vocab:食べる",
+            "ja:vocab:行く"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch14-l13",
+          "type": "I-Speaking",
+          "title": "Describing what you do",
+          "itemIds": [
+            "ja:grammar:ます",
+            "ja:grammar:を",
+            "ja:grammar:にへ",
+            "ja:vocab:読む",
+            "ja:vocab:行く"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch15",
+      "title": "Time, suggestions and requests",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch15-l01",
+          "type": "F-Vocab",
+          "title": "Times of day",
+          "itemIds": [
+            "ja:vocab:朝",
+            "ja:vocab:昼",
+            "ja:vocab:夜",
+            "ja:vocab:今",
+            "ja:vocab:午後"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch15-l02",
+          "type": "F-Vocab",
+          "title": "Telling time",
+          "itemIds": [
+            "ja:vocab:時:じ",
+            "ja:vocab:分",
+            "ja:vocab:半",
+            "ja:vocab:時間"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch15-l03",
+          "type": "F-Grammar",
+          "title": "At a time: に",
+          "itemIds": [
+            "ja:grammar:に"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch15-l04",
+          "type": "F-Grammar",
+          "title": "Shall we? ませんか",
+          "itemIds": [
+            "ja:grammar:ませんか"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch15-l05",
+          "type": "F-Grammar",
+          "title": "Let's: ましょう",
+          "itemIds": [
+            "ja:grammar:ましょう"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch15-l06",
+          "type": "F-Grammar",
+          "title": "The て-form",
+          "itemIds": [
+            "ja:grammar:て-form"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "This is the hardest point in the slice. Teach the て-form only for verbs the learner already knows, as a short list, with no complete table. Its only use for now is before ください, which is the next lesson."
+        },
+        {
+          "id": "foundation-ja-ch15-l07",
+          "type": "F-Grammar",
+          "title": "Please do: てください",
+          "itemIds": [
+            "ja:grammar:てください"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Use only the て-forms taught in the last lesson."
+        },
+        {
+          "id": "foundation-ja-ch15-l08",
+          "type": "F-Kanji",
+          "title": "Kanji: time and day",
+          "itemIds": [
+            "ja:kanji:時",
+            "ja:kanji:間",
+            "ja:kanji:日",
+            "ja:kanji:分"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch15-l09",
+          "type": "I-Listening",
+          "title": "Hearing an invitation",
+          "itemIds": [
+            "ja:grammar:ませんか",
+            "ja:grammar:ましょう",
+            "ja:vocab:今",
+            "ja:vocab:行く"
+          ],
+          "estimatedMinutes": 6
+        },
+        {
+          "id": "foundation-ja-ch15-l10",
+          "type": "I-Speaking",
+          "title": "Making a suggestion",
+          "itemIds": [
+            "ja:grammar:ませんか",
+            "ja:grammar:ましょう",
+            "ja:vocab:一緒",
+            "ja:vocab:食べる"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch16",
+      "title": "Describing things",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch16-l01",
+          "type": "F-Vocab",
+          "title": "Common adjectives I",
+          "itemIds": [
+            "ja:vocab:大きい",
+            "ja:vocab:小さい",
+            "ja:vocab:新しい",
+            "ja:vocab:古い",
+            "ja:vocab:いい"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch16-l02",
+          "type": "F-Vocab",
+          "title": "Common adjectives II",
+          "itemIds": [
+            "ja:vocab:高い",
+            "ja:vocab:安い",
+            "ja:vocab:暑い",
+            "ja:vocab:寒い",
+            "ja:vocab:おいしい"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch16-l03",
+          "type": "F-Grammar",
+          "title": "Using い-adjectives",
+          "itemIds": [
+            "ja:grammar:い-adjective"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch16-l04",
+          "type": "F-Vocab",
+          "title": "な-adjectives",
+          "itemIds": [
+            "ja:vocab:元気",
+            "ja:vocab:静か",
+            "ja:vocab:綺麗",
+            "ja:vocab:便利",
+            "ja:vocab:有名"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch16-l05",
+          "type": "F-Grammar",
+          "title": "Using な-adjectives",
+          "itemIds": [
+            "ja:grammar:な-adjective"
+          ],
+          "estimatedMinutes": 8
+        },
+        {
+          "id": "foundation-ja-ch16-l06",
+          "type": "F-Grammar",
+          "title": "And, with: と",
+          "itemIds": [
+            "ja:grammar:と"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch16-l07",
+          "type": "I-Reading",
+          "title": "Reading a description",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:い-adjective",
+            "ja:vocab:大きい",
+            "ja:vocab:静か"
+          ],
+          "estimatedMinutes": 7
+        }
+      ]
+    },
+    {
+      "id": "foundation-ja-ch17",
+      "title": "Likes and self-introduction",
+      "lessons": [
+        {
+          "id": "foundation-ja-ch17-l01",
+          "type": "F-Vocab",
+          "title": "Hobbies and pastimes",
+          "itemIds": [
+            "ja:vocab:音楽",
+            "ja:vocab:歌",
+            "ja:vocab:旅行",
+            "ja:vocab:映画",
+            "ja:vocab:スポーツ"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch17-l02",
+          "type": "F-Vocab",
+          "title": "Like and dislike words",
+          "itemIds": [
+            "ja:vocab:好き",
+            "ja:vocab:大好き",
+            "ja:vocab:嫌い",
+            "ja:vocab:上手",
+            "ja:vocab:下手"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch17-l03",
+          "type": "F-Grammar",
+          "title": "I like: がすきです",
+          "itemIds": [
+            "ja:grammar:がすきです"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Write すき in kana: its kanji is never taught in this course."
+        },
+        {
+          "id": "foundation-ja-ch17-l04",
+          "type": "F-Grammar",
+          "title": "I want to: たいです",
+          "itemIds": [
+            "ja:grammar:stem-たいです"
+          ],
+          "estimatedMinutes": 8,
+          "authorNote": "Do not use the word \"stem\" in learner-facing text. Say what goes before たいです by showing the ます form without ます."
+        },
+        {
+          "id": "foundation-ja-ch17-l05",
+          "type": "I-Listening",
+          "title": "Hearing a self-introduction",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:がすきです",
+            "ja:vocab:名前",
+            "ja:vocab:音楽"
+          ],
+          "estimatedMinutes": 7
+        },
+        {
+          "id": "foundation-ja-ch17-l06",
+          "type": "I-Speaking",
+          "title": "Full self-introduction",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:も",
+            "ja:grammar:がすきです",
+            "ja:vocab:はじめまして",
+            "ja:vocab:私:わたし",
+            "ja:vocab:名前",
+            "ja:vocab:好き",
+            "ja:vocab:よろしくおねがいします"
+          ],
+          "estimatedMinutes": 9,
+          "authorNote": "Practise the whole self-introduction: greeting, name, where you are from, what you do, something you like, and a closing phrase."
+        },
+        {
+          "id": "foundation-ja-ch17-l07",
+          "type": "I-Writing",
+          "title": "Writing your introduction",
+          "itemIds": [
+            "ja:grammar:です",
+            "ja:grammar:は",
+            "ja:grammar:の",
+            "ja:vocab:はじめまして",
+            "ja:vocab:私:わたし",
+            "ja:vocab:名前",
+            "ja:vocab:学生",
+            "ja:vocab:よろしくおねがいします"
+          ],
+          "estimatedMinutes": 9,
+          "authorNote": "End with one open check: answerType \"typed\", grading \"open\", no choices. The learner writes a short self-introduction with no hints and no link to an earlier lesson. correctAnswer is a model answer in kana. The rubric lists the six parts (greeting, name, where they are from, what they do, something they like, a closing phrase) and accepts any reasonable content, including the learner's own name in rōmaji."
+        }
+      ]
+    }
+  ]
+}

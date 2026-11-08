@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaClient } from '@prisma/client';
 import { loadItemData, generateSkeleton } from './skeleton-prompter';
+import { assertNotCompiledOutline } from './outline-compiler';
 import {
   AUTHORING_TIMEOUT_MS,
   authoringModel,
@@ -47,6 +48,7 @@ function parseArgs(): {
 
 async function main(): Promise<void> {
   const { moduleId, outputPath, force } = parseArgs();
+  assertNotCompiledOutline(outputPath);
   if (fs.existsSync(outputPath) && !force) {
     throw new Error(
       `A skeleton already exists at ${outputPath}. Drafts are filed under its lesson ids, and a new run produces different ones — pass --force to replace it anyway.`,
