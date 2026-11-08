@@ -145,7 +145,7 @@ export class ChecksService {
     const correct =
       format === 'TYPED'
         ? this.writingEval.exactMatch(answer, fixedAnswer, {
-            spokenParticles: !targetItemId.startsWith('ja:kana:'),
+            kanaTarget: targetItemId.startsWith('ja:kana:'),
           })
         : exactMatch(answer, fixedAnswer);
     return {

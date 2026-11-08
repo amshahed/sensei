@@ -41,18 +41,30 @@ const SPOKEN_REJECTED: Array<[string, string]> = [
   ['ano watashi wa gakusei desu', 'わたし は がくせい です'],
 ];
 
-/** A check on the kana itself wants its own sound (test.md N1). */
+/** A check on the kana itself wants its own sound (test.md N1, N5). */
 const STRICT_REJECTED: Array<[string, string]> = [
   ['wa', 'は'],
   ['wa', 'ha'],
   ['wa', 'ハ'],
   ['e', 'へ'],
+  ['wa.', 'は'],
+  ['wa', 'は。'],
+  ['o', 'を'],
+  ['wana', 'はな'],
 ];
 const STRICT_ACCEPTED: Array<[string, string]> = [
   ['ha', 'は'],
   ['は', 'は'],
   ['ha', 'ハ'],
   ['he', 'へ'],
+  ['ha.', 'は'],
+  ['ha!', 'は'],
+  ['wo', 'を'],
+  ['hana', 'はな。'],
+  ['konnichiwa', 'こんにちは'],
+  ['konnichiwa', 'こんにちは！'],
+  ['konbanwa', 'こんばんは'],
+  ['wa o', 'は を'],
 ];
 
 describe('WritingEvalService — normalizeJapanese', () => {
@@ -109,20 +121,16 @@ describe('WritingEvalService — exactMatch (with tokenizer)', () => {
   });
 
   it.each(STRICT_REJECTED)(
-    'rejects %s for %s with spoken particles off',
+    'rejects %s for %s on a kana target',
     (typed, answer) => {
-      expect(svc.exactMatch(typed, answer, { spokenParticles: false })).toBe(
-        false,
-      );
+      expect(svc.exactMatch(typed, answer, { kanaTarget: true })).toBe(false);
     },
   );
 
   it.each(STRICT_ACCEPTED)(
-    'accepts %s for %s with spoken particles off',
+    'accepts %s for %s on a kana target',
     (typed, answer) => {
-      expect(svc.exactMatch(typed, answer, { spokenParticles: false })).toBe(
-        true,
-      );
+      expect(svc.exactMatch(typed, answer, { kanaTarget: true })).toBe(true);
     },
   );
 
@@ -166,11 +174,16 @@ describe('WritingEvalService — exactMatch (tokenizer not loaded)', () => {
   });
 
   it.each(STRICT_REJECTED)(
-    'rejects %s for %s with spoken particles off',
+    'rejects %s for %s on a kana target',
     (typed, answer) => {
-      expect(svc.exactMatch(typed, answer, { spokenParticles: false })).toBe(
-        false,
-      );
+      expect(svc.exactMatch(typed, answer, { kanaTarget: true })).toBe(false);
+    },
+  );
+
+  it.each(STRICT_ACCEPTED)(
+    'accepts %s for %s on a kana target',
+    (typed, answer) => {
+      expect(svc.exactMatch(typed, answer, { kanaTarget: true })).toBe(true);
     },
   );
 

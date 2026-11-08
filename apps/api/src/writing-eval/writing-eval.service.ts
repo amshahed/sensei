@@ -17,13 +17,21 @@ const SEPARATORS = /[\s、。,.!?！？]/g;
 
 /**
  * Whole words only, so wana stays wrong for はな. Each position is independent,
- * so watashi wa hon wo yomimasu passes.
+ * so watashi wa hon wo yomimasu passes. On a check of a kana item, an answer
+ * that is one kana is that character, so は is ha and wa stays wrong.
  */
-function matchesSpoken(answer: string, exemplar: string): boolean {
-  const pattern = exemplar
-    .split(SEPARATORS)
-    .filter(Boolean)
-    .map((w) => SPOKEN[w] ?? w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
+function matchesSpoken(
+  answer: string,
+  exemplar: string,
+  kanaTarget: boolean,
+): boolean {
+  const words = exemplar.split(SEPARATORS).filter(Boolean);
+  const literal = kanaTarget && words.join('').length === 1;
+  const pattern = words
+    .map(
+      (w) =>
+        (!literal && SPOKEN[w]) || w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
+    )
     .join('');
   return new RegExp(`^${pattern}$`).test(answer.replace(SEPARATORS, ''));
 }
@@ -80,13 +88,13 @@ export class WritingEvalService implements OnModuleInit {
    * Exact-match comparison for closed TYPED checks (H.2).
    * Normalizes both sides (romaji/katakana → hiragana) and compares joined
    * token strings so spacing differences don't cause false negatives. Rōmaji
-   * input also passes when it spells a particle as it sounds (H.2.a), unless
-   * `spokenParticles` is false: a check on the kana は itself wants ha, not wa.
+   * input also passes when it spells a particle as it sounds (H.2.a), except
+   * for a lone kana when `kanaTarget` says the check is on the kana itself.
    */
   exactMatch(
     answer: string,
     exemplar: string,
-    { spokenParticles = true }: { spokenParticles?: boolean } = {},
+    { kanaTarget = false }: { kanaTarget?: boolean } = {},
   ): boolean {
     const normAnswer = this.normalizeJapanese(answer);
     const normExemplar = this.normalizeJapanese(exemplar);
@@ -94,9 +102,8 @@ export class WritingEvalService implements OnModuleInit {
     const joinedExemplar = this.tokenize(normExemplar).join('');
     if (joinedAnswer === joinedExemplar) return true;
     return (
-      spokenParticles &&
       /[a-z]/i.test(answer) &&
-      matchesSpoken(normAnswer, normExemplar)
+      matchesSpoken(normAnswer, normExemplar, kanaTarget)
     );
   }
 }

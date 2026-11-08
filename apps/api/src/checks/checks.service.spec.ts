@@ -69,7 +69,7 @@ describe('ChecksService', () => {
     service = moduleRef.get(ChecksService);
   });
 
-  describe('rōmaji spelling of は and へ on real grading (test.md N1)', () => {
+  describe('rōmaji spelling of は and へ on real grading (test.md N1, N5)', () => {
     /** A closed typed check, graded by the real WritingEvalService. */
     const typed = (targetItemId: string, answer: string, typedIn: string) => {
       const row = { ...check, format: 'TYPED', targetItemId, data: { answer } };
@@ -89,6 +89,10 @@ describe('ChecksService', () => {
       ['ja:kana:ha', 'ha', 'wa'],
       ['ja:kana:he', 'へ', 'e'],
       ['ja:kana:kata-ha', 'ハ', 'wa'],
+      ['ja:kana:ha', 'は', 'wa.'],
+      ['ja:kana:ha', 'は。', 'wa'],
+      ['ja:kana:ha', 'はな', 'wana'],
+      ['ja:kana:wo', 'を', 'o'],
     ])('marks a %s check (%s) wrong for %s', async (id, answer, typedIn) => {
       expect((await typed(id, answer, typedIn)).correct).toBe(false);
     });
@@ -98,6 +102,11 @@ describe('ChecksService', () => {
       ['ja:kana:ha', 'は', 'は'],
       ['ja:kana:kata-ha', 'ハ', 'ha'],
       ['ja:kana:he', 'へ', 'he'],
+      ['ja:kana:ha', 'は', 'ha.'],
+      ['ja:kana:ha', 'は', 'ha!'],
+      ['ja:kana:ha', 'こんにちは', 'konnichiwa'],
+      ['ja:kana:ha', 'こんにちは！', 'konnichiwa'],
+      ['ja:kana:ha', 'はな。', 'hana'],
       ['ja:grammar:は', 'は', 'wa'],
       ['ja:grammar:は', 'は', 'ha'],
       ['ja:vocab:konnichiwa', 'こんにちは', 'konnichiwa'],

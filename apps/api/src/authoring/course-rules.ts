@@ -42,7 +42,7 @@ const MARKERS: Array<{
 /** H.2.a's particles. Before the first is taught, no answer can contain one. */
 const SPOKEN_PARTICLES = new Set([
   'ja:grammar:は',
-  'ja:grammar:へ',
+  'ja:grammar:にへ',
   'ja:grammar:を',
 ]);
 
