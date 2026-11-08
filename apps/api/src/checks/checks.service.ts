@@ -84,11 +84,11 @@ export class ChecksService {
     const rating = guessDowngrade ? Rating.Hard : graded.rating;
 
     // Only feed a real judgement into FSRS. An open check we couldn't actually
-    // grade (no model, no exemplar) is returned to the learner but kept out of
-    // the spaced-repetition schedule. The write-back must also never block the
-    // response on a transient DB error.
-    if (graded.scored) {
-      try {
+    // grade still puts the item on the schedule, without a verdict, because
+    // this is the only lesson path that creates a learner's FSRS row. The
+    // write-back must also never block the response on a transient DB error.
+    try {
+      if (graded.scored) {
         await this.mastery.recordCheckResult({
           userId,
           itemId: check.targetItemId,
@@ -96,11 +96,13 @@ export class ChecksService {
           correct: graded.correct,
           rating,
         });
-      } catch (err) {
-        this.logger.error(
-          `Mastery write-back failed for check ${checkId}: ${String(err)}`,
-        );
+      } else {
+        await this.enterSchedule(userId, check.targetItemId);
       }
+    } catch (err) {
+      this.logger.error(
+        `Mastery write-back failed for check ${checkId}: ${String(err)}`,
+      );
     }
 
     return {
@@ -109,6 +111,20 @@ export class ChecksService {
       correctAnswer: graded.correctAnswer,
       ...(graded.feedback ? { feedback: graded.feedback } : {}),
     };
+  }
+
+  /**
+   * First contact we couldn't grade: a Hard seed, due in 2 days, so a review
+   * makes the real judgement. No breadcrumb, and an existing row is left alone.
+   * Seeding doesn't create the user, and this can be their first write.
+   */
+  private async enterSchedule(userId: string, itemId: string): Promise<void> {
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: { id: userId },
+    });
+    await this.mastery.seedInferred(userId, [itemId]);
   }
 
   private gradeClosed(answer: string, fixedAnswer: string, format: string) {
