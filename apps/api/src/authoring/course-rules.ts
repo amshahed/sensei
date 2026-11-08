@@ -43,6 +43,16 @@ const spaceless = (s: string) => s.replace(/\s/g, '');
 const romajiOf = (s: string) => toRomaji(s).replace(/\s/g, '').toLowerCase();
 const KANA_RUN = /[ぁ-ゖ]+/g;
 
+/** Rōmaji with macrons and doubled vowels removed, so okāsan equals okaasan. */
+const looseRomaji = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/\s/g, '')
+    .replace(/ou/g, 'o')
+    .replace(/([aeiou])\1+/g, '$1');
+
 /** A piece of a draft the learner will read, and where it sits. */
 interface Field {
   where: string;
@@ -160,11 +170,11 @@ function typedReadingProblems(
       (q) => q.targetItemId === target.id && q.answerType === 'typed',
     );
     const fair = typed.filter((q) => {
-      const prompt = spaceless(q.prompt).toLowerCase();
+      const prompt = looseRomaji(q.prompt);
       return (
-        prompt.includes(spaceless(target.surface)) &&
-        !prompt.includes(romajiOf(target.surface)) &&
-        !prompt.includes(romajiOf(q.correctAnswer))
+        spaceless(q.prompt).includes(spaceless(target.surface)) &&
+        !prompt.includes(looseRomaji(romajiOf(target.surface))) &&
+        !prompt.includes(looseRomaji(romajiOf(q.correctAnswer)))
       );
     });
     if (fair.length === 0) {

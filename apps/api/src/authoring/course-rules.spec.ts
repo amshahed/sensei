@@ -245,6 +245,41 @@ describe('sound lessons (P2, P3)', () => {
     expect(check(questions).join()).toMatch(/needs a typed check/);
   });
 
+  it.each(['(okāsan)', '(okaasan)', '(OKĀSAN)', '(oka asan)'])(
+    'fails a prompt spelling the rōmaji as %s (F6)',
+    (romaji) => {
+      const questions = typed();
+      const index = lesson.itemIds.findIndex(
+        (id) => spec.surfaces[id] === 'おかあさん',
+      );
+      questions[index].prompt = `おかあさん ${romaji}. Type it.`;
+      expect(check(questions).join()).toMatch(/needs a typed check/);
+    },
+  );
+
+  it('fails a prompt spelling っ and おう with a macron (F6)', () => {
+    const gakkou = lessons.find(
+      (l) =>
+        l.typedReading &&
+        l.itemIds.some((id) => spec.surfaces[id] === 'がっこう'),
+    )!;
+    const n = lessons.indexOf(gakkou) + 1;
+    const questions = gakkou.itemIds.map((id, i) => ({
+      id: `q${i}`,
+      targetItemId: id,
+      prompt:
+        spec.surfaces[id] === 'がっこう'
+          ? 'がっこう (gakkō). Type it.'
+          : `How does ${spec.surfaces[id]} sound?`,
+      answerType: 'typed' as const,
+      correctAnswer: spec.surfaces[id],
+    }));
+    const draft = draftWith('', n, { check: { questions } });
+    expect(checkCourseRules(draft, ctxAt(n)).errors.join()).toMatch(
+      /needs a typed check/,
+    );
+  });
+
   it('fails when the prompt does not show the word', () => {
     const questions = typed();
     questions[0].prompt = 'Type the word for mother.';
