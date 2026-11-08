@@ -35,6 +35,7 @@ tools/authoring/published/*.json
 # the small committed JLPT level lists are the exception
 apps/api/data/*
 !apps/api/data/jlpt/
+!apps/api/data/curriculum/
 
 # Claude Code local state (.claude/agents and .claude/skills are tracked)
 .claude/worktrees/

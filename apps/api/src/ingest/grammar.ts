@@ -117,7 +117,8 @@ export async function ingestGrammar(
       update: {
         display: item.display,
         reading: item.reading,
-        meaning: item.meaning,
+        // Most sources carry no meaning: never wipe a stored one with null.
+        ...(item.meaning !== null ? { meaning: item.meaning } : {}),
         data: item.data,
       },
       create: item,
