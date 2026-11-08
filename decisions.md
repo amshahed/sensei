@@ -1403,3 +1403,21 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 ## Pending Decisions
 
 **Design grilling COMPLETE — all phases A–M locked.** No phases remain open. Final phase M (MVP scope cut + beta launch) resolved: ~100-lesson early-Foundation vertical slice / Foundational + L/R/W + guided speaking / full reachable surface / tracer-bullet-first build sequence. Next step is **implementation**, beginning with the M.4 tracer bullet (one lesson end-to-end through every system). See `progress.md` for the build-phase hand-off.
+
+---
+
+## Phase OM — Operating Model
+
+### OM.1 Day-to-day decisions delegated to role agents (decided by founder, 2026-11-08)
+
+**Decision:** Routine product, technical and content decisions no longer need the founder. Five roles (Project Manager, Tech Lead, Developer, Tester, Alpha User), coordinated by the top-level session, decide, log and continue. The founder is involved only for the stop list in `ops/OPERATING_MODEL.md`: credentials, new money, destructive or irreversible actions, legal terms, contradictions of a hard constraint, and anything public.
+
+**Founder's words:** "these day to day tasks towards building the app and content don't need my input anymore."
+
+**Amends F.4 and F.7:** the PM performs the editorial review those decisions assigned to the founder. The 40%-then-20% sampling, the AI critic pass and the corrections loop all stay, with the PM's corrections feeding the loop.
+
+**Migrations:** the per-deploy founder approval used through #20 is replaced. Additive migrations may deploy once verified on a throwaway Neon branch. Non-additive ones stay on the stop list.
+
+**Trade-off accepted:** F.7 rejected zero human input because the AI critic shares blind spots with the drafter and because product feel needs human judgment. This decision accepts that risk for closed beta only. PM approval means "fit for closed beta", not "linguistically verified". A native speaker must sample published lessons before any wider beta (`ops/BLOCKERS.md`).
+
+**Reversal:** the founder can reclaim any category at any time. Update `ops/PROJECT.md` and add a new entry here.
