@@ -18,7 +18,7 @@ import { PrismaClient } from '@prisma/client';
 import { LessonDraftSchema } from './lesson-schema';
 import { generateCritique } from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
-import { criticModel, formatCost } from './authoring-llm';
+import { AUTHORING_TIMEOUT_MS, criticModel, formatCost } from './authoring-llm';
 
 function parseArgs(): { draftPath: string } {
   const args = process.argv.slice(2);
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   );
 
   const prisma = new PrismaClient();
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = new Anthropic({ apiKey, timeout: AUTHORING_TIMEOUT_MS });
 
   try {
     // Structural validation first (deterministic, free)
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
     }
     console.log(`────────────────────────────────────────────────────────────`);
 
-    const cost = formatCost(criticModel(), inputTokens, outputTokens);
+    const cost = formatCost(critique.meta.model, inputTokens, outputTokens);
     console.log(`\ntokens: ${inputTokens} in / ${outputTokens} out  (${cost})`);
 
     const outPath = draftPath.replace(/\.json$/, '.critique.json');

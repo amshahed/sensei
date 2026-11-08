@@ -215,16 +215,11 @@ export async function generateSkeleton(
 
   if (parsed && typeof parsed === 'object') {
     const p = parsed as Record<string, unknown>;
-    // Always overwrite with actual timestamp — LLM echoes a placeholder literal
+    // Provenance is ours to record, not the model's to echo: it fills these
+    // with placeholders, made-up numbers, or leaves them out.
     p['generatedAt'] = new Date().toISOString();
-    // Patch in actual token usage if LLM left placeholder zeros
-    if (p['tokenUsage'] && typeof p['tokenUsage'] === 'object') {
-      const tu = p['tokenUsage'] as Record<string, unknown>;
-      if (!tu['inputTokens'] || tu['inputTokens'] === 0)
-        tu['inputTokens'] = inputTokens;
-      if (!tu['outputTokens'] || tu['outputTokens'] === 0)
-        tu['outputTokens'] = outputTokens;
-    }
+    p['model'] = model;
+    p['tokenUsage'] = { inputTokens, outputTokens };
   }
 
   const skeleton = SkeletonSchema.parse(parsed);

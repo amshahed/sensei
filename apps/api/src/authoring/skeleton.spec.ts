@@ -6,7 +6,6 @@ import {
 import { SkeletonSchema } from './skeleton-schema';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { PrismaClient } from '@prisma/client';
-import { authoringModel } from './authoring-llm';
 
 const MINIMAL_SKELETON = {
   module: {
@@ -142,7 +141,60 @@ describe('generateSkeleton', () => {
       createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
     expect(callBody).not.toHaveProperty('temperature');
-    expect(callBody.model).toBe(authoringModel());
+    expect(callBody.model).toBe('claude-opus-4-8');
+  });
+
+  it('records the real model and token usage, whatever the model echoed', async () => {
+    const echoed: Record<string, unknown> = {
+      ...(MINIMAL_SKELETON as Record<string, unknown>),
+    };
+    delete echoed.model;
+    delete echoed.tokenUsage;
+    const createFn = jest.fn().mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            ...echoed,
+            model: '<model name used>', // a placeholder, or a made-up name
+          }), // ...and no tokenUsage at all
+        },
+      ],
+      usage: { input_tokens: 20808, output_tokens: 14714 },
+    });
+    const fake: AnthropicLike = { messages: { create: createFn } };
+
+    const { skeleton } = await generateSkeleton(fake, 'foundation-ja', {
+      kana: [],
+      grammar: [],
+      vocab: [],
+      kanji: [],
+    });
+
+    expect(skeleton.model).toBe('claude-opus-4-8');
+    expect(skeleton.tokenUsage).toEqual({
+      inputTokens: 20808,
+      outputTokens: 14714,
+    });
+  });
+
+  it('a reply cut off at the token limit fails as such, not as bad JSON', async () => {
+    const createFn = jest.fn().mockResolvedValue({
+      content: [
+        { type: 'text', text: '{"module": {"id": "foundation-ja", "ch' },
+      ],
+      stop_reason: 'max_tokens',
+      usage: { input_tokens: 1, output_tokens: 20000 },
+    });
+    const fake: AnthropicLike = { messages: { create: createFn } };
+    await expect(
+      generateSkeleton(fake, 'foundation-ja', {
+        kana: [],
+        grammar: [],
+        vocab: [],
+        kanji: [],
+      }),
+    ).rejects.toThrow(/output limit/);
   });
 
   it('throws when LLM returns non-JSON', async () => {

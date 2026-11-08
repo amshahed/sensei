@@ -3,7 +3,13 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AnthropicLike } from '../../llm/anthropic-llm-client';
 import { VoyageClient } from '../../voyage/voyage-client';
 import { upsertRefDoc } from './upsert-doc';
-import { authoringModel } from '../../authoring/authoring-llm';
+import {
+  assertComplete,
+  AUTHORING_TIMEOUT_MS,
+  authoringModel,
+} from '../../authoring/authoring-llm';
+
+const GRAMMAR_REF_MAX_TOKENS = 512;
 
 const SYSTEM_PROMPT = `You are a Japanese linguistics reference author.
 Write concise, accurate grammar reference passages for a Japanese learning app.
@@ -24,12 +30,19 @@ export async function generateGrammarRef(
 
   const res = await anthropic.messages.create({
     model,
-    max_tokens: 512,
+    max_tokens: GRAMMAR_REF_MAX_TOKENS,
     system: SYSTEM_PROMPT,
     messages: [
       { role: 'user', content: buildUserPrompt(patternName, jlptLevel) },
     ],
   });
+
+  // A cut-off passage would be embedded as reference context: refuse it.
+  assertComplete(
+    res,
+    `Grammar reference "${patternName}"`,
+    GRAMMAR_REF_MAX_TOKENS,
+  );
 
   const text = res.content
     .filter((b) => b.type === 'text')
@@ -56,7 +69,8 @@ export async function ingestGrammarRefs(
   }
 
   const anthropic: AnthropicLike =
-    anthropicClient ?? new Anthropic({ apiKey: anthropicApiKey });
+    anthropicClient ??
+    new Anthropic({ apiKey: anthropicApiKey, timeout: AUTHORING_TIMEOUT_MS });
 
   const grammarItems = await prisma.item.findMany({
     where: { language: 'ja', type: 'GRAMMAR' },

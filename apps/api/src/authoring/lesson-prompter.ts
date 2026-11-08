@@ -300,9 +300,12 @@ export async function generateCritique(
   const model = criticModel();
   const userPrompt = buildCritiquePrompt(draft);
 
+  // temperature 0 keeps the gate repeatable: the same draft gets the same
+  // verdict. Haiku accepts it; only the Opus drafter can't take it.
   const res = await anthropic.messages.create({
     model,
     max_tokens: CRITIQUE_MAX_TOKENS,
+    temperature: 0,
     system: CRITIC_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
   });

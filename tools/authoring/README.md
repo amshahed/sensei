@@ -15,13 +15,14 @@ The AI organises ingested items (kana, vocab, kanji, grammar) into a sequenced c
 targeting the "introduce yourself in Japanese" milestone (~100 lessons).
 
 ```bash
-pnpm --filter api authoring:skeleton [--module foundation-ja] [--output <path>]
+pnpm --filter api authoring:skeleton [--module foundation-ja] [--output <path>] [--force]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--module` | `foundation-ja` | Module ID to generate |
 | `--output` | `tools/authoring/output/skeleton.json` | Output path (relative to workspace root) |
+| `--force` | off | Replace an existing skeleton (see below) |
 
 Output is written to `tools/authoring/output/skeleton.json` (gitignored).
 The file is Zod-validated against the schema in `apps/api/src/authoring/skeleton-schema.ts`
@@ -29,9 +30,13 @@ before being written.
 
 ### Model
 
-Uses `LLM_AUTHORING_MODEL` env var if set, otherwise `claude-opus-4-8` (Claude Opus).
-Temperature is fixed at 0 for deterministic output — re-running with the same DB state
-and same model produces the same skeleton.
+Uses `LLM_AUTHORING_MODEL` if set (a blank value counts as unset), otherwise `claude-opus-4-8`.
+Max tokens: 20000 (the first live run used ~14.7k; a cut-off reply fails with a clear error).
+
+**Generate once, then keep it.** Opus 4.8 accepts no `temperature`, so a re-run produces a
+*different* skeleton — different chapter/lesson ids and groupings — and drafts are filed under
+the old lesson ids. The CLI therefore refuses to overwrite an existing skeleton unless you pass
+`--force`. The file records the model and real token usage it was generated with.
 
 ### Output format
 
@@ -97,7 +102,8 @@ Output: `tools/authoring/output/<lesson-id>.json` (gitignored).
 If `VOYAGE_API_KEY` is set, the drafter retrieves top-5 reference passages from the vector DB for context.
 If not set, vector search is skipped silently — the drafter still works.
 
-Model: `LLM_AUTHORING_MODEL` env var ?? `claude-opus-4-8`. Temperature=0. Max tokens: 4096.
+Model: `LLM_AUTHORING_MODEL` (blank = unset) or `claude-opus-4-8`. No `temperature` (Opus 4.8
+rejects it), so redrafting the same lesson gives a different draft. Max tokens: 4096.
 
 ## critique — AI critic (F.3 / F.4)
 
@@ -109,8 +115,8 @@ pnpm --filter api authoring:critique <draft-path>
 
 Output: `<draft-path>.critique.json`.
 
-Model: `LLM_CRITIC_MODEL` env var ?? `claude-haiku-4-5-20251001`. Temperature=0. Max tokens: 2048.
-Cost: ~$0.05/lesson.
+Model: `LLM_CRITIC_MODEL` (blank = unset) or `claude-haiku-4-5`. Temperature 0, so the same draft
+gets the same verdict. Max tokens: 2048. Cost: about a cent per lesson ($1/$5 per million tokens).
 
 ### 9-point checklist
 

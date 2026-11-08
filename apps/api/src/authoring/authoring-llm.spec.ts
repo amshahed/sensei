@@ -50,4 +50,22 @@ describe('authoring-llm', () => {
       /Critic returned non-JSON output/,
     );
   });
+
+  it('finds the object even when the prose around it has braces', () => {
+    const reply = [
+      "I'll fill each {targetItemId}:",
+      '```json',
+      '{"lessonId":"l1","items":[{"id":"a"}]}',
+      '```',
+      'Note: checked all }',
+    ].join('\n');
+    expect(parseLlmJson(reply, 'X')).toEqual({
+      lessonId: 'l1',
+      items: [{ id: 'a' }],
+    });
+    // Unfenced, with a stray brace before and after.
+    expect(parseLlmJson('Using {x} slots: {"a":1} — done }', 'X')).toEqual({
+      a: 1,
+    });
+  });
 });

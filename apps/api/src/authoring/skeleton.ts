@@ -1,10 +1,14 @@
 /**
  * authoring:skeleton CLI — generates the Module/Chapter/Lesson skeleton for Foundation Japanese.
  *
- * Usage: pnpm --filter api authoring:skeleton [--module foundation-ja] [--output <path>]
+ * Usage: pnpm --filter api authoring:skeleton [--module foundation-ja] [--output <path>] [--force]
  *
  * Reads ingested items from the Postgres DB, calls Claude Opus to produce a
  * curriculum skeleton, validates it with Zod, and writes it to disk.
+ *
+ * Generated once, then kept: drafts are filed under its lesson ids, and a
+ * re-run gives a different skeleton (Opus 4.8 takes no temperature), so an
+ * existing file is only replaced with --force.
  *
  * Prerequisites: run `pnpm --filter api ingest:items` first (issue #34).
  */
@@ -13,9 +17,17 @@ import * as fs from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaClient } from '@prisma/client';
 import { loadItemData, generateSkeleton } from './skeleton-prompter';
-import { authoringModel, formatCost } from './authoring-llm';
+import {
+  AUTHORING_TIMEOUT_MS,
+  authoringModel,
+  formatCost,
+} from './authoring-llm';
 
-function parseArgs(): { moduleId: string; outputPath: string } {
+function parseArgs(): {
+  moduleId: string;
+  outputPath: string;
+  force: boolean;
+} {
   const args = process.argv.slice(2);
   const moduleIdx = args.indexOf('--module');
   const moduleId =
@@ -30,11 +42,16 @@ function parseArgs(): { moduleId: string; outputPath: string } {
           process.cwd(),
           '../../tools/authoring/output/skeleton.json',
         );
-  return { moduleId, outputPath };
+  return { moduleId, outputPath, force: args.includes('--force') };
 }
 
 async function main(): Promise<void> {
-  const { moduleId, outputPath } = parseArgs();
+  const { moduleId, outputPath, force } = parseArgs();
+  if (fs.existsSync(outputPath) && !force) {
+    throw new Error(
+      `A skeleton already exists at ${outputPath}. Drafts are filed under its lesson ids, and a new run produces different ones — pass --force to replace it anyway.`,
+    );
+  }
 
   const apiKey = process.env['ANTHROPIC_API_KEY'] ?? '';
   if (!apiKey) {
@@ -42,7 +59,7 @@ async function main(): Promise<void> {
   }
 
   const prisma = new PrismaClient();
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = new Anthropic({ apiKey, timeout: AUTHORING_TIMEOUT_MS });
 
   try {
     console.log(

@@ -100,6 +100,29 @@ describe('AnthropicLlmClient', () => {
     expect(lastBody().model).toBe('claude-sonnet-4-6');
   });
 
+  it('a reply cut off at max_tokens says so instead of failing JSON.parse', async () => {
+    const client: AnthropicLike = {
+      messages: {
+        create: () =>
+          Promise.resolve({
+            content: [{ type: 'text', text: '{"rating": "Go' }],
+            stop_reason: 'max_tokens',
+          }),
+      },
+    };
+    const llm = new AnthropicLlmClient(config({}), client);
+    await expect(
+      llm.parseJson({
+        task: 'grading',
+        system: 's',
+        user: 'u',
+        schema: {},
+        schemaName: 'x',
+        maxTokens: 64,
+      }),
+    ).rejects.toThrow(/64-token limit/);
+  });
+
   it('a blank model setting (as .env.example ships it) uses the default, not ""', async () => {
     const { client, lastBody } = fakeAnthropic('{}');
     const blank = new AnthropicLlmClient(

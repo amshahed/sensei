@@ -13,7 +13,6 @@ import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import { PrismaClient } from '@prisma/client';
 import type { Lesson } from './skeleton-schema';
-import { authoringModel, criticModel } from './authoring-llm';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -174,7 +173,7 @@ describe('generateDraft', () => {
       createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
     expect(callBody).not.toHaveProperty('temperature');
-    expect(callBody.model).toBe(authoringModel());
+    expect(callBody.model).toBe('claude-opus-4-8');
   });
 
   it('skips vector search when voyage is disabled', async () => {
@@ -291,7 +290,7 @@ describe('generateCritique', () => {
     expect(createFn).toHaveBeenCalledTimes(1);
   });
 
-  it('calls the critic model with no sampling params', async () => {
+  it('calls the Haiku critic at temperature 0, so the gate is repeatable', async () => {
     const { fake, createFn } = makeAnthropicFake(MINIMAL_CRITIQUE);
     const draft = LessonDraftSchema.parse(MINIMAL_DRAFT);
 
@@ -300,8 +299,8 @@ describe('generateCritique', () => {
     const callBody = (
       createFn.mock.calls as Array<[Record<string, unknown>]>
     )[0][0];
-    expect(callBody).not.toHaveProperty('temperature');
-    expect(callBody.model).toBe(criticModel());
+    expect(callBody.temperature).toBe(0);
+    expect(callBody.model).toBe('claude-haiku-4-5');
   });
 
   it('throws on non-JSON critic output', async () => {

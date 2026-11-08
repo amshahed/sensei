@@ -2,23 +2,27 @@
  * Shared plumbing for the authoring CLIs' Claude calls (L.4/L.4.a): which
  * model, what it cost, and turning the reply into JSON.
  */
+import {
+  DEFAULT_AUTHORING_MODEL,
+  DEFAULT_CRITIC_MODEL,
+  modelOrDefault,
+} from '../llm/model-defaults';
 
-export const DEFAULT_AUTHORING_MODEL = 'claude-opus-4-8';
-export const DEFAULT_CRITIC_MODEL = 'claude-haiku-4-5';
-
-/**
- * A blank value (as `.env.example` ships `LLM_AUTHORING_MODEL=`) means "use
- * the default", not "send an empty model name".
- */
-const fromEnv = (name: string, fallback: string): string =>
-  process.env[name]?.trim() || fallback;
+export { DEFAULT_AUTHORING_MODEL, DEFAULT_CRITIC_MODEL };
 
 /** The drafting model (skeleton, lesson drafts, grammar references). */
 export const authoringModel = (): string =>
-  fromEnv('LLM_AUTHORING_MODEL', DEFAULT_AUTHORING_MODEL);
+  modelOrDefault(process.env['LLM_AUTHORING_MODEL'], DEFAULT_AUTHORING_MODEL);
 /** The critic model. */
 export const criticModel = (): string =>
-  fromEnv('LLM_CRITIC_MODEL', DEFAULT_CRITIC_MODEL);
+  modelOrDefault(process.env['LLM_CRITIC_MODEL'], DEFAULT_CRITIC_MODEL);
+
+/**
+ * Client timeout for the authoring CLIs. Long, one-off, non-streaming calls;
+ * setting it explicitly also stops the SDK refusing a large `max_tokens` on
+ * models it caps lower for non-streaming requests.
+ */
+export const AUTHORING_TIMEOUT_MS = 15 * 60_000;
 
 /** Anthropic list prices, USD per million tokens: [input, output]. */
 const PRICES: Record<string, [number, number]> = {
@@ -58,29 +62,41 @@ export function assertComplete(
 }
 
 /**
- * Parse the model's JSON. Tolerates code fences and stray prose around the
- * object (models without extended thinking sometimes reason aloud first).
+ * Parse the model's JSON. Tolerates code fences (anywhere) and prose around
+ * the object — models without extended thinking sometimes reason aloud —
+ * even when that prose contains braces of its own.
  */
 export function parseLlmJson(raw: string, label: string): unknown {
-  const text = raw
-    .trim()
-    .replace(/^```[\w]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start !== -1 && end > start) {
-      try {
-        return JSON.parse(text.slice(start, end + 1)) as unknown;
-      } catch {
-        // fall through to the error below
-      }
-    }
-    throw new Error(
-      `${label} returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
-    );
+  const text = raw.trim();
+  const candidates: string[] = [text];
+  for (const m of text.matchAll(/```[\w-]*\s*\n?([\s\S]*?)```/g)) {
+    candidates.push(m[1].trim());
   }
+  // Every '{' that could open the object, against every '}' that could close
+  // it — outermost spans first. Bounded so a huge reply can't explode this.
+  const opens = indexesOf(text, '{').slice(0, 8);
+  const closes = indexesOf(text, '}').reverse().slice(0, 8);
+  for (const start of opens) {
+    for (const end of closes) {
+      if (end > start) candidates.push(text.slice(start, end + 1));
+    }
+  }
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as unknown;
+    } catch {
+      // try the next one
+    }
+  }
+  throw new Error(
+    `${label} returned non-JSON output (first 200 chars): ${text.slice(0, 200)}`,
+  );
+}
+
+function indexesOf(text: string, ch: string): number[] {
+  const out: number[] = [];
+  for (let i = text.indexOf(ch); i !== -1; i = text.indexOf(ch, i + 1)) {
+    out.push(i);
+  }
+  return out;
 }
