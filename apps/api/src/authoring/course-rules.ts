@@ -14,15 +14,28 @@ export interface CourseRuleResult {
  * so they stay with the prompt, the critic and PM review (F.2.a). でした is
  * never taught; it appears only inside a phrase learned whole.
  */
-const MARKERS: Array<{ text: string; grammarId: string | null }> = [
+const MARKERS: Array<{
+  text: string;
+  grammarId: string | null;
+  /** Matched across spaces, because drafts space it (きて ください). */
+  acrossSpaces?: boolean;
+}> = [
   { text: 'じゃありません', grammarId: 'ja:grammar:じゃありません' },
   { text: 'ませんか', grammarId: 'ja:grammar:ませんか' },
   { text: 'ましょう', grammarId: 'ja:grammar:ましょう' },
   { text: 'ました', grammarId: 'ja:grammar:ました' },
   { text: 'ません', grammarId: 'ja:grammar:ません' },
   { text: 'ます', grammarId: 'ja:grammar:ます' },
-  { text: 'てください', grammarId: 'ja:grammar:てください' },
-  { text: 'たいです', grammarId: 'ja:grammar:stem-たいです' },
+  {
+    text: 'てください',
+    grammarId: 'ja:grammar:てください',
+    acrossSpaces: true,
+  },
+  {
+    text: 'たいです',
+    grammarId: 'ja:grammar:stem-たいです',
+    acrossSpaces: true,
+  },
   { text: 'でした', grammarId: null },
 ];
 
@@ -99,16 +112,39 @@ export function scriptProblems(text: string, ctx: CourseContext): string[] {
   return problems;
 }
 
+/**
+ * Taught whole by があります and がいます (lessons 74, 75), so the verb on its
+ * own is not an early use of the ます lesson. Exactly these words, with か
+ * allowed after them. ありません, いました and the like stay rejected.
+ */
+const TAUGHT_VERBS = [
+  { text: 'あります', grammarId: 'ja:grammar:があります' },
+  { text: 'います', grammarId: 'ja:grammar:がいます' },
+];
+
+/** Blanks out a known string, including when a draft puts spaces inside it. */
+function maskKnown(text: string, known: string): string {
+  const pattern = [...known]
+    .map((c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
+    .join('\\s*');
+  return text.replace(new RegExp(pattern, 'g'), '|');
+}
+
 function markerProblems(text: string, ctx: CourseContext): string[] {
   const taught = new Set(ctx.grammar.map((g) => g.id));
   const known = knownStrings(ctx);
-  const plain = spaceless(text);
+  const verbs = new Set(
+    TAUGHT_VERBS.filter((v) => taught.has(v.grammarId)).map((v) => v.text),
+  );
   return MARKERS.filter((m) => !m.grammarId || !taught.has(m.grammarId))
     .filter((m) => {
       const rest = known
         .filter((k) => k !== m.text && k.includes(m.text))
-        .reduce((t, k) => t.split(k).join('|'), plain);
-      return rest.includes(m.text);
+        .reduce((t, k) => maskKnown(t, k), text);
+      if (m.acrossSpaces) return spaceless(rest).includes(m.text);
+      return (rest.match(KANA_RUN) ?? [])
+        .filter((run) => !verbs.has(run.replace(/か$/, '')))
+        .some((run) => run.includes(m.text));
     })
     .map((m) => `uses ${m.text} before it is taught`);
 }
