@@ -1,16 +1,12 @@
 # Test: fix the beta outline so lessons can be drafted from it
 
-**Round 5, simulator check only. Verdict: FAIL** on commit `c04027110842d0d664b8d7caf4bc1d9908402327` (PR #70, branch `feat/22a-outline-gaps`).
+**Round 5, simulator check only. Verdict: PASS** on commit `c04027110842d0d664b8d7caf4bc1d9908402327` (PR #70, branch `feat/22a-outline-gaps`).
 
-The code is ready, as round 4 found. **The only thing stopping a PASS is still that the recap card has not been seen on a screen**, so F2 can't close (`triage.md` F2 condition 4). A gate that can't be evaluated is failed, not skipped. This FAIL says nothing against the card: nobody has looked at it yet.
+The recap card has now been seen rendered on a 375pt iPhone for all four item types, and all four of F2's conditions hold, so F2 closes. The code verification is round 4's, on this same commit. CI `verify` is SUCCESS on this SHA and the PR state is CLEAN, both rechecked at the end of this round.
 
-**Why the simulator check did not finish.** The iOS simulator tool refused access to the device three times over about four minutes (attach, then two screenshots), with this message: "The user has not granted Claude access to Sensei 22a SE3 (iOS 26.4) (a recent request was declined or is awaiting a response)". That grant is the founder's to give in the simulator panel, and an instruction from the Lead doesn't stand in for it. I did not drive the device another way (`simctl` screenshots, AppleScript clicks, or any other tool), because that would be doing what the refusal withholds. No screen was seen, no tap was made, and no screenshot exists.
+A first attempt in this round stopped because the simulator tool refused the device. On the rerun the tool accepted it, and the whole check went through that tool.
 
-**Route to PASS**
-1. The founder picks `Sensei 22a SE3` in the simulator panel and grants access. Only the founder can do this.
-2. A Tester runs the simulator check only, on `c040271`, starting Expo as described in "Simulator check". No code rerun is needed if no new commit lands.
-
-Nothing else is open against this PR. N4 and N6 are existing code and don't block. D2 is a decision-log entry for the Lead.
+Nothing blocks this PR. Open and non-blocking: N4 and N6 (existing code), D2 (decision-log entry for the Lead), T1 (tooling), V1 and V2 (cosmetic). A new commit voids this PASS.
 
 # Evidence: round 4, on `c040271`
 
@@ -61,28 +57,44 @@ Own worktree `.claude/worktrees/test-70`, detached at the PR head, no uncommitte
 
 **Spend.** No Gemini and no Anthropic calls. Neon: the throwaway branch only. My probe lesson, its checks and its user are removed, and the branch is back to 4 lessons, 1,625 items, 0 mastery rows, 0 completions. `tools/authoring/output/skeleton.json` untouched, modified time still 4 Nov. API server stopped. No simulator was booted, and nothing was downloaded.
 
-## Simulator check: blocked on device access (round 5)
+## Simulator check: done (round 5)
 
-Device: `Sensei 22a SE3`, UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`, booted, Expo Go 56.0.4 installed by the Lead. Worktree `.claude/worktrees/test-70` on `c040271`, no uncommitted changes.
+Device: `Sensei 22a SE3`, iPhone SE (3rd generation), iOS 26.4, 375 by 667 points, Expo Go 56.0.4. Worktree `.claude/worktrees/test-70` on `c040271`, no uncommitted changes. API from `dist/src/main.js` on the throwaway branch, dev-stub auth, no LLM keys. `expo start --offline --port 8081` with the Clerk key empty, opened with the tool's `open_url` on `exp://127.0.0.1:8081`. Bundle served, 0 error lines in the Metro log, no download attempted.
 
-| Step | Result |
-|---|---|
-| API from `dist/src/main.js` on the throwaway branch, dev-stub auth, no LLM keys | Started. `/curriculum` 200. `GET /lessons/fixture-vocab` returned the 4 words with their `recap` |
-| `expo start --ios --offline`, Clerk key empty, API at `http://localhost:3000` | Log: `Skipping Expo Go version validation in offline mode`. `Opening exp://192.168.0.80:8081 on Sensei 22a SE3`. **No download attempted** |
-| Bundle | `iOS Bundled 4370ms apps/mobile/index.ts (928 modules)`. Warnings only (Clerk deprecation, expo-notifications in Expo Go, SafeAreaView). No error lines before the CLI exited |
-| Simulator tool `attach`, `screenshot`, `screenshot` | **All refused**, see the top of this file |
-| Expo CLI | **Exited with code 7** within about three minutes of bundling (exact time not measured), see T1 |
-| Recap card, all four item types, F2 conditions 1 to 4 | **Not seen** |
+The app reached the API from the simulator: intake saved, Home and all four lessons loaded, and each lesson's completion carried through to the next. Walked as a total beginner from a first-run intake through all four lessons to the Practice beat and on to "Lesson complete". Screenshots are in `ops/work/22a-outline-gaps/test-screens/`.
 
-The bundle log shows the JavaScript was served and started. It doesn't show that the app rendered, or that it reached the API from the simulator: the API doesn't log requests, and I couldn't see the screen. Both stay open.
+| Type | Lesson | Front | Back on tap | Screenshots |
+|---|---|---|---|---|
+| Kana | `the-five-vowels` | あ い う え お | a, i, u, e, o | `01-kana-before.png`, `02-kana-after.png` |
+| Word | `fixture-vocab` | よろしくおねがいします | please remember me; please help me; please treat me well; I look forward to working with you | `03-word-before.png`, `04-word-after.png` |
+| | | ありがとうございます | thank you | same |
+| | | ごちそうさまでした | thank you for the meal; that was a delicious meal; what a wonderful meal | same |
+| | | かぎ | key | `05-word-after-last-card.png` |
+| Grammar | `fixture-grammar` | に | Marks where something is (in, at, on), when something happens (at, on), or where you are going (to). | `06-grammar-before.png`, `07-grammar-after.png` |
+| | | 〜がすきです | I like. The thing you like comes before が. | same |
+| | | 〜たいです | I want to. Goes on the end of a verb to say what you want to do. | same |
+| Kanji | `fixture-kanji` | 生 | life, then 19 readings from セイ・ショウ to む(す)・う | `08-kanji-before.png`, `09-kanji-after.png` |
+| | | 一 | one, then イチ・イツ・ひと・ひと(つ) | same |
 
-**T1. Tooling, not this PR's code. Affects the rerun.** `expo start --ios` died with an unhandled error from its own window-activation step (`activateWindowAsync`, then `isSimulatorAppRunningAsync`): `osascript -e tell app "System Events" to count processes whose name is "Simulator" or name is "DeviceHub" exited with non-zero code: 1`. The process exited and took Metro with it, so no further bundle could be served. The log doesn't carry `osascript`'s own error text. A missing macOS Automation permission is my guess, not confirmed. For the rerun, use plain `expo start --offline` with no `--ios`, then the simulator tool's `open_url` with `exp://127.0.0.1:8081`, which doesn't go through that step. Not tried, because there was no device access to try it with. `pnpm --filter mobile ios` runs the same `expo start --ios`, so an Alpha run from this kind of session would hit this too.
+Line above the cards reads "Tap each card to test yourself before the check.", as the PM ruled. Tapping a revealed card hides the back again. The kanji text on screen is identical to the API's `recap`.
 
-**Ready for the rerun.** The branch has the plan's fixture: `the-five-vowels`, then `fixture-vocab`, `fixture-grammar` and `fixture-kanji` at positions 2 to 4. The worktree is on `c040271` and built. I wrote nothing to the branch. Any request the app made while loading would be the dev-stub user's first-open calls only, and I can't say whether there were any.
+| F2 condition (`triage.md`) | Result | What I saw |
+|---|---|---|
+| 1. Back matches the PM's table, never repeats the front, never empty | **Holds** | All 14 cards above, four item types |
+| 2. Long fronts fit, nothing clipped or pushed off | **Holds** | よろしくおねがいします: one line, all 11 characters, no ellipsis, inside the card's padding. It is the longest word front among all 342 outline items, by script on the spec. あ, 一 and かぎ stay full size, matching the 40pt あ on the Teach beat. Glosses, the 100-character に meaning and 生's 19 readings wrap in full. Last card and "Start check" are reachable and clear of the footer in every lesson |
+| 3. No rōmaji on a word's card | **Holds** | All four word cards show meaning only |
+| 4. Seen rendered, at least one lesson of each type | **Holds** | 375pt device, the narrowest available |
+| `tech.md`: no `-` or `.` in a kanji reading | **Holds** | Screen, and the API's `recap` by script |
 
-**Spend and cleanup, round 5.** No Gemini or Anthropic calls, no keys in the API's environment. Nothing downloaded or installed. No Neon branch created, deleted or modified by me, and the default branch not touched. API stopped, Expo already exited, ports 3000 and 8081 free. Simulator left booted. `test-screens/` holds nothing, so I removed the empty folder.
+Also seen working, nothing broken: first-run intake, Teach beat, Check beat with "Correct!", "Lesson complete", Home moving from one lesson to the next and then to the chapter assessment, streak line, and Curriculum, where an expanded lesson shows kana and meaning with no duplicate reading (`10-curriculum-words.png`).
 
-**What is checked instead, at data level only.** Carried from round 3, because the mapper, `recapBackFor` and the mobile code are unchanged. The real compiled API on real Postgres, `GET /lessons/:slug`:
+Not defects: the developer menu on first open is Expo Go's own. One card missed a tap when my taps were fired milliseconds apart, and it responded when tapped on its own.
+
+**Spend and cleanup, round 5.** No Gemini or Anthropic calls, no keys in the API's environment. Nothing downloaded or installed. Ports 3000 and 8081 free after both servers stopped. Simulator left booted.
+
+**The branch now holds this run's progress.** No Neon branch was created or deleted, and the default branch wasn't touched. The app itself wrote to the throwaway branch as the dev-stub user: intake, four lesson completions, and whatever check results, mastery and streak rows those produce. I did not clean these up. A rerun on this branch starts at the chapter assessment, not at intake.
+
+**The same data over HTTP.** Carried from round 3, because the mapper, `recapBackFor` and the mobile code are unchanged. The real compiled API on real Postgres, `GET /lessons/:slug`:
 
 | Lesson | Front | `recap` |
 |---|---|---|
@@ -95,7 +107,7 @@ The bundle log shows the JavaScript was served and started. It doesn't show that
 | Kanji | 生 | life, then 19 clean readings |
 | Kanji | 一 | one, then イチ・イツ・ひと・ひと(つ) |
 
-`triage.md` F2 conditions 1 and 3 hold in the data. Conditions 2 and 4 (fit, wrapping, reaching the last card, seen rendered) are **not verified**. This table is not a substitute for them.
+The screen matched this table on every card.
 
 # Round 3 findings, rechecked
 
@@ -106,7 +118,7 @@ The bundle log shows the JavaScript was served and started. It doesn't show that
 | N1 Medium | **Still fixed** | Seven rows above, including with punctuation |
 | N2, N3 | **Still fixed** | Gate scans rerun on this commit, mutations caught |
 | N4 Low, 6,000-character answer returns 500 | Open, outside this unit, doesn't block | Unchanged. Backlog in `dev.md` |
-| F2 Medium, recap card | **Fixed in code, not yet seen rendered** | See "Simulator check" |
+| F2 Medium, recap card | **Fixed, seen rendered in round 5** | See "Simulator check" |
 
 # Promises
 
@@ -130,7 +142,13 @@ Status at code level. "Later" means final delivery needs drafted content and an 
 
 # Findings
 
-**F2. Medium. Fixed in code, not yet seen rendered. Open.** The only blocker. See "Simulator check".
+**F2. Medium. Fixed and closed.** All four conditions seen on a 375pt device. See "Simulator check".
+
+**T1. Tooling, not this PR's code. Doesn't block.** `expo start --ios` exited with code 7 after bundling, from an unhandled error in its own window-activation step: `osascript -e tell app "System Events" to count processes whose name is "Simulator" or name is "DeviceHub" exited with non-zero code: 1`. It took Metro with it. The log doesn't carry `osascript`'s own error text, so a missing macOS Automation permission is a guess, not confirmed. **Workaround, confirmed working:** `expo start --offline` with no `--ios`, then the simulator tool's `open_url` with `exp://127.0.0.1:8081`. `pnpm --filter mobile ios` in `ops/PROJECT.md` runs the same `expo start --ios`, so an Alpha run from this kind of session would hit this, and the Lead may want the workaround recorded there.
+
+**V1. Low, cosmetic, this PR's card. `apps/mobile/src/lesson/LessonPlayer.tsx:250` (the back's `Text`). Doesn't block.** The back wraps wherever the line runs out, so 生's readings split inside a reading: `い` / `(ける)`, `う(ま` / `れ)`, `む` / `(す)`. Nothing is lost or clipped, and F2 asks for full wrapping, which holds. A grammar meaning can also leave a short last line, such as `が.` for 〜がすきです. Separately, for the PM: 19 readings on one card is what the table asks for and it fits, but it is a lot for a beginner, and the PM may want to look at it when real kanji lessons are reviewed at 22b.
+
+**V2. Low, cosmetic, existing code, not from this PR. `apps/mobile/src/lesson/LessonPlayer.tsx:435`. Doesn't block.** On "Lesson complete" the Done button is only as wide as its label, so the text almost touches the button's edges. Seen on all four lessons. The PR doesn't touch `DoneScreen` or `ui.tsx`.
 
 **N6. Low. Existing code, not from this PR. `apps/api/src/writing-eval/writing-eval.service.ts:105`. Doesn't block.** The Developer flagged half of this. It's wider than the note says: punctuation is forgiven only for rōmaji input, so a learner typing the exact kana can be marked wrong in either direction. A stored `こんにちは！` marks a typed `こんにちは` wrong, and a stored `こんにちは` marks a typed `こんにちは！` or `こんにちは。` wrong. The gate lets a stored `こんにちは！` through. `main` has the same equality check with no separator handling, so this PR neither caused nor worsened it. The absolute-beginner persona types rōmaji, so it mainly reaches a returning learner with a Japanese keyboard. The fix is to strip `SEPARATORS` from both sides before the equality check. It belongs with N4 as a small new unit, and the PM can choose to pull it forward.
 
@@ -219,8 +237,9 @@ Other round 2 results: all 342 outline items through `recapBackFor` (0 null, 0 e
 
 # Not verified
 
-- **The recap card on a screen, all four item types, long kana fronts on the narrowest device.** The simulator tool refused access to the device, for the reason at the top. No screenshots exist. F2 can't close without it.
-- **Whether the app renders and reaches the API from the simulator.** The bundle loaded with no errors logged, and that is all that was observed.
+- **Backs longer than the fixture's.** The longest rendered was 生's 19 readings. The back has no line limit and the screen scrolls, so longer text should behave the same, but it wasn't rendered.
+- **Larger iOS text sizes.** Not in the plan, not exercised.
+- **Real drafted lessons on the card.** Fixture lessons only, because no real lesson exists until 22b.
 - **Default-branch ingest and `authoring:outline` against the default path** (`tech.md` section 3 steps 4 and 5). After merge, by plan.
 - **A real draft.** No Anthropic spend. First evidence is 22b.
 - **Android.** Not in this environment.
