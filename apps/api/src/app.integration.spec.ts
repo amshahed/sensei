@@ -84,6 +84,7 @@ const lessonRow = {
         display: 'あ',
         reading: 'あ',
         meaning: null,
+        data: { romaji: 'a', script: 'hiragana' },
       },
     },
   ],
@@ -706,6 +707,7 @@ describe('API (HTTP integration)', () => {
       type: 'F_KANA',
       module: { title: 'Foundation (Japanese)' },
     });
+    expect(body.items[0]).toMatchObject({ display: 'あ', recap: 'a' });
     expect(body.checks[0].choices).toEqual(['あ', 'い', 'う']);
     // The correct answer must not cross the wire.
     expect(body.checks[0]).not.toHaveProperty('answer');

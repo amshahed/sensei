@@ -60,6 +60,8 @@ export interface ItemDto {
 
 export interface LessonItemDto extends ItemDto {
   role: LessonItemRole;
+  /** What the Practice card reveals on tap. Null if nothing can be shown yet. */
+  recap: string | null;
 }
 
 /**

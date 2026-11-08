@@ -1,5 +1,6 @@
 import {
   kanjiReadings,
+  recapBackFor,
   type RecallableItem,
   recallQuestionFor,
 } from './recall-question';
@@ -108,6 +109,74 @@ describe('recallQuestionFor', () => {
     expect(
       recallQuestionFor(item({ type: 'GRAMMAR', display: 'です' })),
     ).toBeNull();
+  });
+});
+
+describe('recapBackFor (the lesson recap card)', () => {
+  it('gives a kana its rōmaji, never the kana again', () => {
+    expect(
+      recapBackFor(
+        item({
+          type: 'KANA',
+          display: 'あ',
+          reading: 'あ',
+          data: { romaji: 'a' },
+        }),
+      ),
+    ).toBe('a');
+  });
+
+  it('gives a word its meaning, even when its data has a rōmaji', () => {
+    expect(
+      recapBackFor(
+        item({
+          display: 'かぎ',
+          reading: 'かぎ',
+          meaning: 'key',
+          data: { romaji: 'kagi' },
+        }),
+      ),
+    ).toBe('key');
+  });
+
+  it('gives a grammar point its meaning', () => {
+    expect(
+      recapBackFor(
+        item({ type: 'GRAMMAR', display: 'に', meaning: 'marks where' }),
+      ),
+    ).toBe('marks where');
+  });
+
+  it('gives a kanji its meaning, then its readings with no KANJIDIC markers', () => {
+    const back = recapBackFor(
+      item({
+        type: 'KANJI',
+        display: '一',
+        reading: 'ひと-',
+        meaning: 'one',
+        data: {
+          on_readings: ['イチ', 'イツ'],
+          kun_readings: ['ひと-', 'ひと.つ'],
+        },
+      }),
+    );
+    expect(back).toBe('one\nイチ・イツ・ひと・ひと(つ)');
+    expect(back).not.toMatch(/[-.]/);
+  });
+
+  it('is null for a shell with nothing to show', () => {
+    expect(recapBackFor(item({ display: 'かぎ', meaning: ' ' }))).toBeNull();
+    expect(recapBackFor(item({ type: 'GRAMMAR', display: 'に' }))).toBeNull();
+    expect(
+      recapBackFor(item({ type: 'KANA', display: 'あ', reading: 'あ' })),
+    ).toBeNull();
+    expect(recapBackFor(item({ type: 'KANJI', display: '一' }))).toBeNull();
+  });
+
+  it('shows a kanji with readings and no meaning yet', () => {
+    expect(
+      recapBackFor(item({ type: 'KANJI', display: '日', reading: 'ひ' })),
+    ).toBe('ひ');
   });
 });
 

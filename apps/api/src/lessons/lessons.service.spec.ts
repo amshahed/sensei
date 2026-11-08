@@ -28,6 +28,7 @@ const lessonFixture = {
         display: 'あ',
         reading: 'あ',
         meaning: null,
+        data: { romaji: 'a' },
       },
     },
   ],
@@ -118,6 +119,7 @@ describe('LessonsService', () => {
     });
     const dto = await service.getByIdOrSlug('the-five-vowels');
     expect(dto.items[0].display).toBe('はは');
+    expect(dto.items[0].recap).toBe('mother');
   });
 
   it('never leaks the correct answer to the client', async () => {

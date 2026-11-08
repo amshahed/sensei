@@ -101,6 +101,22 @@ export function kanjiReadings(item: RecallableItem): {
   return { accepted: [...accepted], shown: shown.join('・') };
 }
 
+/** The back of the lesson recap card (B.3.a). A word never gets rōmaji. */
+export function recapBackFor(item: RecallableItem): string | null {
+  const meaning = item.meaning?.trim() || null;
+  switch (item.type) {
+    case 'KANA':
+      return dataString(item.data, 'romaji')?.trim() || null;
+    case 'VOCAB':
+    case 'GRAMMAR':
+      return meaning;
+    case 'KANJI': {
+      const { shown } = kanjiReadings(item);
+      return [meaning, shown].filter(Boolean).join('\n') || null;
+    }
+  }
+}
+
 /**
  * Words that kana-only display makes identical to another item, keyed by
  * `Item.display`, with the phrase that tells them apart. The outline validator
