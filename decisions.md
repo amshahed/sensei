@@ -1421,3 +1421,148 @@ The decisions made so far are all server-side or platform-neutral. Platform-spec
 **Trade-off accepted:** F.7 rejected zero human input because the AI critic shares blind spots with the drafter and because product feel needs human judgment. This decision accepts that risk for closed beta only. PM approval means "fit for closed beta", not "linguistically verified". A native speaker must sample published lessons before any wider beta (`ops/BLOCKERS.md`).
 
 **Reversal:** the founder can reclaim any category at any time. Update `ops/PROJECT.md` and add a new entry here.
+
+---
+
+## Beta outline (unit 22a)
+
+Full reasoning and the target outline are in `ops/work/22a-outline-gaps/brief.md`.
+
+### M.1.a Beta slice grows to 120 lessons and 24 grammar points (amends M.1) (decided by Project Manager, 2026-11-08)
+
+**Decision:** The beta slice is 120 lessons in 17 chapters, 185 words, 24 grammar points and 41 kanji. M.1 said about 100 lessons and 15 to 20 grammar points. The founder accepted about 120 on 2026-11-08.
+
+**Why:** M.1 assumed the Tanos list contained its own prerequisites. It doesn't: か, の, ます and the て-form are absent, while patterns built on them are present. Of the 24 points, 14 are Tanos points and 10 are prerequisites. Sound-variant and phrase lessons add 12 more lessons. 16 lessons came out to hold the total near 120.
+
+**Rejected:** Holding 100 lessons, which would cut most integration lessons or the milestone. Keeping all 113 and adding the 23 new ones (136 lessons), which costs more than the credit available and adds nothing the milestone needs.
+
+**Reverse:** Remove later chapters from the outline before drafting. After drafting, this costs the drafted lessons.
+
+### D.2.a Sound variants are taught through words, with no new item type (implements D.2) (decided by Project Manager, 2026-11-08)
+
+**Decision:** Voiced kana, combinations, small っ and long vowels get lessons but no items. Each sound lesson targets vocabulary words containing the sound, never the base kana. Each sound group keeps a minimum number of words in the slice: 3 per voiced row, 5 each for combinations, small っ and long vowels.
+
+**Why:** These sounds are rules on shapes already known, so about 58 extra review cards per script would be poor value for a 15-minute learner. Targeting the base kana would make a miss on が count against か, a false signal.
+
+**Costs accepted:** No per-sound weakness signal. Rare sounds may appear once. Without audio the timing of long vowels and っ is badly conveyed, which is acceptable for Alpha and not for closed beta.
+
+**Rejected:** New sound items (against D.2, heavy review load). Base-kana targets (corrupts か's schedule). No sound lessons (81 of 162 outline words need them).
+
+**Reverse:** If first-attempt misses on one sound group run more than 30% above comparable words, or Alpha reports a group unreadable, add kana items for that group only, in a new entry amending D.2.
+
+### E.1.b Set phrases and prerequisite grammar supplement the Tanos lists (amends E.1.a) (decided by Project Manager, 2026-11-08)
+
+**Decision:** 20 set phrases plus 日本 and 日本語 are added to Vocab, and 10 prerequisite grammar points to Grammar, from outside the Tanos lists. Every new vocabulary row must have a JMdict entry. Phrases without one are not added. These rows must not claim a JLPT level or Tanos origin. Set phrases are displayed in kana in the beta even where JMdict lists a kanji spelling.
+
+**Why:** D.2 already places set expressions in Vocab, so this fills a data gap. E.1.a made Tanos the sole definition of level membership, so going outside it needs its own entry. Requiring JMdict keeps linguistic correctness on a canonical source. Grammar explanations stay AI-drafted and unverified, like the other 40 points.
+
+**Rejected:** AI-written phrases with no JMdict entry (わかりました, そうですか). Household phrases such as ただいま, of low value for the traveller persona.
+
+**Reverse:** Remove the rows from the outline. Ids stay, per E.1.a.
+
+### F.1.a Beta outline order is set by the brief, not proposed by the model (amends F.1) (decided by Project Manager, 2026-11-08)
+
+**Decision:** For the beta slice, the chapter and lesson order in the 22a brief's appendix is binding. The authoring step may fill in detail but may not reorder or add lessons.
+
+**Why:** The AI-proposed outline produced the dependency gaps this unit fixes, and F.1's review was only of pacing and proportion. F.1's approach stays available for later chapters.
+
+**Rejected:** Regenerating with a better prompt and hoping the order holds.
+
+**Reverse:** A new entry returning order to the outline author, with a dependency check in place.
+
+### G.4.b Words appear in kana until their kanji are taught (amends G.4.a and E.1.a) (decided by Project Manager, 2026-11-08)
+
+**Decision:** A word is shown in kana until the learner has been taught every kanji in it. While shown in kana, recall asks its meaning, the existing rule for kana-only words. Acceptable fallback if switching per learner is costly: all vocabulary stays in kana for the beta and kanji appear only in kanji lessons.
+
+**Why:** New evidence. Of the outline's 125 kanji-spelled words, 121 contain a kanji untaught when the word is introduced, and 77 contain a kanji never taught in the slice. G.4.a asks for the reading of a kanji-spelled word, so a beginner would be tested on characters nobody taught them. Reordering can't fix this within M.1's light kanji.
+
+**Rejected:** Showing the reading above the kanji in reviews (answers its own question, against G.4.a). Teaching over 100 more kanji (against M.1). Leaving it as is (unanswerable reviews by the first vocabulary chapters).
+
+**Reverse:** A new entry restoring kanji display once a larger kanji set ships.
+
+### F.1.b The beta outline is compiled from a committed spec, with no model call (implements F.1.a) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** The appendix of the 22a brief becomes `apps/api/data/curriculum/foundation-ja-beta.json`. A new `authoring:outline` command validates it (sound order, grammar prerequisites, coverage floors, homophones) and writes the existing `skeleton.json` format. Chapter 1 and lesson 1 reuse the live tracer's slugs (`hiragana-vowels`, `the-five-vowels`), so publishing replaces the tracer in place.
+
+**Why:** F.1.a makes the order binding, so a model has nothing left to decide. This costs $0 against about $0.50, credit is tight, and the spec can be tested in CI. Reusing the slugs avoids deleting a live lesson, which is on the stop list.
+
+**Rejected:** Regenerating with a stronger prompt (pays for output we already have, can drift). Hand-editing `skeleton.json` (gitignored, exists on one machine). Deleting the tracer lesson (destructive on live data).
+
+**Reverse:** Delete the spec and return to `authoring:skeleton` with a new entry amending F.1.a. The AI path is left intact for later chapters.
+
+### G.4.c All vocabulary shows in kana for the beta (chooses the G.4.b fallback) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** A single function, `learnerSurface`, serves a VOCAB item's reading in place of any kanji spelling, on every API response. Vocabulary recall always asks meaning. Kanji appear only in F-Kanji lessons. `Item.display` is unchanged. Two homophones (さん the honorific, さん the number) carry a context phrase in their prompts.
+
+**Why:** Only 39 of the slice's 184 spellings could ever switch to kanji. Per-learner switching needs a taught-kanji lookup on every read, a prompt and grade path that agree across a changing answer type, and FSRS history carried from meaning questions onto reading questions. Lesson text is also shared and fixed at authoring time, so skip-tests would still expose untaught kanji.
+
+**Rejected:** Per-learner switching (cost above for 39 words). Rewriting `Item.display` to kana (changes live data and loses the canonical spelling E.1.a chose).
+
+**Reverse:** Make `learnerSurface` take a taught-kanji set, in a new entry. No data change is needed.
+
+### E.1.c Supplement rows reach Neon through an insert-only ingest (implements E.1.b) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** `ingest:items supplement` reads committed files, inserts the 22 vocabulary and 10 grammar rows with no level, and fills grammar meanings only where they are null. It is tested on a throwaway Neon branch before the default branch, with a before-and-after fingerprint of existing rows. The 24 grammar meanings are committed content written by the PM, not drafter output. `ingest:items grammar` no longer overwrites a meaning with null.
+
+**Why:** Adding the rows to the Tanos files would give them a JLPT level, against E.1.b. Committed meanings cost no credit, don't depend on the batch finishing, and give a point taught twice a single meaning.
+
+**Rejected:** Prisma data migration (can't read the JMdict source, puts content in schema history). Having the drafter write meanings (costs credit, and two lessons could disagree).
+
+**Reverse:** Before publishing, delete the 32 rows and null the 14 meanings. After publishing, leave the rows and remove them from the outline, per E.1.b, because deleting an item cascades to lessons and mastery.
+
+### F.2.a Drafts get course context and a deterministic gate, and a run never pays twice unless told to (extends F.2 and F.3) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** The drafter receives the kana stages, grammar and words taught so far. A free deterministic gate rejects untaught kanji, untaught sounds and conjugation markers used early, after each draft and again at publish. `authoring:draft` skips a lesson that already has a draft or a rejected draft, `--force` redrafts and keeps the previous file, and `--max-cost` stops a batch at a limit. A rejected draft is written to `<id>.rejected.json`, so review can't pick it up. Open checks are authorable (`grading: "open"`), because the publisher previously stored a fixed answer on every question.
+
+**Why:** Ordering the outline doesn't control what a model writes inside a lesson, so P1, P7 and P9 need a check on the output. With about $19.50 for about 120 lessons, a silent overwrite or a re-run of a chapter is real money. Particles can't be checked mechanically in kana text, so the critic and PM review remain the backstop for those.
+
+**Rejected:** Refusing and exiting when a draft exists (halts a batch at the first existing draft). Relying on the AI critic alone (shares the drafter's blind spots, F.7). Morphological analysis of kana-only text (unreliable without kanji).
+
+**Reverse:** Remove the gate call from `draft.ts` and `publish.ts`. Pass `--force` by default to restore overwriting.
+
+### G.4.d Tests of prior knowledge may show untaught kanji, reviews may not (amends I.4.d.a and I.4.f, narrows promise P9 of unit 22a) (decided by Project Manager, 2026-11-08)
+
+**Decision:**
+1. Placement and chapter skip-tests keep showing kanji for KANJI items. They check what a learner already knows, and a learner can decline them. Promise P9 is reworded to say so.
+2. A KANJI item reaches Reviews or Practice only if the learner studied it in a lesson or answered it correctly on a test. This removes KANJI items from the "untested items are seeded Hard" rule of I.4.d.a and I.4.f when the learner has not done the lesson. A kanji missed on a passed skip-test is not scheduled either, which narrows I.4.d.a's "wrong answers are recorded as Again". Exit Assessments are unaffected, since the lessons are already done.
+3. Grammar patterns are stored and shown in kana when they contain a kanji the slice doesn't teach. The one case is 〜がすきです (was 〜が好きです, 好 is never taught). Its item id follows the pattern.
+
+**Why:** An absolute beginner never meets placement kanji: the quiz runs only for learners who report a fair amount of experience or a refresher, and it offers "I don't know" and a skip. A skip-test is offered as "Already know this?", and a failed one costs nothing. Blocking kanji there would make the kanji lessons unskippable for the returning learner, the persona skip-tests exist for. The real breach is one step later. G.4.c means vocabulary answers are now given in kana, so passing a chapter says nothing about kanji, yet seeding would still send "Type a reading for 「母」" to someone who never saw that lesson.
+
+**Rejected:** Reading P9 as already satisfied (ignores the seeding path above). Hiding kanji from placement and skip-tests (they could no longer test kanji, so kanji chapters could not be skipped honestly). Seeding kanji but asking their meaning (still shows a character nobody taught).
+
+**Cost accepted:** A learner who skips a chapter and really does know its unsampled kanji gets no review of them until they open that kanji lesson. Nothing later in the slice depends on them, because kanji appear only in F-Kanji lessons.
+
+**Reverse:** A new entry restoring KANJI items to inferred seeding, for example once vocabulary shows kanji again and passing a chapter is evidence of reading them.
+
+---
+
+## Grading model (unit grading-model-404)
+
+Measurements and the full comparison are in `ops/work/grading-model-404/tech.md`.
+
+### L.4.b Runtime grading moves to Gemini 3.5 Flash-Lite, and a lost model is reported (amends L.4.a) (decided by Tech Lead, 2026-11-08)
+
+**Decision:** The default for `LLM_GRADING_MODEL` is `gemini-3.5-flash-lite`, replacing `gemini-2.5-flash`. It lives in `apps/api/src/llm/model-defaults.ts`. `gemini-3.1-flash-lite` is the tested manual fallback, set by env var. The API checks the model with one real call at startup, and every grade that falls back logs a tagged line with its reason. The free tier is for development and agent runs only: billing must be on before any real learner.
+
+**Why:** `gemini-2.5-flash` and `gemini-2.5-flash-lite` both return 404 for this key ("no longer available to new users"), so every open answer fell back to exact match and a right paraphrase was marked wrong. Measured with the real prompt: `gemini-3.5-flash-lite` served every call it wasn't rate-limited on, gave the right verdict on 18 of 18 labelled answers, and has a median of 743 ms. It costs $0.30/$2.50 per million tokens, the price L.4.a was approved on, about $0.19 per 1,000 grades. It is Google's named successor to 2.5 Flash and has no shutdown date. The model list and metadata endpoints still report the 404ing model as present, so only a real call can check it.
+
+**New evidence against L.4.a's free-tier reasoning:** the limit is 15 requests per minute per model, and every vocabulary review answer is a model call (G.4.c). The Gemini API terms allow only paid services for apps available to users in the EEA, Switzerland or UK, permit training and human review on free-tier input, and bar apps likely to be accessed by under-18s. L.4.a's "real free tier covering early beta" no longer holds for real learners.
+
+**Rejected:** `gemini-3.8-flash`, which the 404 message recommends (answered 0 of 6 calls, about 5× the cost). `gemini-3.1-flash-lite` as the default (steadier ratings, slightly cheaper, but shuts down 7 May 2027). `-latest` aliases (swap the model under a tuned prompt with no record). Returning to Haiku (about 3× the cost, on the Anthropic credit content needs). Automatic failover to a second model (hides the signal, and L.4.a left failover until after MVP). Refusing to boot when the model is gone (turns degraded grading into a full outage).
+
+**Cost accepted:** This model rated some right answers "Easy" where `gemini-3.1-flash-lite` did not, which can lengthen review intervals. Temperature 0 did not change that. Logs alert nobody until hosting exists.
+
+**Reverse:** Set `LLM_GRADING_MODEL` to another model that passes `ops/work/grading-model-404/eval-set.json`. Changing the default needs a new entry here.
+
+---
+
+### G.4.e G.4.d is enforced where mastery rows are written, and a row counts as evidence (decided by Tech Lead, 2026-11-08)
+
+**Decision:** Reviews and Practice read only `ItemMasteryState`, so G.4.d is enforced by not writing a KANJI row without evidence. Placement and a passed skip-test no longer seed untested KANJI items, using one shared rule (`mayInferMastery`). A wrong KANJI answer on a passed skip-test is written only if the learner already has a row for that item, because a row means a lesson Check or an earlier correct test answer. Exit Assessments are unchanged.
+
+**Why:** It closes every path with one small change, needs no schema change and leaves no rows behind to feed reminders. A skip-test can follow real study of part of the chapter, so dropping every missed KANJI would throw away true evidence.
+
+**Rejected:** A read-side filter in `getDue`, `dueTimes` and `learnedQuizzable` (three queries with a per-learner lookup, and the rows would still exist). A filter inside `MasteryService.seedInferred` (it can't tell a skip-test from an Exit Assessment). An evidence column on `ItemMasteryState` (a migration for something a row's existence already says).
+
+**Reverse:** Make `mayInferMastery` return true for KANJI and remove the `writeBack` filter in `assessments.service.ts`. No data change is needed.

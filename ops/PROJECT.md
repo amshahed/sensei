@@ -32,7 +32,7 @@ Sensei is a Japanese fluency app: real comprehension and speaking ability over m
 
 ## Stack
 
-React Native + Expo SDK 56 (`apps/mobile`), NestJS + TypeScript (`apps/api`), Prisma 6 on Postgres + pgvector, shared types in `packages/types`, pnpm 11 + Turborepo. CI runs on Node 22. Claude for authoring and Gemini 2.5 Flash for runtime grading, behind `LlmClient`. See `decisions.md` L.1 to L.6.
+React Native + Expo SDK 56 (`apps/mobile`), NestJS + TypeScript (`apps/api`), Prisma 6 on Postgres + pgvector, shared types in `packages/types`, pnpm 11 + Turborepo. CI runs on Node 22. Claude for authoring and Gemini 3.5 Flash-Lite for runtime grading (L.4.b), behind `LlmClient`. See `decisions.md` L.1 to L.6.
 
 ## Commands
 
