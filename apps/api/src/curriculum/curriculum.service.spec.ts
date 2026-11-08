@@ -65,6 +65,41 @@ const keyItemRows = [
 ];
 
 describe('CurriculumService', () => {
+  describe('key items (G.4.c)', () => {
+    it('are served in kana, and carry no item type', async () => {
+      const prismaFake = {
+        lessonItem: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              lessonId: 'l1',
+              item: {
+                id: 'ja:vocab:母',
+                type: 'VOCAB',
+                display: '母',
+                reading: 'はは',
+                meaning: 'mother',
+              },
+            },
+          ]),
+        },
+      };
+      const svc = new CurriculumService(
+        prismaFake as never,
+        {} as never,
+      ) as unknown as {
+        loadKeyItems(): Promise<Map<string, unknown[]>>;
+      };
+      expect((await svc.loadKeyItems()).get('l1')).toEqual([
+        {
+          id: 'ja:vocab:母',
+          display: 'はは',
+          reading: 'はは',
+          meaning: 'mother',
+        },
+      ]);
+    });
+  });
+
   let service: CurriculumService;
   let moduleFindMany: jest.Mock;
   let lessonItemFindMany: jest.Mock;

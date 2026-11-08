@@ -15,6 +15,7 @@ import type {
   AssessmentResultDto,
   AssessmentStartDto,
   AssessmentSubmitRequest,
+  ItemType,
 } from '@sensei/types';
 import type { Grade } from 'ts-fsrs';
 import { mapLimit } from '../common/map-limit';
@@ -23,6 +24,7 @@ import { MasteryService } from '../mastery/mastery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecallGraderService } from '../recall/recall-grader.service';
 import { StreakService } from '../streak/streak.service';
+import { mayInferMastery } from '../recall/learner-surface';
 import {
   type RecallQuestion,
   recallQuestionFor,
@@ -297,9 +299,23 @@ export class AssessmentsService {
     // FSRS is best-effort after the outcome is safely recorded: a failed
     // write is logged and self-corrects through later reviews.
     const skipTestFailed = attempt.kind === 'SKIP' && !passed;
-    await this.writeBack(userId, scored, { penalise: !skipTestFailed, now });
+    const noEvidence =
+      attempt.kind === 'SKIP' && passed
+        ? await this.missedKanjiWithoutEvidence(userId, scored, itemsById)
+        : new Set<string>();
+    await this.writeBack(
+      userId,
+      scored.filter((g) => !noEvidence.has(g.itemId)),
+      { penalise: !skipTestFailed, now },
+    );
     if (passed) {
-      await this.seedUntested(userId, attempt.chapterId, attempt.itemIds, now);
+      await this.seedUntested(
+        userId,
+        attempt.chapterId,
+        attempt.itemIds,
+        attempt.kind,
+        now,
+      );
     }
     // Answering the Assessment was real effort (K.3.f) — first submit only.
     await this.streak.record(
@@ -331,6 +347,41 @@ export class AssessmentsService {
       correctAnswer: question.expected,
       ...graded,
     };
+  }
+
+  /**
+   * Kanji the learner missed on a passed skip-test and has no mastery row for
+   * (G.4.d): they neither studied it nor answered it correctly, so a miss
+   * must not put it into Reviews. A row is evidence: a lesson Check or an
+   * earlier correct test answer (G.4.e). If the lookup fails, every missed
+   * kanji is left out: that loses one Again, where throwing would turn an
+   * already recorded result into a 500.
+   */
+  private async missedKanjiWithoutEvidence(
+    userId: string,
+    scored: GradedResult[],
+    itemsById: ReadonlyMap<string, { type: ItemType }>,
+  ): Promise<Set<string>> {
+    const missed = scored
+      .filter((g) => {
+        const item = itemsById.get(g.itemId);
+        return !g.correct && item !== undefined && !mayInferMastery(item);
+      })
+      .map((g) => g.itemId);
+    if (missed.length === 0) return new Set();
+    try {
+      const rows = await this.prisma.itemMasteryState.findMany({
+        where: { userId, itemId: { in: missed } },
+        select: { itemId: true },
+      });
+      const known = new Set(rows.map((r) => r.itemId));
+      return new Set(missed.filter((id) => !known.has(id)));
+    } catch (err) {
+      this.logger.error(
+        `Evidence lookup failed, leaving out missed kanji: ${String(err)}`,
+      );
+      return new Set(missed);
+    }
   }
 
   /**
@@ -382,11 +433,16 @@ export class AssessmentsService {
     });
   }
 
-  /** Seed the passed chapter's untested items as inferred mastery (I.4.c). */
+  /**
+   * Seed the passed chapter's untested items as inferred mastery (I.4.c). On a
+   * skip-test that excludes kanji, which it says nothing about (G.4.d). An Exit
+   * Assessment follows the chapter's lessons, so it keeps them.
+   */
   private async seedUntested(
     userId: string,
     chapterId: string,
     testedItemIds: string[],
+    kind: AssessmentKind,
     now: Date,
   ): Promise<void> {
     try {
@@ -399,7 +455,12 @@ export class AssessmentsService {
       });
       const untested = rows
         .map((r) => r.item)
-        .filter((item) => !tested.has(item.id) && recallQuestionFor(item))
+        .filter(
+          (item) =>
+            !tested.has(item.id) &&
+            (kind === 'EXIT' || mayInferMastery(item)) &&
+            recallQuestionFor(item),
+        )
         .map((item) => item.id);
       await this.mastery.seedInferred(userId, untested, now);
     } catch (err) {

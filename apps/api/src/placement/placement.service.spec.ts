@@ -199,6 +199,57 @@ describe('PlacementService', () => {
     );
   });
 
+  describe('kanji evidence (G.4.d)', () => {
+    const row = (id: string, type: string, extra: object = {}) => ({
+      item: {
+        id,
+        type,
+        display: id,
+        reading: 'r',
+        meaning: 'm',
+        data: {},
+        ...extra,
+      },
+    });
+
+    it('never infers an untested kanji; untested words and grammar still seed', async () => {
+      lessonItemFindMany.mockResolvedValue([
+        row('kanji1', 'KANJI', { data: { on_readings: ['ジン'] } }),
+        row('word1', 'VOCAB'),
+        row('gram1', 'GRAMMAR'),
+      ]);
+      await answer('a');
+      await answer('b', ['x']);
+      expect(seedInferred).toHaveBeenCalledWith(
+        'u1',
+        ['word1', 'gram1'],
+        expect.any(Date),
+        expect.anything(),
+      );
+    });
+
+    it('a kanji answered correctly in a skipped chapter is still seeded as tested', async () => {
+      attempt!.questions = [q('kanji1', 'c1'), q('b', 'c2')];
+      lessonItemFindMany.mockResolvedValue([
+        row('kanji1', 'KANJI', { data: { on_readings: ['ジン'] } }),
+      ]);
+      await answer('kanji1');
+      await answer('b', ['x']);
+      expect(seedTested).toHaveBeenCalledWith(
+        'u1',
+        ['kanji1'],
+        expect.any(Date),
+        expect.anything(),
+      );
+      expect(seedInferred).toHaveBeenCalledWith(
+        'u1',
+        [],
+        expect.any(Date),
+        expect.anything(),
+      );
+    });
+  });
+
   it('a correct answer in the start chapter is not seeded: that chapter is taught normally', async () => {
     attempt!.questions = [q('a', 'c1'), q('a2', 'c2'), q('b', 'c2')];
     await answer('a');

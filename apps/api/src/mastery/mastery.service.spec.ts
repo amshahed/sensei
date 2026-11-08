@@ -224,6 +224,30 @@ describe('MasteryService', () => {
       expect(due.map((d) => d.prompt)).toContain('Type the rōmaji for 「あ」');
     });
 
+    it('serves a word in kana and asks its meaning (G.4.c)', async () => {
+      stateFindMany.mockResolvedValue([
+        {
+          itemId: 'ja:vocab:母',
+          mastery: 0.2,
+          recognition: 0,
+          recall: 0,
+          production: 0,
+          fsrs: null,
+          due: NOW,
+          item: {
+            type: 'VOCAB',
+            display: '母',
+            reading: 'はは',
+            meaning: 'mother',
+            data: {},
+          },
+        },
+      ]);
+      const [due] = await service.getDue('dev-user', NOW);
+      expect(due.display).toBe('はは');
+      expect(due.prompt).toBe('What does 「はは」 mean?');
+    });
+
     it('keeps meaning-less grammar shells out of the query itself', async () => {
       stateFindMany.mockResolvedValue([]);
       await service.getDue('dev-user', NOW);

@@ -201,6 +201,21 @@ describe('PracticeService', () => {
   });
 
   describe('start', () => {
+    it('serves a word spelled with kanji in kana (G.4.c)', async () => {
+      statesFindMany.mockResolvedValue([
+        state({ ...vocab, display: '母', reading: 'はは' } as typeof vocab, 1),
+      ]);
+      const session = await service.start(
+        'u1',
+        { scope: { kind: 'weakest' } },
+        NOW,
+      );
+      expect(session.items[0]).toMatchObject({
+        display: 'はは',
+        prompt: 'What does 「はは」 mean?',
+      });
+    });
+
     it('weakest: lowest retention first, then weakest modality; answers never leak', async () => {
       statesFindMany.mockResolvedValue([
         state(kana('a'), 1),

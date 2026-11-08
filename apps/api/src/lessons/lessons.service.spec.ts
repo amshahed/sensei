@@ -99,6 +99,27 @@ describe('LessonsService', () => {
     expect(dto.checks[0].choices).toEqual(['あ', 'い', 'う']);
   });
 
+  it('serves a word spelled with kanji in kana (G.4.c)', async () => {
+    findFirst.mockResolvedValue({
+      ...lessonFixture,
+      items: [
+        {
+          role: 'TARGET',
+          item: {
+            id: 'ja:vocab:母',
+            language: 'ja',
+            type: 'VOCAB',
+            display: '母',
+            reading: 'はは',
+            meaning: 'mother',
+          },
+        },
+      ],
+    });
+    const dto = await service.getByIdOrSlug('the-five-vowels');
+    expect(dto.items[0].display).toBe('はは');
+  });
+
   it('never leaks the correct answer to the client', async () => {
     findFirst.mockResolvedValue(lessonFixture);
 

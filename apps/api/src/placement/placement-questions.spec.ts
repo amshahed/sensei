@@ -124,6 +124,22 @@ describe('placementQuestionFor (I.4.b formats)', () => {
     }
   });
 
+  it('vocab: a word spelled with kanji is shown in kana (G.4.c)', () => {
+    const q = placementQuestionFor(
+      { ...words[0], reading: 'たべる' },
+      'c1',
+      pools,
+      first,
+    )!;
+    expect(q.display).toBe('たべる');
+  });
+
+  it('kanji: the kanji itself is still shown, since tests check prior knowledge (G.4.d)', () => {
+    expect(placementQuestionFor(kanjis[0], 'c1', pools, first)!.display).toBe(
+      kanjis[0].display,
+    );
+  });
+
   it('kanji: reading + meaning parts; distractor readings share the script and are not its own', () => {
     const q = placementQuestionFor(kanjis[0], 'c1', pools, first)!;
     expect(q.parts.map((p) => p.label)).toEqual(['Reading', 'Meaning']);

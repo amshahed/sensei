@@ -99,8 +99,13 @@ const lessonRow = {
   ],
 };
 
+type FakeItem = Omit<typeof kanaA, 'meaning' | 'data'> & {
+  meaning: string | null;
+  data: unknown;
+};
+
 /** Minimal in-memory stand-in for the Prisma surface the routes touch. */
-function fakePrisma() {
+function fakePrisma(extraLessonItems: Array<FakeItem> = []) {
   const masteryStates = new Map<string, Record<string, unknown>>();
   const completions: Array<{
     userId: string;
@@ -111,25 +116,25 @@ function fakePrisma() {
   const attempts = new Map<string, Record<string, unknown>>();
   const practiceSessions = new Map<string, Record<string, unknown>>();
   const practiceAttempts = new Set<string>();
-  const lessonItems = [
-    {
-      lessonId: lessonRow.id,
-      itemId: kanaA.id,
-      role: 'TARGET',
-      position: 0,
-      item: kanaA,
-      lesson: {
+  const lessonItems = [kanaA, ...extraLessonItems].map((item, position) => ({
+    lessonId: lessonRow.id,
+    itemId: item.id,
+    role: 'TARGET',
+    position,
+    item,
+    lesson: {
+      position: 1,
+      chapterId: lessonRow.chapter.id,
+      chapter: {
+        id: lessonRow.chapter.id,
+        title: lessonRow.chapter.title,
         position: 1,
-        chapterId: lessonRow.chapter.id,
-        chapter: {
-          id: lessonRow.chapter.id,
-          title: lessonRow.chapter.title,
-          position: 1,
-          module: { ...lessonRow.chapter.module, position: 1 },
-        },
+        module: { ...lessonRow.chapter.module, position: 1 },
       },
     },
-  ];
+  }));
+  const taughtItem = (id: string) =>
+    lessonItems.find((r) => r.itemId === id)?.item;
   const users = new Map<string, Record<string, unknown>>();
   const placements = new Map<string, Record<string, unknown>>();
   const studyDays = new Map<string, Record<string, unknown>>();
@@ -333,7 +338,9 @@ function fakePrisma() {
       // By id (assessments) or by type (placement's distractor pool).
       findMany: ({ where }: { where: { id?: { in: string[] } } }) =>
         Promise.resolve(
-          where.id ? (where.id.in.includes(kanaA.id) ? [kanaA] : []) : kanaPool,
+          where.id
+            ? where.id.in.flatMap((id) => taughtItem(id) ?? [])
+            : kanaPool,
         ),
     },
     user: {
@@ -578,7 +585,7 @@ function fakePrisma() {
             .map(([key, row]) => ({
               ...row,
               itemId: key.slice(where.userId.length + 1),
-              item: kanaA,
+              item: taughtItem(key.slice(where.userId.length + 1)) ?? kanaA,
             }))
             .filter((r) => !where.itemId || where.itemId.in.includes(r.itemId))
             .filter(
@@ -589,6 +596,80 @@ function fakePrisma() {
   };
   return fake;
 }
+
+describe('kanji evidence over HTTP (G.4.d)', () => {
+  const kanji = (char: string, on: string, kun: string) => ({
+    ...kanaA,
+    id: `ja:kanji:${char}`,
+    type: 'KANJI',
+    display: char,
+    reading: on,
+    meaning: 'm',
+    data: { on_readings: [on], kun_readings: [kun] },
+  });
+  let app: INestApplication<App>;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue(
+        fakePrisma([
+          kanaPool[1],
+          kanaPool[2],
+          kanji('山', 'サン', 'やま'),
+          kanji('川', 'セン', 'かわ'),
+        ]),
+      )
+      .compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('after a passed skip-test, only the kanji answered correctly can be practised', async () => {
+    const user = 'user_kanji_evidence';
+    const started = await request(app.getHttpServer())
+      .post('/chapters/ch-1/assessment')
+      .set(DEV_USER_HEADER, user)
+      .expect(201);
+    const { attemptId, kind, questions } = started.body as AssessmentStartDto;
+    expect(kind).toBe('SKIP');
+    expect(questions).toHaveLength(5);
+
+    const submitted = await request(app.getHttpServer())
+      .post(`/assessments/${attemptId}/submit`)
+      .set(DEV_USER_HEADER, user)
+      .send({
+        answers: [
+          { itemId: 'ja:kana:a', answer: 'a' },
+          { itemId: 'ja:kana:i', answer: 'i' },
+          { itemId: 'ja:kana:u', answer: 'u' },
+          { itemId: 'ja:kanji:山', answer: 'やま' },
+          { itemId: 'ja:kanji:川', answer: 'みず' },
+        ],
+      })
+      .expect(201);
+    expect(submitted.body as AssessmentResultDto).toMatchObject({
+      passed: true,
+      correct: 4,
+      total: 5,
+    });
+
+    const scopes = await request(app.getHttpServer())
+      .get('/practice/scopes')
+      .set(DEV_USER_HEADER, user)
+      .expect(200);
+    expect((scopes.body as PracticeScopesDto).learned).toEqual({
+      KANA: 3,
+      VOCAB: 0,
+      KANJI: 1,
+      GRAMMAR: 0,
+    });
+  });
+});
 
 describe('API (HTTP integration)', () => {
   let app: INestApplication<App>;

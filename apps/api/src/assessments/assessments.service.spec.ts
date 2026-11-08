@@ -96,6 +96,7 @@ describe('AssessmentsService', () => {
   let recordCheckResult: jest.Mock;
   let seedInferred: jest.Mock;
   let gradeOpen: jest.Mock;
+  let masteryFindMany: jest.Mock;
 
   beforeEach(async () => {
     getState = jest.fn().mockResolvedValue(curriculumState());
@@ -116,6 +117,7 @@ describe('AssessmentsService', () => {
     skipCreateMany = jest.fn().mockResolvedValue({ count: 0 });
     recordCheckResult = jest.fn().mockResolvedValue({});
     seedInferred = jest.fn().mockResolvedValue(0);
+    masteryFindMany = jest.fn().mockResolvedValue([]);
     gradeOpen = jest.fn(({ answer }: { answer: string }) =>
       Promise.resolve(aiGrade(answer === 'please do')),
     );
@@ -135,6 +137,7 @@ describe('AssessmentsService', () => {
       },
       userChapterMark: { upsert: markUpsert },
       userLessonSkip: { createMany: skipCreateMany },
+      itemMasteryState: { findMany: masteryFindMany },
     };
     prisma.$transaction = (fn: (tx: unknown) => Promise<unknown>) => fn(prisma);
 
@@ -414,6 +417,117 @@ describe('AssessmentsService', () => {
         ['g1'], // g2 is a meaning-less shell → skipped
         expect.any(Date),
       );
+    });
+
+    describe('kanji evidence on a passed test (G.4.d)', () => {
+      const kanji = (char: string, reading: string) => ({
+        id: char,
+        type: 'KANJI',
+        display: char,
+        reading,
+        meaning: 'm',
+        data: { on_readings: [reading] },
+      });
+      const word = {
+        id: 'v1',
+        type: 'VOCAB',
+        display: 'ねこ',
+        reading: 'ねこ',
+        meaning: 'cat',
+        data: {},
+      };
+      // Five tested: three kana right, two kanji (or a word) as each test sets.
+      const tested = [kana(1), kana(2), kana(3), kanji('山', 'やま')];
+      const right = { k1: 'ka1', k2: 'ka2', k3: 'ka3', 山: 'やま' };
+      const start = (extra: { id: string }, over = {}) => {
+        const items = [...tested, extra];
+        attemptFindUnique.mockResolvedValue(
+          attempt({ itemIds: items.map((i) => i.id), ...over }),
+        );
+        itemFindMany.mockResolvedValue(items);
+      };
+      const writtenItems = () =>
+        (recordCheckResult.mock.calls as [[{ itemId: string }]][]).map(
+          ([input]) => (input as unknown as { itemId: string }).itemId,
+        );
+
+      it('a passed skip-test does not seed an untested kanji, but does seed an untested word', async () => {
+        start(kanji('川', 'かわ'));
+        lessonItemFindMany.mockResolvedValue([
+          { lessonId: 'l1', item: kanji('森', 'もり') },
+          { lessonId: 'l1', item: word },
+        ]);
+        await service.submit('u1', 'att-1', answers({ ...right, 川: 'かわ' }));
+        expect(seedInferred).toHaveBeenCalledWith(
+          'u1',
+          ['v1'],
+          expect.any(Date),
+        );
+      });
+
+      it('a kanji missed with no row is not scheduled; a correct kanji is', async () => {
+        start(kanji('川', 'かわ'));
+        const res = await service.submit(
+          'u1',
+          'att-1',
+          answers({ ...right, 川: 'wrong' }),
+        );
+        expect(res.passed).toBe(true);
+        expect(writtenItems().sort()).toEqual(['k1', 'k2', 'k3', '山'].sort());
+        expect(masteryFindMany).toHaveBeenCalledWith({
+          where: { userId: 'u1', itemId: { in: ['川'] } },
+          select: { itemId: true },
+        });
+      });
+
+      it('a kanji missed with an existing row keeps its Again', async () => {
+        start(kanji('川', 'かわ'));
+        masteryFindMany.mockResolvedValue([{ itemId: '川' }]);
+        await service.submit('u1', 'att-1', answers({ ...right, 川: 'wrong' }));
+        expect(recordCheckResult).toHaveBeenCalledWith(
+          expect.objectContaining({ itemId: '川', correct: false }),
+        );
+      });
+
+      it('a missed word still gets its Again, with no lookup', async () => {
+        start(word);
+        gradeOpen.mockResolvedValue(aiGrade(false));
+        await service.submit('u1', 'att-1', answers({ ...right, v1: 'dog' }));
+        expect(recordCheckResult).toHaveBeenCalledWith(
+          expect.objectContaining({ itemId: 'v1', correct: false }),
+        );
+        expect(masteryFindMany).not.toHaveBeenCalled();
+      });
+
+      it('if the lookup fails, no missed kanji is written and the result still returns', async () => {
+        start(kanji('川', 'かわ'));
+        masteryFindMany.mockRejectedValue(new Error('db down'));
+        const res = await service.submit(
+          'u1',
+          'att-1',
+          answers({ ...right, 川: 'wrong' }),
+        );
+        expect(res.passed).toBe(true);
+        expect(writtenItems()).not.toContain('川');
+        expect(writtenItems()).toContain('山');
+      });
+
+      it("a passed Exit Assessment keeps today's behaviour for kanji", async () => {
+        start(kanji('川', 'かわ'), { kind: 'EXIT' });
+        lessonItemFindMany.mockResolvedValue([
+          { lessonId: 'l1', item: kanji('森', 'もり') },
+        ]);
+        await service.submit('u1', 'att-1', answers({ ...right, 川: 'wrong' }));
+        expect(recordCheckResult).toHaveBeenCalledWith(
+          expect.objectContaining({ itemId: '川', correct: false }),
+        );
+        expect(masteryFindMany).not.toHaveBeenCalled();
+        expect(seedInferred).toHaveBeenCalledWith(
+          'u1',
+          ['森'],
+          expect.any(Date),
+        );
+      });
     });
 
     it('grades meaning answers with the AI grader and skips it for blank answers', async () => {

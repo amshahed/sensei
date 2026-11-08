@@ -38,17 +38,45 @@ describe('recallQuestionFor', () => {
     ).toBeNull();
   });
 
-  it('vocab with kanji → kana reading', () => {
+  it('vocab with kanji is shown in kana and asks its meaning (G.4.c)', () => {
     expect(
       recallQuestionFor(
         item({ display: '猫', reading: 'ねこ', meaning: 'cat' }),
       ),
     ).toEqual({
-      prompt: 'Type the reading for 「猫」',
-      expected: 'ねこ',
-      accepted: ['ねこ'],
-      check: 'reading',
+      prompt: 'What does 「ねこ」 mean?',
+      expected: 'cat',
+      accepted: ['cat'],
+      check: 'meaning',
     });
+  });
+
+  it('never asks a reading for a word, and a word with no meaning is not quizzable', () => {
+    expect(
+      recallQuestionFor(item({ display: '猫', reading: 'ねこ' })),
+    ).toBeNull();
+  });
+
+  it('adds context to the words kana display makes identical', () => {
+    const prompt = (display: string, reading: string) =>
+      recallQuestionFor(item({ display, reading, meaning: 'x' }))?.prompt;
+    expect(prompt('さん', 'さん')).toBe(
+      'What does 「さん」 mean after a name?',
+    );
+    expect(prompt('三', 'さん')).toBe('What does 「さん」 mean as a number?');
+    expect(prompt('二', 'に')).toBe('What does 「に」 mean as a number?');
+    expect(
+      recallQuestionFor(item({ type: 'GRAMMAR', display: 'に', meaning: 'x' }))
+        ?.prompt,
+    ).toBe('What does 「に」 mean?');
+  });
+
+  it('grammar prompts use the learner surface', () => {
+    const prompt = (display: string) =>
+      recallQuestionFor(item({ type: 'GRAMMAR', display, meaning: 'x' }))
+        ?.prompt;
+    expect(prompt('stem +たいです')).toBe('What does 「〜たいです」 mean?');
+    expect(prompt('～ましょう')).toBe('What does 「～ましょう」 mean?');
   });
 
   it('kana-only vocab asks for the meaning; null without one', () => {
