@@ -351,6 +351,7 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
     ['わたし は がくせい です', 43],
     ['ごはん を たべます', 89],
     ['こんにちは', 21],
+    ['こんにちは！', 21],
   ])('passes %s', (answer, n) => {
     expect(typedCheck(answer, n)).toEqual([]);
   });

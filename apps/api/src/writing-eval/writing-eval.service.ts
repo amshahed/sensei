@@ -21,7 +21,7 @@ const SEPARATORS = /[\s、。,.!?！？]/g;
  */
 function matchesSpoken(answer: string, exemplar: string): boolean {
   const pattern = exemplar
-    .split(/[\s、。]+/)
+    .split(SEPARATORS)
     .filter(Boolean)
     .map((w) => SPOKEN[w] ?? w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
     .join('');

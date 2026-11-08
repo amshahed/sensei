@@ -225,7 +225,7 @@ export function checkCourseRules(
     }
     // Rōmaji particles are only accepted as whole words (H.2.a).
     if (q.answerType === 'typed' && q.grading !== 'open') {
-      for (const w of q.correctAnswer.split(/[\s、。]+/)) {
+      for (const w of q.correctAnswer.split(/[\s、。,.!?！？]+/)) {
         if (w && !words.has(w) && /[はへを]/.test(w.slice(1))) {
           errors.add(
             `check ${q.id}: put the particle in "${w}" in its own word`,

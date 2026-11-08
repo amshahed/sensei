@@ -24,6 +24,9 @@ const SPOKEN_ACCEPTED: Array<[string, string]> = [
   ['kore wo kudasai', 'これ を ください'],
   ['eki e ikimasu', 'えき へ いきます'],
   ['watashi wa hon wo yomimasu', 'わたし は ほん を よみます'],
+  ['konnichiwa', 'こんにちは！'],
+  ['watashi wa gakusei desu ka', 'わたし は がくせい です か？'],
+  ['watashi wa gakusei desu ka?', 'わたし は がくせい です か？'],
 ];
 
 const SPOKEN_REJECTED: Array<[string, string]> = [
@@ -32,6 +35,7 @@ const SPOKEN_REJECTED: Array<[string, string]> = [
   ['eya', 'へや'],
   ['こんにちわ', 'こんにちは'],
   ['watashi ga gakusei desu', 'わたし は がくせい です'],
+  ['watashi ga gakusei desu ka', 'わたし は がくせい です か？'],
 ];
 
 describe('WritingEvalService — normalizeJapanese', () => {
