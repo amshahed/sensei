@@ -8,6 +8,36 @@ CLI tooling for the Sensei content authoring pipeline (F-series, decisions.md).
 2. Run `pnpm --filter api ingest:items` to populate the item DB (issue #34)
 3. Ensure Postgres is running and `DATABASE_URL` is set
 
+## outline — Compile the beta outline (F.1.b)
+
+The beta's order is fixed (F.1.a), so its outline is compiled from a committed spec, with no model
+call and no cost. Run this, not `skeleton`, for the beta.
+
+```bash
+pnpm --filter api authoring:outline [--output <path>] [--force]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--output` | `tools/authoring/output/skeleton.json` | Output path |
+| `--force` | off | Replace an existing outline. Drafts are filed under its lesson ids |
+
+Reads `apps/api/data/curriculum/foundation-ja-beta.json`, validates it (sound order, grammar
+prerequisites, coverage floors, homophones), checks every item against the item table, and writes
+the skeleton format below with `model: "compiled-outline"`. Needs `ingest:items supplement` first.
+
+## grader-check — Live check of the AI grader (P6, P8)
+
+Grades `apps/api/data/curriculum/grader-cases.json` through the runtime Gemini path, 3 runs per case,
+against the meanings the supplement ingest will write. No database and no Anthropic spend. A case
+passes only if every run agrees, and a fallback result fails the run.
+
+```bash
+pnpm --filter api authoring:grader-check --source <jmdict.json>
+```
+
+Run it before the default-branch supplement ingest, because the ingest only fills empty meanings.
+
 ## skeleton — Curriculum skeleton author (F.1)
 
 Generates the Module → Chapter → Lesson skeleton for Foundation Japanese using Claude Opus.
@@ -36,7 +66,8 @@ Max tokens: 20000 (the first live run used ~14.7k; a cut-off reply fails with a 
 **Generate once, then keep it.** Opus 4.8 accepts no `temperature`, so a re-run produces a
 *different* skeleton — different chapter/lesson ids and groupings — and drafts are filed under
 the old lesson ids. The CLI therefore refuses to overwrite an existing skeleton unless you pass
-`--force`. The file records the model and real token usage it was generated with.
+`--force`. The file records the model and real token usage it was generated with. It never replaces
+a compiled outline, even with `--force`.
 
 ### Output format
 
@@ -88,7 +119,7 @@ Reads the skeleton, loads item data from DB, optionally retrieves relevant corpu
 and calls Claude Opus. Runs the structural validator after each draft.
 
 ```bash
-pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--corrections <path>]
+pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--corrections <path>] [--force] [--max-cost <usd>]
 ```
 
 | Flag | Default | Description |
@@ -96,21 +127,32 @@ pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--
 | `<slug>` | required | Lesson ID (`foundation-ja-ch01-l01`) or chapter ID (`foundation-ja-ch01`) |
 | `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file to read |
 | `--corrections` | `tools/authoring/corrections.jsonl` | Corrections log (few-shot) |
+| `--force` | off | Redraft. Keeps the old draft as `<id>.prev.json`, deletes `<id>.critique.json` and clears `<id>.rejected.json` |
+| `--max-cost` | none | Stop before the next paid lesson once the running estimate reaches this many US dollars |
 
 Output: `tools/authoring/output/<lesson-id>.json` (gitignored).
+
+A run never pays twice unless told to: a lesson with `<id>.json` or `<id>.rejected.json` is skipped
+with no API call, so a batch can be resumed. The last line reports drafted, skipped, rejected and
+estimated cost.
+
+With a compiled outline, the drafter sees what the learner has been taught, and a free deterministic
+gate checks the result for untaught kana, kanji and verb endings. A draft that fails is written to
+`<id>.rejected.json`, never `<id>.json`, the batch carries on and the command exits 1. Publishing runs
+the same gate. It can't tell particles apart in kana, so those stay with the critic and PM review.
 
 If `VOYAGE_API_KEY` is set, the drafter retrieves top-5 reference passages from the vector DB for context.
 If not set, vector search is skipped silently — the drafter still works.
 
 Model: `LLM_AUTHORING_MODEL` (blank = unset) or `claude-opus-4-8`. No `temperature` (Opus 4.8
-rejects it), so redrafting the same lesson gives a different draft. Max tokens: 4096.
+rejects it), so redrafting the same lesson gives a different draft. Max tokens: 8000.
 
 ## critique — AI critic (F.3 / F.4)
 
 Runs the structural validator + Claude Haiku 9-point checklist on an existing lesson draft.
 
 ```bash
-pnpm --filter api authoring:critique <draft-path>
+pnpm --filter api authoring:critique <draft-path> [--skeleton <path>]
 ```
 
 Output: `<draft-path>.critique.json`.
@@ -154,7 +196,7 @@ pnpm --filter api authoring:review <lesson-id> [--skeleton <path>] [--regenerate
 |---|---|---|
 | `<lesson-id>` | required | Lesson ID to review (must exist in `output/`) |
 | `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file for context |
-| `--regenerate` | off | Re-run drafter after send-back (uses updated corrections) |
+| `--regenerate` | off | Re-run drafter with `--force` after send-back (uses updated corrections) |
 
 On save:
 - **DECISION: APPROVE** → copies draft to `tools/authoring/published/<lesson-id>.json`; prints publish command

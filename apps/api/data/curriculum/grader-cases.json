@@ -1,0 +1,15 @@
+[
+  { "itemId": "ja:vocab:こんにちは", "answer": "hi there", "expect": "accepted" },
+  { "itemId": "ja:vocab:ありがとう", "answer": "thanks a lot", "expect": "accepted" },
+  { "itemId": "ja:vocab:すみません", "answer": "sorry", "expect": "accepted" },
+  { "itemId": "ja:vocab:おやすみなさい", "answer": "sleep well", "expect": "accepted" },
+  { "itemId": "ja:vocab:よろしくおねがいします", "answer": "nice to meet you", "expect": "accepted" },
+  { "itemId": "ja:grammar:です", "answer": "is", "expect": "accepted" },
+  { "itemId": "ja:grammar:も", "answer": "too", "expect": "accepted" },
+  { "itemId": "ja:grammar:に", "answer": "at", "expect": "accepted" },
+  { "itemId": "ja:grammar:に", "answer": "to", "expect": "accepted" },
+  { "itemId": "ja:grammar:を", "answer": "object particle", "expect": "accepted" },
+  { "itemId": "ja:grammar:て-form", "answer": "connects verbs", "expect": "accepted" },
+  { "itemId": "ja:grammar:ませんか", "answer": "do you want to", "expect": "accepted" },
+  { "itemId": "ja:grammar:か", "answer": "because", "expect": "rejected" }
+]
