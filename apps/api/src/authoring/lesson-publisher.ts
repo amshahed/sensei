@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import type { LessonType, CheckFormat, Prisma } from '@prisma/client';
-import type { LessonDraft } from './lesson-schema';
+import type { CheckQuestion, LessonDraft } from './lesson-schema';
 import type { Skeleton } from './skeleton-schema';
 
 export interface PublishResult {
@@ -46,6 +46,27 @@ function normaliseTeach(teach: LessonDraft['teach']): Prisma.InputJsonValue {
     }),
   };
   return result as unknown as Prisma.InputJsonValue;
+}
+
+/**
+ * A Check with a stored `answer` is an exact match, so a free answer could
+ * never be right: an open check stores an exemplar and no answer, which is
+ * what routes it to the AI grader (ChecksService).
+ */
+function checkData(q: CheckQuestion): Prisma.InputJsonValue {
+  const explanation = q.explanation ? { explanation: q.explanation } : {};
+  if (q.grading === 'open') {
+    return {
+      exemplar: q.correctAnswer,
+      ...(q.rubric ? { rubric: q.rubric } : {}),
+      ...explanation,
+    };
+  }
+  return {
+    choices: q.choices ?? [],
+    answer: q.correctAnswer,
+    ...explanation,
+  };
 }
 
 interface SkeletonContext {
@@ -177,11 +198,7 @@ export async function publishLesson(
           prompt: q.prompt,
           format,
           targetItemId: q.targetItemId,
-          data: {
-            choices: q.choices ?? [],
-            answer: q.correctAnswer,
-            ...(q.explanation ? { explanation: q.explanation } : {}),
-          },
+          data: checkData(q),
         };
       }),
     });

@@ -13,9 +13,9 @@ export const hasKanji = (s: string): boolean => KANJI_CHAR.test(s);
 /** True for a non-empty, kana-only string (hiragana / katakana / ー). */
 export const isKanaOnly = (s: string): boolean => s.length > 0 && isKana(s);
 
-/** Every kana character in the text, repeated as often as it occurs. */
+/** Every kana character in the text. The middle dot ・ is punctuation here. */
 export const kanaChars = (s: string): string[] =>
-  [...s].filter((ch) => isKana(ch));
+  [...s].filter((ch) => isKana(ch) && ch !== '・');
 
 /** Every kanji character in the text. */
 export const kanjiChars = (s: string): string[] =>

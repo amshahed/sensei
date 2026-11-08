@@ -17,6 +17,8 @@ import { PrismaClient } from '@prisma/client';
 import { SkeletonSchema } from './skeleton-schema';
 import { LessonDraftSchema } from './lesson-schema';
 import { publishLesson } from './lesson-publisher';
+import { courseContextFor } from './course-context';
+import { checkCourseRules } from './course-rules';
 
 function parseArgs(): {
   lessonId: string;
@@ -73,6 +75,17 @@ async function main(): Promise<void> {
   console.log(
     `authoring:publish — writing "${draft.lessonId}" (${draft.lessonType}) to DB`,
   );
+
+  const ctx = courseContextFor(skeleton, draft.lessonId);
+  if (ctx) {
+    const { errors, warnings } = checkCourseRules(draft, ctx);
+    for (const w of warnings) console.warn(`  [course rules] warning: ${w}`);
+    if (errors.length > 0) {
+      throw new Error(
+        `Refusing to publish "${draft.lessonId}": it breaks the course rules:\n  ${errors.join('\n  ')}`,
+      );
+    }
+  }
 
   const prisma = new PrismaClient();
   try {

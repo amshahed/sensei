@@ -16,21 +16,36 @@ import * as fs from 'fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaClient } from '@prisma/client';
 import { LessonDraftSchema } from './lesson-schema';
+import { courseContextFor } from './course-context';
+import { SkeletonSchema } from './skeleton-schema';
 import { generateCritique } from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
 import { AUTHORING_TIMEOUT_MS, criticModel, formatCost } from './authoring-llm';
 
-function parseArgs(): { draftPath: string } {
+function parseArgs(): { draftPath: string; skeletonPath: string } {
   const args = process.argv.slice(2);
-  const draftPath = args.find((a) => !a.startsWith('--')) ?? '';
+  const skeletonIdx = args.indexOf('--skeleton');
+  const skeletonValue = skeletonIdx === -1 ? undefined : args[skeletonIdx + 1];
+  const draftPath =
+    args.find((a) => !a.startsWith('--') && a !== skeletonValue) ?? '';
   if (!draftPath) {
-    throw new Error('Usage: authoring:critique <draft-path>');
+    throw new Error(
+      'Usage: authoring:critique <draft-path> [--skeleton <path>]',
+    );
   }
-  return { draftPath: path.resolve(draftPath) };
+  return {
+    draftPath: path.resolve(draftPath),
+    skeletonPath: skeletonValue
+      ? path.resolve(skeletonValue)
+      : path.resolve(
+          process.cwd(),
+          '../../tools/authoring/output/skeleton.json',
+        ),
+  };
 }
 
 async function main(): Promise<void> {
-  const { draftPath } = parseArgs();
+  const { draftPath, skeletonPath } = parseArgs();
 
   const apiKey = process.env['ANTHROPIC_API_KEY'] ?? '';
   if (!apiKey) {
@@ -61,11 +76,22 @@ async function main(): Promise<void> {
       console.log(`[validator] pass`);
     }
 
+    // The critic judges against what the learner has been taught so far.
+    const ctx = fs.existsSync(skeletonPath)
+      ? courseContextFor(
+          SkeletonSchema.parse(
+            JSON.parse(fs.readFileSync(skeletonPath, 'utf8')) as unknown,
+          ),
+          draft.lessonId,
+        )
+      : null;
+
     // AI critic
     console.log(`[critic] calling ${criticModel()}...`);
     const { critique, inputTokens, outputTokens } = await generateCritique(
       anthropic,
       draft,
+      ctx,
     );
 
     // Print report

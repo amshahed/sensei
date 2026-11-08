@@ -207,6 +207,31 @@ describe('ChecksService', () => {
       });
     });
 
+    it('grades the shape the publisher writes for an open check (P10)', async () => {
+      findUnique.mockResolvedValue({
+        ...openCheck,
+        data: { exemplar: 'はじめまして', rubric: 'Greeting and name.' },
+      });
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        feedback: 'Nice.',
+        exemplar: 'はじめまして',
+        gradedBy: 'ai',
+        scored: true,
+      });
+
+      const result = await service.grade('chk-open', 'こんにちは', 'dev-user');
+
+      expect(gradeOpen).toHaveBeenCalledWith({
+        prompt: openCheck.prompt,
+        answer: 'こんにちは',
+        exemplar: 'はじめまして',
+        rubric: 'Greeting and name.',
+      });
+      expect(result.correct).toBe(true);
+    });
+
     it('maps an AI "Again" to a wrong result and an FSRS Again', async () => {
       findUnique.mockResolvedValue(openCheck);
       gradeOpen.mockResolvedValue({

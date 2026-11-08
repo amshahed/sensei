@@ -49,6 +49,14 @@ describe('WritingEvalService — exactMatch (with tokenizer)', () => {
     svc = await buildService();
   }, 10_000);
 
+  it.each([
+    ['okaasan', 'おかあさん'],
+    ['kitte', 'きって'],
+    ['chotto', 'ちょっと'],
+  ])('accepts the typed sound %s for %s (P2)', (typed, word) => {
+    expect(svc.exactMatch(typed, word)).toBe(true);
+  });
+
   it('matches identical hiragana strings', () => {
     expect(svc.exactMatch('ねこ', 'ねこ')).toBe(true);
   });
