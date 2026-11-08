@@ -356,6 +356,24 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
     expect(typedCheck(answer, n)).toEqual([]);
   });
 
+  // test.md N2: no particle exists yet at 14 and 21, and a known word written
+  // across spaces has none at any lesson.
+  it.each([
+    ['はは', 14],
+    ['おはな', 14],
+    ['おはよう ございます', 21],
+    ['おはよう ございます', 60],
+  ])('passes %s at lesson %i, where は is part of the word', (answer, n) => {
+    expect(typedCheck(answer, n)).toEqual([]);
+  });
+
+  it.each([
+    ['ごはんを たべます', 89, 'ごはんを'],
+    ['ばんは いつ です か', 60, 'ばんは'],
+  ])('fails %s at lesson %i', (answer, n, word) => {
+    expect(typedCheck(answer, n).join()).toContain(`particle in "${word}"`);
+  });
+
   it('does not check an open typed question', () => {
     expect(
       typedCheck('わたしは がくせい です', 43, { grading: 'open' }),

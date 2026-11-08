@@ -39,6 +39,13 @@ const MARKERS: Array<{
   { text: 'でした', grammarId: null },
 ];
 
+/** H.2.a's particles. Before the first is taught, no answer can contain one. */
+const SPOKEN_PARTICLES = new Set([
+  'ja:grammar:は',
+  'ja:grammar:へ',
+  'ja:grammar:を',
+]);
+
 const spaceless = (s: string) => s.replace(/\s/g, '');
 const romajiOf = (s: string) => toRomaji(s).replace(/\s/g, '').toLowerCase();
 const KANA_RUN = /[ぁ-ゖ]+/g;
@@ -218,19 +225,21 @@ export function checkCourseRules(
     });
   }
 
-  const words = new Set(ctx.words);
+  const particlesTaught = ctx.grammar.some((g) => SPOKEN_PARTICLES.has(g.id));
   for (const q of draft.check.questions) {
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
     }
-    // Rōmaji particles are only accepted as whole words (H.2.a).
-    if (q.answerType === 'typed' && q.grading !== 'open') {
-      for (const w of q.correctAnswer.split(/[\s、。,.!?！？]+/)) {
-        if (w && !words.has(w) && /[はへを]/.test(w.slice(1))) {
-          errors.add(
-            `check ${q.id}: put the particle in "${w}" in its own word`,
-          );
-        }
+    // Rōmaji particles are only accepted as whole words (H.2.a). A known word
+    // written across spaces (おはよう ございます) has no particle in it.
+    if (particlesTaught && q.answerType === 'typed' && q.grading !== 'open') {
+      const parts = q.correctAnswer.split(/[\s、。,.!?！？]+/).filter(Boolean);
+      const joined = parts.join('');
+      for (const w of parts) {
+        if (!/[はへを]/.test(w.slice(1))) continue;
+        if (ctx.words.some((k) => k.includes(w) && joined.includes(k)))
+          continue;
+        errors.add(`check ${q.id}: put the particle in "${w}" in its own word`);
       }
     }
   }
