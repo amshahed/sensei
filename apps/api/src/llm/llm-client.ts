@@ -1,7 +1,7 @@
 /**
  * Thin internal LLM abstraction (decisions L.4 / L.4.a). Everything that talks
  * to a model goes through this seam so the provider is swappable per task.
- * Runtime grading uses GeminiLlmClient (gemini-2.5-flash, cheap + fast).
+ * Runtime grading uses GeminiLlmClient (default in model-defaults.ts, L.4.b).
  * Offline authoring uses AnthropicLlmClient directly via CLI scripts (Opus
  * drafter / Haiku critic), not through this DI token.
  */
@@ -28,6 +28,25 @@ export interface LlmClient {
   readonly enabled: boolean;
   /** Run a structured-output completion and return the parsed JSON. */
   parseJson<T>(opts: ParseJsonOptions): Promise<T>;
+}
+
+/** Why a model call failed, so a lost model can be told apart from a busy one. */
+export type LlmFailureReason =
+  | 'model_unavailable'
+  | 'rate_limited'
+  | 'timeout'
+  | 'provider_error';
+
+/** A model call the provider failed, classified. `message` is the provider's. */
+export class LlmCallError extends Error {
+  constructor(
+    message: string,
+    readonly reason: LlmFailureReason,
+    readonly model: string,
+  ) {
+    super(message);
+    this.name = 'LlmCallError';
+  }
 }
 
 /** DI token for the active LlmClient implementation. */
