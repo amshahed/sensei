@@ -80,14 +80,23 @@ export class WritingEvalService implements OnModuleInit {
    * Exact-match comparison for closed TYPED checks (H.2).
    * Normalizes both sides (romaji/katakana → hiragana) and compares joined
    * token strings so spacing differences don't cause false negatives. Rōmaji
-   * input also passes when it spells a particle as it sounds (H.2.a).
+   * input also passes when it spells a particle as it sounds (H.2.a), unless
+   * `spokenParticles` is false: a check on the kana は itself wants ha, not wa.
    */
-  exactMatch(answer: string, exemplar: string): boolean {
+  exactMatch(
+    answer: string,
+    exemplar: string,
+    { spokenParticles = true }: { spokenParticles?: boolean } = {},
+  ): boolean {
     const normAnswer = this.normalizeJapanese(answer);
     const normExemplar = this.normalizeJapanese(exemplar);
     const joinedAnswer = this.tokenize(normAnswer).join('');
     const joinedExemplar = this.tokenize(normExemplar).join('');
     if (joinedAnswer === joinedExemplar) return true;
-    return /[a-z]/i.test(answer) && matchesSpoken(normAnswer, normExemplar);
+    return (
+      spokenParticles &&
+      /[a-z]/i.test(answer) &&
+      matchesSpoken(normAnswer, normExemplar)
+    );
   }
 }

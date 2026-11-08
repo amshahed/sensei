@@ -71,7 +71,12 @@ export class ChecksService {
       check.format === 'MULTIPLE_CHOICE' || fixedAnswer !== undefined;
 
     const graded = isClosed
-      ? this.gradeClosed(answer, fixedAnswer ?? '', check.format)
+      ? this.gradeClosed(
+          answer,
+          fixedAnswer ?? '',
+          check.format,
+          check.targetItemId,
+        )
       : await this.gradeOpen(check.prompt, answer, data);
 
     // "I guessed" downgrade (K.1): a correct multiple-choice answer the learner
@@ -127,13 +132,21 @@ export class ChecksService {
     await this.mastery.seedInferred(userId, [itemId]);
   }
 
-  private gradeClosed(answer: string, fixedAnswer: string, format: string) {
+  private gradeClosed(
+    answer: string,
+    fixedAnswer: string,
+    format: string,
+    targetItemId: string,
+  ) {
     // TYPED checks use Japanese normalization (wanakana + kuromoji, H.2) so that
     // romaji input and spacing differences don't cause false negatives.
     // MULTIPLE_CHOICE answers are option IDs — ASCII exact-match is correct there.
+    // A check on a kana item tests that kana's own sound, so は is ha, never wa.
     const correct =
       format === 'TYPED'
-        ? this.writingEval.exactMatch(answer, fixedAnswer)
+        ? this.writingEval.exactMatch(answer, fixedAnswer, {
+            spokenParticles: !targetItemId.startsWith('ja:kana:'),
+          })
         : exactMatch(answer, fixedAnswer);
     return {
       correct,
