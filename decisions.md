@@ -1602,3 +1602,70 @@ Measurements and the full comparison are in `ops/work/grading-model-404/tech.md`
 **Rejected:** Dropping the rōmaji allowance entirely, because lesson 43 needs `wa` for the particle and H.2.a's promise that a beginner typing watashi wa is never marked wrong would break.
 
 **Reverse:** Remove the lone-kana check at `checks.service.ts` and the known-word exemption in `course-rules.ts`.
+
+### M.5 The beta is for adults (18+) while runtime grading uses Gemini (decided by Project Manager, 2026-11-14)
+
+**Decision:** The beta is 18+.
+- Only adults are invited. Inviting is a founder action (stop list 6).
+- Sign-up asks for a one-tap "I am 18 or older" before the intake questions (I.3.b), as a new small unit, needed before any real learner alongside Blocker 9.
+- The app is rated for adults at store submission (founder, stop list 6).
+
+**Why:** The Gemini API terms (Age Requirements, read 2026-11-14) require users to be 18 or over and bar use in a service "likely to be accessed by individuals under the age of 18". Since G.4.c and L.4.b, every vocabulary review goes through the Gemini grader, so grading can't be kept away from younger users. Both personas are adults and the beta is invite-only, so this costs nothing now.
+
+**Rejected:** All ages now (breaches the terms). Moving runtime grading to another provider now (L.4.b was just chosen on evidence, and no under-18 learner exists in a closed beta).
+
+**Open risk:** A Japanese course is likely to attract teenagers, so a tick box may not satisfy "likely to be accessed by". This is a legal judgment nobody on the team can make. Before any public launch, choose between staying adult-only on purpose and moving runtime grading behind `LlmClient` to a provider whose terms allow teenagers. It goes to the founder at that point (stop list 4).
+
+**Reverse:** A new entry once runtime grading runs on a provider whose terms allow under-18s. The age confirmation then comes out.
+
+---
+
+### F.2.b The pipeline writes typed reading checks, and a rejected draft can be rechecked for free (amends F.2.a) (decided by Tech Lead, 2026-11-14)
+
+**Decision:** In a `typedReading` lesson, after the model returns, the pipeline makes sure each target word has a typed check that shows the word in kana with no rōmaji. It keeps a fair check, rewrites the prompt of a typed check whose answer is the word, or appends a check. The gate's rule stays as the safety net. `authoring:draft --recheck` reruns the transform, validator and gate on a `.rejected.json` with no model call.
+
+**Why:** Lesson 19 was rejected twice for the same cause. The model wrote the right answers with recall prompts, ignoring an explicit instruction. The prompt wording is a fixed string, so code should own it. With about $19 for the whole batch, a draft already paid for should be recoverable when a code fix cures its rejection.
+
+**Rejected:** Stronger prompt wording and a redraft (paid, and already failed twice). Always appending the pipeline's check (duplicates checks and loses their position). Generating every check in code (larger, and the model's meaning checks were fine). A retry loop (pays for every retry).
+
+**Reverse:** Remove the `addTypedReadingChecks` call from `draft.ts` and the `--recheck` flag.
+
+---
+
+### F.2.c The gate rejects an untaught particle standing alone in Japanese, and a redraft is told why its last draft failed (amends F.2.a) (decided by Tech Lead, 2026-11-14)
+
+**Decision:** A whitespace-separated token that is exactly an untaught particle is an error when a neighbouring token is a kana word of two or more characters. The particles are は, か, の, も, が, に, を, へ, で, な and と, plus ね, よ, や, から and まで, which the slice never teaches. Known words and taught grammar surfaces are spared, including across spaces. In a lesson with no kana targets or cards, a choice or closed answer that is exactly an untaught particle is an error. A `--force` redraft of a rejected lesson gets that rejection's errors in its prompt.
+
+**Why:** F.2.a left particles to review because kana can't be split mechanically, but the spacing rule makes a particle that stands alone visible. Lessons 20 and 43 passed the gate and the critic with と, の, か and を before they were taught. The neighbour condition keeps kana rows, sound-lesson text and English mentions from tripping the rule. Telling a redraft why it failed is free, and a blind redraft is why lesson 19 failed the same way twice.
+
+**Rejected:** A warning (sends every case to PM hand-editing, and each counts as a strike under the 22b quality bar). Any lone particle with no neighbour condition (rejects kana rows and sound lessons). Requiring every token to be a known word (likely false positives on conjugations, numbers and names). Morphological analysis (F.2.a).
+
+**Known gaps:** Particles joined to a word, て-forms, and the particle に in lessons 65 to 80, hidden by the number に. Lesson 20 as published fails the rule, so its passage must be revised before it can be republished.
+
+**Reverse:** Remove the particle rules from `course-rules.ts` and the previous-errors block from the draft prompt.
+
+---
+
+### H.2.c Punctuation is ignored when a typed answer is compared (amends H.2) (decided by Tech Lead, 2026-11-14)
+
+**Decision:** `exactMatch` strips 、。,.!?！？ from both sides before comparing, for kana and rōmaji input alike.
+
+**Why:** A kana answer with 。, or one missing a stored ？ or ！, was marked wrong while the same answer in rōmaji passed (N6). Lesson 43's live typed check exposes it. Stripping punctuation can only accept answers that differ by punctuation.
+
+**Rejected:** Leaving it to a later unit (a full Developer and Tester cycle for a two-line fix).
+
+**Reverse:** Remove the strip from `exactMatch`.
+
+---
+
+### F.2.d A particle counts as used only right after a word in one stretch of Japanese, and the first draft is told which particles aren't taught (amends F.2.c) (decided by Tech Lead, 2026-11-14)
+
+**Decision:** F.2.c's Rule A is replaced. Each learner field is split into stretches of kana and spaces, broken by any other character: punctuation, symbols, Latin letters, digits and kanji. A token that is exactly an untaught particle is an error only when the token before it in the same stretch is a word (two or more kana, or a known phrase) and the token after it, if there is one, is not a single kana. The error quotes the stretch. The draft prompt lists the particles not taught yet and says to set a lone kana apart with punctuation or English. Rule B is unchanged.
+
+**Why:** F.2.c looked at both neighbours and ignored punctuation, so it rejected correct kana and sound lessons. It caught a target kana before its example word (と そと, で: でんわ) and after a word in which it was being pointed out (はな, は): 13 of the 16 lessons from 4 to 16, Tester F1 on PR #74. A Japanese particle follows the word it marks, and a sentence doesn't run through a colon, comma or bracket. The revised rule passes all of those cases and still catches every untaught particle the PM found in lessons 20 and 43. Naming the untaught particles in the prompt is free, and it prevents rejections instead of paying for them.
+
+**Rejected:** Exempting lessons with kana targets (leaves sound lessons 15 and 16 exposed, and drops the kana reading lessons, where particle use is likely). Exempting the lesson's own target kana and cards (still rejects a base kana pointed out in a sound lesson). Counting kanji as words (a kanji followed by its reading, such as 名 な, would be rejected).
+
+**Known gaps:** In addition to F.2.c's, a mention written right after a word with no punctuation between them (はな は says ha) is still rejected. A particle before a one-kana word (ねこ の え) or after a kanji (日本 から) is missed.
+
+**Reverse:** Restore F.2.c's neighbour test in `course-rules.ts` and remove the prompt line.

@@ -18,3 +18,9 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - **D.2 already places set expressions in Vocab** (with `multi_word: true`), so adding phrases is a data gap, not new design.
 - **Sound-variant lessons:** `SkeletonSchema` requires at least one `itemId` per lesson, and Checks target items. With no が item, a lesson on が has to target か, so が gets no schedule of its own and misses land on か.
 - **Not built:** no Azure or R2 code anywhere in `apps` or `packages`. No Railway or Docker config in the repo.
+
+## 2026-11-14: 22b drafting run
+
+- Drafted from the main checkout with `--max-cost 0.5` per lesson. Measured cost, draft plus critique: lesson 2 $0.071, 20 $0.079, 21 $0.090, 43 $0.055. All four passed the course gate and the critic (lesson 2's critic noted textbook-ish examples, persimmon and voice, as a minor fail on example-feel).
+- **Lesson 19 (`foundation-ja-ch04-l05`, small っ) rejected twice by the course gate, about $0.145 spent.** Both drafts wrote typed checks as recall from English ("Type the kana word that means 'school'"), not reading. P4 needs the prompt to show the kana (がっこう) with no rōmaji. The TYPED READING instruction does reach the drafter (`lesson-prompter.ts:151`, `typedReading` is true), and the model ignored it twice. That makes it systematic, so it is likely to hit all 7 sound lessons. Sent to the Tech Lead; no more redrafts until fixed.
+- Running total for 22b: about $0.44 of the $2.50 cap.
