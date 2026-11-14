@@ -9,10 +9,10 @@ export interface CourseRuleResult {
 }
 
 /**
- * Verb endings the course teaches at a known point. Particles (か, の, は, を,
- * に, で) are not here: in spaced kana they can't be told apart mechanically,
- * so they stay with the prompt, the critic and PM review (F.2.a). でした is
- * never taught; it appears only inside a phrase learned whole.
+ * Verb endings the course teaches at a known point. Particles are not here:
+ * a particle joined to a word can't be told apart mechanically, so only one
+ * standing alone is checked, by PARTICLES below (F.2.c). でした is never
+ * taught; it appears only inside a phrase learned whole.
  */
 const MARKERS: Array<{
   text: string;
@@ -39,6 +39,29 @@ const MARKERS: Array<{
   { text: 'でした', grammarId: null },
 ];
 
+/**
+ * Each particle and the grammar items that teach it (F.2.c). A particle counts
+ * as taught once any of its items is. The slice never teaches the last five.
+ */
+const PARTICLES: Record<string, string[]> = {
+  は: ['ja:grammar:は'],
+  か: ['ja:grammar:か'],
+  の: ['ja:grammar:の'],
+  も: ['ja:grammar:も'],
+  が: ['ja:grammar:があります', 'ja:grammar:がいます', 'ja:grammar:がすきです'],
+  に: ['ja:grammar:に', 'ja:grammar:にへ'],
+  を: ['ja:grammar:を'],
+  へ: ['ja:grammar:にへ'],
+  で: ['ja:grammar:で'],
+  な: ['ja:grammar:な-adjective'],
+  と: ['ja:grammar:と'],
+  ね: [],
+  よ: [],
+  や: [],
+  から: [],
+  まで: [],
+};
+
 /** H.2.a's particles. Before the first is taught, no answer can contain one. */
 const SPOKEN_PARTICLES = new Set([
   'ja:grammar:は',
@@ -49,6 +72,9 @@ const SPOKEN_PARTICLES = new Set([
 const spaceless = (s: string) => s.replace(/\s/g, '');
 const romajiOf = (s: string) => toRomaji(s).replace(/\s/g, '').toLowerCase();
 const KANA_RUN = /[ぁ-ゖ]+/g;
+const PUNCTUATION = /\p{P}/gu;
+/** Hiragana or katakana, two characters or more: a word, not a lone kana. */
+const KANA_WORD = /^[ぁ-ゖァ-ヺー]{2,}$/;
 
 /** Rōmaji with macrons and doubled vowels removed, so okāsan equals okaasan. */
 const looseRomaji = (s: string) =>
@@ -139,12 +165,17 @@ const TAUGHT_VERBS = [
   { text: 'います', grammarId: 'ja:grammar:がいます' },
 ];
 
-/** Blanks out a known string, including when a draft puts spaces inside it. */
-function maskKnown(text: string, known: string): string {
+/**
+ * Blanks out a known string, including when a draft puts spaces inside it.
+ * With `wholeWords`, only where it starts and ends at a space, so the word
+ * はい can't swallow the particle in は いしゃ.
+ */
+function maskKnown(text: string, known: string, wholeWords = false): string {
   const pattern = [...known]
     .map((c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
     .join('\\s*');
-  return text.replace(new RegExp(pattern, 'g'), '|');
+  const edged = wholeWords ? `(?<!\\S)${pattern}(?!\\S)` : pattern;
+  return text.replace(new RegExp(edged, 'g'), '|');
 }
 
 function markerProblems(text: string, ctx: CourseContext): string[] {
@@ -164,6 +195,63 @@ function markerProblems(text: string, ctx: CourseContext): string[] {
         .some((run) => run.includes(m.text));
     })
     .map((m) => `uses ${m.text} before it is taught`);
+}
+
+/** What the particle rules need to know about a lesson (F.2.c). */
+interface ParticleContext {
+  untaught: Set<string>;
+  /** Known strings of two kana or more, longest first, punctuation removed. */
+  phrases: string[];
+  /** Every known string, so a known word of one kana (に, two) is spared. */
+  known: Set<string>;
+}
+
+function particleContext(ctx: CourseContext): ParticleContext {
+  const taught = new Set(ctx.grammar.map((g) => g.id));
+  const known = knownStrings(ctx).map((k) =>
+    spaceless(k.replace(PUNCTUATION, '')),
+  );
+  return {
+    untaught: new Set(
+      Object.entries(PARTICLES)
+        .filter(([, ids]) => !ids.some((id) => taught.has(id)))
+        .map(([particle]) => particle),
+    ),
+    phrases: known.filter((k) => k.length > 1),
+    known: new Set(known),
+  };
+}
+
+/** A choice or answer as one bare token: no punctuation, no spaces. */
+const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
+
+/**
+ * Rule A (F.2.c): a word that is exactly an untaught particle, next to a kana
+ * word of two or more characters, is a use in Japanese (ともだち と がっこう).
+ * Next to English (the little word と) or a lone kana (は ひ ふ へ ほ) it is a
+ * mention. Known words and taught grammar count as words and aren't inspected,
+ * including when written across spaces (おげんき です か).
+ */
+function particleProblems(text: string, pc: ParticleContext): string[] {
+  if (pc.untaught.size === 0) return [];
+  const line = text
+    .split(/\s+/)
+    .map((t) => t.replace(PUNCTUATION, ''))
+    .filter(Boolean)
+    .join(' ');
+  const words = pc.phrases
+    .reduce((t, k) => maskKnown(t, k, true), line)
+    .split(' ');
+  const isWord = (w?: string) =>
+    w !== undefined && (w === '|' || KANA_WORD.test(w));
+  const problems = new Set<string>();
+  words.forEach((w, i) => {
+    if (!pc.untaught.has(w) || pc.known.has(w)) return;
+    if (isWord(words[i - 1]) || isWord(words[i + 1])) {
+      problems.add(`uses the particle ${w} before it is taught`);
+    }
+  });
+  return [...problems];
 }
 
 /**
@@ -214,10 +302,12 @@ export function checkCourseRules(
 ): CourseRuleResult {
   const errors = new Set<string>();
   const warnings = new Set<string>();
+  const pc = particleContext(ctx);
 
   for (const { where, text } of learnerFields(draft)) {
     for (const p of scriptProblems(text, ctx)) errors.add(`${where}: ${p}`);
     for (const p of markerProblems(text, ctx)) errors.add(`${where}: ${p}`);
+    for (const p of particleProblems(text, pc)) errors.add(`${where}: ${p}`);
     if (ctx.longVowelsTaught) continue;
     for (const run of text.match(KANA_RUN) ?? []) {
       if (hasLongVowel(run)) {
@@ -237,9 +327,22 @@ export function checkCourseRules(
   }
 
   const particlesTaught = ctx.grammar.some((g) => SPOKEN_PARTICLES.has(g.id));
+  // Rule B (F.2.c): a choice or closed answer that is only a particle. Kana and
+  // sound lessons are left out, because their choices are characters.
+  const choicesAreWords = !ctx.hasKanaTargets && ctx.kanaCards.length === 0;
   for (const q of draft.check.questions) {
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
+    }
+    if (choicesAreWords) {
+      const closed = q.grading === 'open' ? [] : [q.correctAnswer];
+      for (const w of [...(q.choices ?? []), ...closed].map(bare)) {
+        if (pc.untaught.has(w) && !pc.known.has(w)) {
+          errors.add(
+            `check ${q.id}: uses the particle ${w} before it is taught`,
+          );
+        }
+      }
     }
     // Rōmaji particles are only accepted as whole words (H.2.a). A known word
     // written across spaces (おはよう ございます) has no particle in it.

@@ -180,7 +180,6 @@ describe('verbs and endings as whole words (test.md F1, F4)', () => {
     [24, 'よろしく おねがい します'],
     [22, 'すみません かばん'],
     [47, 'がくせい じゃありません か'],
-    [60, 'それ で した'],
     [88, 'ありません'],
     [88, 'いません'],
     [92, 'ありました'],
@@ -189,6 +188,13 @@ describe('verbs and endings as whole words (test.md F1, F4)', () => {
     [117, 'たべたい です'],
   ])('lesson %i passes %s', (lesson, japanese) => {
     expect(errors(japanese, lesson)).toEqual([]);
+  });
+
+  // Was a pass before F.2.c: で there is the particle, taught at lesson 91.
+  it('reads それ で した at lesson 60 as the particle で, never でした', () => {
+    const errs = errors('それ で した', 60).join();
+    expect(errs).not.toMatch(/uses でした/);
+    expect(errs).toContain('uses the particle で before it is taught');
   });
 
   it.each([
@@ -387,6 +393,87 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
         choices: ['わたしは がくせい です', 'b', 'c', 'd'],
       }),
     ).toEqual([]);
+  });
+});
+
+describe('untaught particles (F.2.c, P2, P7)', () => {
+  // Lessons 15 to 20 also want typed checks, which these drafts don't have.
+  const onlyParticles = (errs: string[]) =>
+    errs.filter((e) => e.includes('the particle'));
+  const choiceCheck = (choices: string[], n: number) =>
+    checkCourseRules(
+      draftWith('', n, {
+        check: {
+          questions: [
+            {
+              id: 'q1',
+              targetItemId: lessons[n - 1].itemIds[0],
+              prompt: 'Which one?',
+              answerType: 'multiple-choice',
+              choices,
+              correctAnswer: choices[0],
+            },
+          ],
+        },
+      }),
+      ctxAt(n),
+    ).errors.filter((e) => e.includes('the particle'));
+
+  it.each([
+    ['ともだち と がっこう', 20, 'と'],
+    ['ともだち と がっこう。 おかあさん の しゃしん。', 20, 'の'],
+    ['おかあさん の しゃしん', 20, 'の'],
+    ['あなた は せんせい です か', 43, 'か'],
+    ['あなた は せんせい です か？', 43, 'か'],
+    ['そう です ね', 24, 'ね'],
+    // はい is a known word, but it can't swallow the particle in は いしゃ.
+    ['わたし は いちご', 42, 'は'],
+    ['がっこう から えき まで', 83, 'から'],
+  ])('rejects %s at lesson %i for %s', (japanese, n, particle) => {
+    expect(errors(japanese, n)).toContain(
+      `teach[0]: uses the particle ${particle} before it is taught`,
+    );
+  });
+
+  it.each([
+    ['あなた は せんせい です か', 44],
+    ['わたし の ほん', 46],
+    ['へや に いぬ が います', 83],
+    ['か き く け こ', 2],
+    ['は ひ ふ へ ほ', 7],
+    ['Two small marks turn か into が', 15],
+    ["The little words と (and) and の ('s)", 20],
+    ['In ちょっと you pause before と.', 20],
+    ['おげんき です か', 24],
+    ['いち に さん', 65],
+    ['ともだちと がっこう', 20],
+  ])('accepts %s at lesson %i', (japanese, n) => {
+    expect(onlyParticles(errors(japanese, n))).toEqual([]);
+  });
+
+  it('rejects a choice that is only an untaught particle', () => {
+    expect(choiceCheck(['です', 'か', 'を', 'は'], 43)).toEqual([
+      'check q1: uses the particle か before it is taught',
+      'check q1: uses the particle を before it is taught',
+    ]);
+  });
+
+  it('rejects a closed answer that is only an untaught particle', () => {
+    expect(choiceCheck(['か', 'です', 'さん', 'は'], 43)).toEqual([
+      'check q1: uses the particle か before it is taught',
+    ]);
+  });
+
+  it('accepts sound choices in a sound lesson', () => {
+    expect(choiceCheck(['が', 'か', 'ざ', 'さ'], 15)).toEqual([]);
+  });
+
+  it('accepts a known word of one kana as a choice (に, two)', () => {
+    expect(choiceCheck(['に', 'いち', 'さん', 'ご'], 65)).toEqual([]);
+  });
+
+  it('accepts a particle once it is taught', () => {
+    expect(choiceCheck(['か', 'は', 'です', 'さん'], 44)).toEqual([]);
   });
 });
 
