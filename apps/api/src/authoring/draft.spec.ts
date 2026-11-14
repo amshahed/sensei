@@ -200,6 +200,16 @@ describe('runDrafts (F.2.a)', () => {
       'ja:kana:i': 'い',
       'ja:vocab:愛': 'あい',
     });
+    const vocab = { id: 'ja:vocab:愛', display: '愛', type: 'VOCAB', data: {} };
+    const readingRun = (over: Partial<DraftRunOptions> = {}) =>
+      run([reading], {
+        skeleton: readingSkeleton,
+        prisma: {
+          item: { findMany: jest.fn().mockResolvedValue([vocab]) },
+          $queryRaw: jest.fn().mockResolvedValue([]),
+        } as unknown as PrismaClient,
+        ...over,
+      });
     /** Lesson 19 twice over: the right answer, but recall from English. */
     const recall = {
       ...replyFor('l2', 'あい'),
@@ -227,7 +237,7 @@ describe('runDrafts (F.2.a)', () => {
         content: [{ type: 'text', text: JSON.stringify(recall) }],
         usage: { input_tokens: 100_000, output_tokens: 20_000 },
       });
-      const summary = await run([reading], { skeleton: readingSkeleton });
+      const summary = await readingRun();
       expect(summary).toMatchObject({ drafted: 1, rejected: 0 });
       expect(fs.existsSync(inDir('l2.rejected.json'))).toBe(false);
       const [q1] = (read('l2.json') as unknown as LessonDraft).check.questions;
@@ -236,6 +246,59 @@ describe('runDrafts (F.2.a)', () => {
         prompt: 'Read this word and type how it sounds: あい',
         explanation: 'Nice!',
       });
+    });
+
+    it('--recheck saves a rejected draft like lesson 19 at $0, with no model call', async () => {
+      write('l2.rejected.json', {
+        ...recall,
+        courseRuleErrors: ['ja:vocab:愛 needs a typed check showing あい'],
+      });
+      write('l2.json', { old: true });
+      write('l2.critique.json', { stale: true });
+      const summary = await readingRun({ recheck: true });
+      expect(summary).toMatchObject({
+        drafted: 0,
+        rechecked: 1,
+        rejected: 0,
+        costUsd: 0,
+      });
+      expect(create).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled(); // validator and gate pass
+      const saved = read('l2.json') as unknown as LessonDraft;
+      expect(saved).not.toHaveProperty('courseRuleErrors');
+      expect(saved.check.questions[0].prompt).toBe(
+        'Read this word and type how it sounds: あい',
+      );
+      expect(saved.meta).toEqual(recall.meta);
+      // Written exactly as a fresh pass is.
+      expect(read('l2.prev.json')).toEqual({ old: true });
+      expect(fs.existsSync(inDir('l2.rejected.json'))).toBe(false);
+      expect(fs.existsSync(inDir('l2.critique.json'))).toBe(false);
+    });
+  });
+
+  describe('--recheck (F.2.b)', () => {
+    it('keeps a draft that still fails rejected, with its errors brought up to date', async () => {
+      write('l1.rejected.json', {
+        ...replyFor('l1', 'か'),
+        courseRuleErrors: ['an old error'],
+      });
+      const summary = await run([lesson(1)], { recheck: true });
+      expect(summary).toMatchObject({ rechecked: 0, rejected: 1, costUsd: 0 });
+      expect(create).not.toHaveBeenCalled();
+      expect(fs.existsSync(inDir('l1.json'))).toBe(false);
+      expect(read('l1.rejected.json').courseRuleErrors).toEqual([
+        'teach[0]: uses か before it is taught',
+      ]);
+    });
+
+    it('skips a lesson with no rejected draft, even one with a draft', async () => {
+      write('l1.json', { kept: true });
+      const summary = await run([lesson(1), lesson(2)], { recheck: true });
+      expect(summary).toMatchObject({ rechecked: 0, skipped: 2, drafted: 0 });
+      expect(create).not.toHaveBeenCalled();
+      expect(read('l1.json')).toEqual({ kept: true });
+      expect(fs.existsSync(inDir('l2.json'))).toBe(false);
     });
   });
 
@@ -274,11 +337,26 @@ describe('parseArgs', () => {
     });
   });
 
-  it('defaults to no force and no limit', () => {
+  it('defaults to no force, no recheck and no limit', () => {
     expect(parseArgs(['l1'])).toMatchObject({
       force: false,
+      recheck: false,
       maxCostUsd: undefined,
     });
+  });
+
+  it('reads --recheck', () => {
+    expect(parseArgs(['--recheck', 'l1'])).toMatchObject({
+      slug: 'l1',
+      recheck: true,
+      force: false,
+    });
+  });
+
+  it('refuses --recheck together with --force', () => {
+    expect(() => parseArgs(['l1', '--recheck', '--force'])).toThrow(
+      /--recheck/,
+    );
   });
 
   it.each(['abc', '0', '-1'])('refuses --max-cost %s', (value) => {
