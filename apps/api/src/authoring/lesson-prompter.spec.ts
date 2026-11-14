@@ -7,10 +7,9 @@ import {
   buildCritiquePrompt,
   passagesFor,
 } from './lesson-prompter';
-import { courseContextFor, type CourseContext } from './course-context';
+import type { CourseContext } from './course-context';
 import { untaughtParticles } from './course-rules';
-import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
-import type { OutlineItemRow } from './outline-compiler';
+import { compiledOutline } from '../testing/compiled-outline';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -229,20 +228,7 @@ describe('buildDraftPrompt after a rejection (F.2.c)', () => {
 });
 
 describe('buildDraftPrompt names the particles not taught yet (F.2.d)', () => {
-  const spec = loadOutlineSpec();
-  const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
-    const kind = id.split(':')[1];
-    const surface = spec.surfaces[id] ?? id.split(':')[2];
-    return {
-      id,
-      type: kind.toUpperCase() as OutlineItemRow['type'],
-      display: surface,
-      reading: kind === 'grammar' ? null : surface,
-    };
-  });
-  const skeleton = compile(spec, rows);
-  const lessons = skeleton.module.chapters.flatMap((c) => c.lessons);
-  const ctxAt = (n: number) => courseContextFor(skeleton, lessons[n - 1].id)!;
+  const { lessons, ctxAt } = compiledOutline();
   const promptAt = (n: number) =>
     buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
   const listedAt = (n: number) =>

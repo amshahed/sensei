@@ -1,24 +1,8 @@
-import { courseContextFor, type CourseContext } from './course-context';
+import { compiledOutline } from '../testing/compiled-outline';
 import { checkCourseRules, scriptProblems } from './course-rules';
 import type { LessonDraft, TeachBlock } from './lesson-schema';
-import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
-import type { OutlineItemRow } from './outline-compiler';
 
-const spec = loadOutlineSpec();
-const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
-  const kind = id.split(':')[1];
-  const surface = spec.surfaces[id] ?? id.split(':')[2];
-  return {
-    id,
-    type: kind.toUpperCase() as OutlineItemRow['type'],
-    display: surface,
-    reading: kind === 'grammar' ? null : surface,
-  };
-});
-const skeleton = compile(spec, rows);
-const lessons = skeleton.module.chapters.flatMap((c) => c.lessons);
-const ctxAt = (n: number): CourseContext =>
-  courseContextFor(skeleton, lessons[n - 1].id)!;
+const { spec, lessons, ctxAt } = compiledOutline();
 
 function draftWith(
   text: string,
