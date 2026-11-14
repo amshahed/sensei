@@ -1,8 +1,8 @@
 import { toRomaji } from 'wanakana';
 import type { CourseContext } from './course-context';
 import {
+  bare,
   isFairTypedReading,
-  spaceless,
   TYPED_READING_PROMPT,
 } from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
@@ -21,10 +21,11 @@ function nextQuestionId(questions: CheckQuestion[]): string {
 
 /**
  * F.2.b: in a typedReading lesson, the pipeline owns the reading check. For
- * each target word, in order:
+ * each target word the draft declares, in order:
  *   1. a fair typed check (the gate's own test) is left alone;
- *   2. else a closed typed check whose answer is the word gets the reading
- *      prompt in place, keeping its id, position and explanation;
+ *   2. else a closed typed check whose answer is the word (punctuation
+ *      aside) gets the reading prompt in place, keeping its id, position
+ *      and explanation;
  *   3. else a reading check is appended, explained with wanakana's rōmaji,
  *      which the grader always accepts.
  * Pure and idempotent: a second run changes nothing.
@@ -35,9 +36,11 @@ export function addTypedReadingChecks(
 ): LessonDraft {
   if (!ctx.typedReading) return draft;
   const questions = [...draft.check.questions];
+  const declared = new Set(draft.targetItemIds);
 
   for (const { id, surface } of ctx.targets) {
-    if (!surface) continue;
+    // A target the draft left out is the gate's to reject, not ours to add.
+    if (!surface || !declared.has(id)) continue;
     const prompt = `${TYPED_READING_PROMPT} ${surface}`;
     const onTarget = (q: CheckQuestion) => q.targetItemId === id;
     if (questions.some((q) => onTarget(q) && isFairTypedReading(q, surface))) {
@@ -49,7 +52,7 @@ export function addTypedReadingChecks(
         onTarget(q) &&
         q.answerType === 'typed' &&
         q.grading !== 'open' &&
-        spaceless(q.correctAnswer) === spaceless(surface),
+        bare(q.correctAnswer) === bare(surface),
     );
     if (recall !== -1) {
       questions[recall] = { ...questions[recall], prompt };

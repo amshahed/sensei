@@ -1,7 +1,11 @@
 import { toRomaji } from 'wanakana';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { courseContextFor, type CourseContext } from './course-context';
-import { checkCourseRules, TYPED_READING_PROMPT } from './course-rules';
+import {
+  checkCourseRules,
+  isFairTypedReading,
+  TYPED_READING_PROMPT,
+} from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
 import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
 import type { OutlineItemRow } from './outline-compiler';
@@ -228,6 +232,77 @@ describe('addTypedReadingChecks (F.2.b)', () => {
       ),
     ).toEqual([]);
     expect(addTypedReadingChecks(after, ctx)).toEqual(after);
+  });
+
+  it('adds no check for a target the draft leaves out, so the gate rejects it (test.md F2)', () => {
+    const ctx = ctxAt(20);
+    const dropped = ctx.targets.find((t) => t.id === 'ja:vocab:写真')!;
+    expect(dropped.surface).toBe('しゃしん');
+    const draft = draftAt(
+      20,
+      ctx.targets
+        .filter((t) => t !== dropped)
+        .map(({ id, surface }, i) => ({
+          id: `q${i + 1}`,
+          targetItemId: id,
+          prompt: `${TYPED_READING_PROMPT} ${surface}`,
+          answerType: 'typed' as const,
+          correctAnswer: surface,
+        })),
+    );
+    draft.targetItemIds = draft.targetItemIds.filter((id) => id !== dropped.id);
+    draft.practice.templates = draft.practice.templates.filter(
+      (t) => t.targetItemId !== dropped.id,
+    );
+
+    const after = addTypedReadingChecks(draft, ctx);
+    expect(after).toEqual(draft);
+    expect(typedReadingErrors(after, 20)).toEqual([
+      'ja:vocab:写真 needs a typed check showing しゃしん with no rōmaji in the prompt',
+    ]);
+  });
+
+  describe('an answer with punctuation is still the word (test.md F3)', () => {
+    const school = () => ctxAt(19).targets.find((t) => t.surface === 'がっこう')!;
+    /** Lesson 19's recall draft with q2, the typed check on がっこう, changed. */
+    const withQ2 = (over: Partial<CheckQuestion>) => {
+      const draft = lesson19Recall();
+      const i = draft.check.questions.findIndex((q) => q.id === 'q2');
+      expect(draft.check.questions[i]).toMatchObject({
+        targetItemId: school().id,
+        answerType: 'typed',
+      });
+      draft.check.questions[i] = { ...draft.check.questions[i], ...over };
+      return draft;
+    };
+    const typedOnSchool = (draft: LessonDraft) =>
+      draft.check.questions.filter(
+        (q) => q.targetItemId === school().id && q.answerType === 'typed',
+      );
+
+    it('keeps a fair reading check whose answer ends in 。, and adds no second one', () => {
+      const draft = withQ2({
+        prompt: `${TYPED_READING_PROMPT} がっこう`,
+        correctAnswer: 'がっこう。',
+      });
+      const [q2] = typedOnSchool(draft);
+      expect(isFairTypedReading(q2, 'がっこう')).toBe(true);
+      const after = addTypedReadingChecks(draft, ctxAt(19));
+      expect(typedOnSchool(after)).toEqual([q2]);
+      expect(typedReadingErrors(after, 19)).toEqual([]);
+    });
+
+    it('rewrites a recall check whose answer ends in 。 in place', () => {
+      const draft = withQ2({ correctAnswer: 'がっこう。' });
+      const after = addTypedReadingChecks(draft, ctxAt(19));
+      expect(typedOnSchool(after)).toEqual([
+        {
+          ...typedOnSchool(draft)[0],
+          prompt: `${TYPED_READING_PROMPT} がっこう`,
+        },
+      ]);
+      expect(after.check.questions).toHaveLength(draft.check.questions.length);
+    });
   });
 
   it.each(typedReadingLessons.map(({ n }) => n))(

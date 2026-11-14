@@ -292,7 +292,9 @@ export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
 /**
  * P2: a closed typed check whose answer is the word, and whose prompt shows the
  * word with no rōmaji for it. The gate and the typed-reading transform both
- * judge a check by this, so they can't drift apart (F.2.b).
+ * judge a check by this, so they can't drift apart (F.2.b). The answer is
+ * compared without punctuation, as the grader compares it (H.2.c), so
+ * がっこう。 is the word.
  */
 export function isFairTypedReading(
   question: CheckQuestion,
@@ -301,7 +303,7 @@ export function isFairTypedReading(
   if (question.answerType !== 'typed' || question.grading === 'open') {
     return false;
   }
-  if (spaceless(question.correctAnswer) !== spaceless(surface)) return false;
+  if (bare(question.correctAnswer) !== bare(surface)) return false;
   const prompt = looseRomaji(question.prompt.replace(TYPED_READING_PROMPT, ''));
   return (
     spaceless(question.prompt).includes(spaceless(surface)) &&
