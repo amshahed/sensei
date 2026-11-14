@@ -177,6 +177,30 @@ describe('runDrafts (F.2.a)', () => {
     expect(create).toHaveBeenCalledTimes(2);
   });
 
+  it('--force tells the redraft why the last draft was rejected (F.2.c)', async () => {
+    write('l1.rejected.json', {
+      ...replyFor('l1', 'か'),
+      courseRuleErrors: ['teach[0]: uses か before it is taught'],
+    });
+    await run([lesson(1)], { force: true });
+    const [request] = create.mock.calls[0] as [
+      { messages: Array<{ content: string }> },
+    ];
+    expect(request.messages[0].content).toContain(
+      'Your last draft of this lesson was rejected for:\n' +
+        '  - teach[0]: uses か before it is taught\n' +
+        'Fix every one.',
+    );
+  });
+
+  it('a first draft carries no rejection block', async () => {
+    await run([lesson(1)]);
+    const [request] = create.mock.calls[0] as [
+      { messages: Array<{ content: string }> },
+    ];
+    expect(request.messages[0].content).not.toContain('was rejected');
+  });
+
   it('--force that is rejected leaves the previous draft alone', async () => {
     write('l1.json', { old: true });
     japanese = 'か';

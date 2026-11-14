@@ -134,6 +134,17 @@ export interface DraftRunSummary {
   stoppedBefore?: string;
 }
 
+/** Why the gate rejected the last draft, told to the redraft (F.2.c). */
+function rejectionReasons(file: string): string[] {
+  if (!fs.existsSync(file)) return [];
+  const { courseRuleErrors } = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+    courseRuleErrors?: unknown;
+  };
+  return Array.isArray(courseRuleErrors)
+    ? courseRuleErrors.filter((e): e is string => typeof e === 'string')
+    : [];
+}
+
 /** A rejected draft, without the verdict the gate gave it last time. */
 function readRejectedDraft(file: string): LessonDraft {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<
@@ -262,8 +273,10 @@ export async function runDrafts(
       CORRECTIONS_N,
       options.correctionsPath,
     );
+    // Only a --force redraft gets here with a rejected draft on disk.
+    const previousErrors = rejectionReasons(file('.rejected.json'));
     console.log(
-      `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections)`,
+      `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections${previousErrors.length > 0 ? `, ${previousErrors.length} rejection reasons` : ''})`,
     );
 
     const { draft, items, inputTokens, outputTokens } = await generateDraft(
@@ -273,6 +286,7 @@ export async function runDrafts(
       lesson,
       corrections,
       ctx,
+      previousErrors,
     );
     summary.costUsd +=
       estimateCost(draft.meta.model, inputTokens, outputTokens) ?? 0;

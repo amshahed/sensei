@@ -195,6 +195,36 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
   });
 });
 
+describe('buildDraftPrompt after a rejection (F.2.c)', () => {
+  const build = (previousErrors?: string[]) =>
+    buildDraftPrompt(
+      VOCAB_LESSON,
+      [VOCAB_ITEM],
+      [],
+      [],
+      COURSE_CONTEXT,
+      previousErrors,
+    );
+
+  it('tells a redraft why the last draft was rejected', () => {
+    const prompt = build([
+      'teach[0]: uses the particle と before it is taught',
+      'check q5: uses the particle の before it is taught',
+    ]);
+    expect(prompt).toContain(
+      'Your last draft of this lesson was rejected for:\n' +
+        '  - teach[0]: uses the particle と before it is taught\n' +
+        '  - check q5: uses the particle の before it is taught\n' +
+        'Fix every one.',
+    );
+  });
+
+  it('adds nothing when there are no errors', () => {
+    expect(build([])).not.toContain('rejected');
+    expect(build()).toBe(build([]));
+  });
+});
+
 describe('passagesFor', () => {
   it('drops a Tatoeba sentence that breaks the rules and keeps one that does not', () => {
     expect(

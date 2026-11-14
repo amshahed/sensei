@@ -179,6 +179,8 @@ export function buildDraftPrompt(
   passages: string[],
   corrections: CorrectionEntry[],
   ctx?: CourseContext | null,
+  /** Why the gate rejected this lesson's last draft (F.2.c). */
+  previousErrors: string[] = [],
 ): string {
   const itemsBlock = formatItemsForPrompt(items, ctx);
   const contextBlock = ctx ? courseContextBlock(ctx) : '';
@@ -197,13 +199,20 @@ export function buildDraftPrompt(
           .join('\n')}\n`
       : '';
 
+  const rejectionBlock =
+    previousErrors.length > 0
+      ? `\nYour last draft of this lesson was rejected for:\n${previousErrors
+          .map((e) => `  - ${e}`)
+          .join('\n')}\nFix every one.\n`
+      : '';
+
   return `Draft a ${lesson.type} lesson for Foundation Japanese.
 
 LESSON: ${lesson.id} — "${lesson.title}"
 ESTIMATED MINUTES: ${lesson.estimatedMinutes}
 TARGET ITEMS (${items.length}):
   ${itemsBlock}
-${contextBlock}${passagesBlock}${correctionsBlock}
+${contextBlock}${passagesBlock}${correctionsBlock}${rejectionBlock}
 OUTPUT the lesson draft as JSON matching this exact shape (no other text):
 {
   "lessonId": "${lesson.id}",
@@ -270,6 +279,7 @@ export async function generateDraft(
   lesson: Lesson,
   corrections: CorrectionEntry[],
   ctx?: CourseContext | null,
+  previousErrors: string[] = [],
 ): Promise<GenerateDraftResult> {
   const model = authoringModel();
   const items = await loadLessonItems(prisma, lesson.itemIds);
@@ -292,6 +302,7 @@ export async function generateDraft(
     passages,
     corrections,
     ctx,
+    previousErrors,
   );
 
   // No sampling parameters: current Opus models reject `temperature`.
