@@ -73,8 +73,16 @@ export const spaceless = (s: string) => s.replace(/\s/g, '');
 const romajiOf = (s: string) => toRomaji(s).replace(/\s/g, '').toLowerCase();
 const KANA_RUN = /[ぁ-ゖ]+/g;
 const PUNCTUATION = /\p{P}/gu;
-/** Hiragana or katakana, two characters or more: a word, not a lone kana. */
-const KANA_WORD = /^[ぁ-ゖァ-ヺー]{2,}$/;
+/**
+ * A stretch of Japanese: kana and the spaces between words. Anything else
+ * ends it: punctuation, symbols, Latin letters, digits and kanji (F.2.d).
+ */
+const STRETCH = /[ぁ-ゖァ-ヺー\s]+/g;
+/** One hiragana or katakana: a sound in a row, not a word. */
+const LONE_KANA = /^[ぁ-ゖァ-ヺー]$/;
+
+/** Text with no punctuation and no spaces, so がっこう。 equals がっこう. */
+export const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
 
 /** Rōmaji with macrons and doubled vowels removed, so okāsan equals okaasan. */
 const looseRomaji = (s: string) =>
@@ -211,17 +219,21 @@ interface ParticleContext {
   known: Set<string>;
 }
 
-function particleContext(ctx: CourseContext): ParticleContext {
+/**
+ * The particles not yet taught at this lesson, in the order of PARTICLES. The
+ * gate and the draft prompt both take the list from here (F.2.d).
+ */
+export function untaughtParticles(ctx: CourseContext): string[] {
   const taught = new Set(ctx.grammar.map((g) => g.id));
-  const known = knownStrings(ctx).map((k) =>
-    spaceless(k.replace(PUNCTUATION, '')),
-  );
+  return Object.entries(PARTICLES)
+    .filter(([, ids]) => !ids.some((id) => taught.has(id)))
+    .map(([particle]) => particle);
+}
+
+function particleContext(ctx: CourseContext): ParticleContext {
+  const known = knownStrings(ctx).map(bare);
   return {
-    untaught: new Set(
-      Object.entries(PARTICLES)
-        .filter(([, ids]) => !ids.some((id) => taught.has(id)))
-        .map(([particle]) => particle),
-    ),
+    untaught: new Set(untaughtParticles(ctx)),
     phrases: known
       .filter((k) => k.length > 1)
       .map((k) => knownPattern(k, true)),
@@ -229,40 +241,45 @@ function particleContext(ctx: CourseContext): ParticleContext {
   };
 }
 
-/** A choice or answer as one bare token: no punctuation, no spaces. */
-const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
-
 /**
- * Rule A (F.2.c): a word that is exactly an untaught particle, next to a kana
- * word of two or more characters, is a use in Japanese (ともだち と がっこう).
- * Next to English (the little word と) or a lone kana (は ひ ふ へ ほ) it is a
- * mention. Known words and taught grammar count as words and aren't inspected,
- * including when written across spaces (おげんき です か), but no known word
- * starts with a particle standing alone, so に ほん is not にほん. A word that
- * is only punctuation (は — はな) stays in place and is not a kana word.
+ * Rule A (F.2.d, amends F.2.c). A Japanese particle follows the word it marks,
+ * and a sentence doesn't run through a colon, a comma, a bracket or English.
+ * So each stretch of kana and spaces is read on its own, and a word in it that
+ * is exactly an untaught particle is a use (ともだち と がっこう) only when:
+ *   - the word before it is a word: two kana or more, or a known phrase;
+ *   - the word after it, if any, is not a lone kana, because a row after a
+ *     word (こえ か き く け こ) is a listing, not a sentence.
+ * A kana pointed out on its own (と: そと, In はな, は says ha) or in a row
+ * (た ち つ て と そと) is a mention. Known words and taught grammar count as
+ * words, including across spaces (おげんき です か), but no known word starts
+ * with a particle standing alone, so に ほん is not にほん. A known word of
+ * one kana (に, two) is never a particle. The error quotes the stretch, so a
+ * redraft sees the exact phrase to fix.
  */
 function particleProblems(text: string, pc: ParticleContext): string[] {
   if (pc.untaught.size === 0) return [];
-  const line = text
-    .split(/\s+/)
-    .map((t) => t.replace(PUNCTUATION, ''))
-    .join(' ');
   const mask = (match: string) => {
     const [first] = match.split(' ');
     return first !== match && pc.untaught.has(first) ? match : '|';
   };
-  const words = pc.phrases
-    .reduce((t, pattern) => t.replace(pattern, mask), line)
-    .split(' ');
-  const isWord = (w?: string) =>
-    w !== undefined && (w === '|' || KANA_WORD.test(w));
+  const isWord = (w?: string) => w === '|' || (w ?? '').length > 1;
   const problems = new Set<string>();
-  words.forEach((w, i) => {
-    if (!pc.untaught.has(w) || pc.known.has(w)) return;
-    if (isWord(words[i - 1]) || isWord(words[i + 1])) {
-      problems.add(`uses the particle ${w} before it is taught`);
-    }
-  });
+  for (const stretch of text.match(STRETCH) ?? []) {
+    const line = stretch.trim().split(/\s+/).join(' ');
+    // Masking only ever removes words, so a stretch with no particle in it
+    // can't gain one.
+    if (!line.split(' ').some((w) => pc.untaught.has(w))) continue;
+    const words = pc.phrases
+      .reduce((t, pattern) => t.replace(pattern, mask), line)
+      .split(' ');
+    words.forEach((w, i) => {
+      if (!pc.untaught.has(w) || pc.known.has(w)) return;
+      const next = words[i + 1];
+      if (isWord(words[i - 1]) && !(next && LONE_KANA.test(next))) {
+        problems.add(`uses the particle ${w} before it is taught, in "${line}"`);
+      }
+    });
+  }
   return [...problems];
 }
 

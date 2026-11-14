@@ -450,10 +450,36 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
     // にほん is a known word, but no word starts with a lone particle.
     ['ともだち に ほん', 60, 'に'],
     ['がっこう から えき まで', 83, 'から'],
+    // F.2.d: the kana reading lessons stay covered.
+    ['はな と ひと', 8, 'と'],
+    ['ねこ と いぬ', 9, 'と'],
+    // Lesson 43's original preview, verbatim: か before 。 ends a sentence.
+    [
+      "To ask a question, just add か at the end: あなた は いしゃ です か 。 means 'Are you a doctor?' Easy, right?",
+      43,
+      'か',
+    ],
+    ['にほん から きました', 49, 'から'],
   ])('rejects %s at lesson %i for %s', (japanese, n, particle) => {
-    expect(errors(japanese, n)).toContain(
-      `teach[0]: uses the particle ${particle} before it is taught`,
+    expect(onlyParticles(errors(japanese, n))).toContainEqual(
+      expect.stringMatching(
+        new RegExp(
+          `^teach\\[0\\]: uses the particle ${particle} before it is taught, in "`,
+        ),
+      ),
     );
+  });
+
+  it('quotes the stretch of Japanese the particle was used in (F.2.d)', () => {
+    expect(onlyParticles(errors('ともだち と がっこう', 20))).toEqual([
+      'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
+    ]);
+    expect(
+      onlyParticles(errors('ともだち と がっこう。 おかあさん の しゃしん。', 20)),
+    ).toEqual([
+      'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
+      'teach[0]: uses the particle の before it is taught, in "おかあさん の しゃしん"',
+    ]);
   });
 
   it.each([
@@ -469,8 +495,54 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
     ['おげんき です か', 24],
     ['いち に さん', 65],
     ['ともだちと がっこう', 20],
+    ['わたし は いちご', 43],
+    ['に ほん', 45],
+    ['ろく じ に', 99],
   ])('accepts %s at lesson %i', (japanese, n) => {
     expect(onlyParticles(errors(japanese, n))).toEqual([]);
+  });
+
+  // test.md F1: a kana lesson's own sounds, shown next to example words. The
+  // first nine are the Tester's reproduction on b16f481, where all nine failed.
+  it.each([
+    ['た ち つ て と そと くつ', 5], // lesson 2's passage shape: the row, then words
+    ['な に ぬ ね の ねこ いぬ', 6],
+    ['ま み む め も もも あめ', 9],
+    ['や ゆ よ やま ゆき', 10],
+    ['と: そと (outside)', 5],
+    ['In はな, は says ha.', 7],
+    ['かさ (か + さ)', 4],
+    ['Two small marks turn か into が: かぎ (key)', 15],
+    ['で: でんわ (phone)', 16],
+    ['こえ か き く け こ', 2], // a row after a word is a listing
+    ['いぬ な に ぬ ね の', 6],
+    ['ね ねこ ねずみ', 6],
+    ['Words with ね: ね, ねこ', 6],
+    ['か: かさ', 2],
+    ['名 な, 何 なに', 62], // a kanji ends the stretch
+    ['一 いち, 二 に, 三 さん', 50],
+    // The PM's gloss in lesson 20, verbatim.
+    [
+      "The little words と (and), の ('s) and みて (look) come later in the course.",
+      20,
+    ],
+  ])('accepts kana-lesson content %s at lesson %i (F.2.d)', (text, n) => {
+    expect(onlyParticles(errors(text, n))).toEqual([]);
+  });
+
+  // Known residuals of F.2.d, pinned so a change to them is deliberate.
+  it('still rejects a mention written right after a word with no punctuation', () => {
+    // The draft prompt asks for a lone kana to be set apart (R1.4).
+    expect(onlyParticles(errors('はな は says ha', 7))).toEqual([
+      'teach[0]: uses the particle は before it is taught, in "はな は"',
+    ]);
+  });
+
+  it.each([
+    ['ねこ の え', 9], // a particle before a one-kana word
+    ['日本 から', 49], // a particle after a kanji
+  ])('misses %s at lesson %i, left to review', (text, n) => {
+    expect(onlyParticles(errors(text, n))).toEqual([]);
   });
 
   it('rejects a choice that is only an untaught particle', () => {
