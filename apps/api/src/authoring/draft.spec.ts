@@ -5,6 +5,7 @@ import * as path from 'path';
 import type { VoyageClient } from '../voyage/voyage-client';
 import { parseArgs, runDrafts, type DraftRunOptions } from './draft';
 import { regenerateArgs, rejectedDraftWarning } from './review';
+import type { LessonDraft } from './lesson-schema';
 import type { Lesson, Skeleton } from './skeleton-schema';
 
 const lesson = (n: number): Lesson => ({
@@ -52,7 +53,10 @@ describe('runDrafts (F.2.a)', () => {
   let japanese: string;
   let spies: jest.SpyInstance[];
 
-  const skeleton = (lessons: Lesson[]): Skeleton => ({
+  const skeleton = (
+    lessons: Lesson[],
+    surfaces: Record<string, string> = { 'ja:kana:a': 'あ' },
+  ): Skeleton => ({
     module: {
       id: 'm',
       title: 'M',
@@ -62,7 +66,7 @@ describe('runDrafts (F.2.a)', () => {
     generatedAt: new Date().toISOString(),
     model: 'compiled-outline',
     tokenUsage: { inputTokens: 0, outputTokens: 0 },
-    surfaces: { 'ja:kana:a': 'あ' },
+    surfaces,
     soundStages: [],
   });
 
@@ -179,6 +183,60 @@ describe('runDrafts (F.2.a)', () => {
     await run([lesson(1)], { force: true });
     expect(read('l1.json')).toEqual({ old: true });
     expect(fs.existsSync(inDir('l1.prev.json'))).toBe(false);
+  });
+
+  describe('a typed-reading lesson (F.2.b)', () => {
+    const kana: Lesson = { ...lesson(1), itemIds: ['ja:kana:a', 'ja:kana:i'] };
+    const reading: Lesson = {
+      id: 'l2',
+      type: 'F-Vocab',
+      title: 'Reading',
+      itemIds: ['ja:vocab:愛'],
+      estimatedMinutes: 7,
+      typedReading: true,
+    };
+    const readingSkeleton = skeleton([kana, reading], {
+      'ja:kana:a': 'あ',
+      'ja:kana:i': 'い',
+      'ja:vocab:愛': 'あい',
+    });
+    /** Lesson 19 twice over: the right answer, but recall from English. */
+    const recall = {
+      ...replyFor('l2', 'あい'),
+      lessonType: 'F-Vocab',
+      targetItemIds: ['ja:vocab:愛'],
+      practice: {
+        templates: [{ targetItemId: 'ja:vocab:愛', mode: 'recognition' }],
+      },
+      check: {
+        questions: [
+          {
+            id: 'q1',
+            targetItemId: 'ja:vocab:愛',
+            prompt: "Type the kana word that means 'love'.",
+            answerType: 'typed',
+            correctAnswer: 'あい',
+            explanation: 'Nice!',
+          },
+        ],
+      },
+    };
+
+    it('saves a recall-style reply as a draft, with a reading prompt', async () => {
+      create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: JSON.stringify(recall) }],
+        usage: { input_tokens: 100_000, output_tokens: 20_000 },
+      });
+      const summary = await run([reading], { skeleton: readingSkeleton });
+      expect(summary).toMatchObject({ drafted: 1, rejected: 0 });
+      expect(fs.existsSync(inDir('l2.rejected.json'))).toBe(false);
+      const [q1] = (read('l2.json') as unknown as LessonDraft).check.questions;
+      expect(q1).toMatchObject({
+        id: 'q1',
+        prompt: 'Read this word and type how it sounds: あい',
+        explanation: 'Nice!',
+      });
+    });
   });
 
   it('--max-cost stops before the next paid lesson and says where', async () => {

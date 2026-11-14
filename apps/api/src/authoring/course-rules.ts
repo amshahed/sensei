@@ -1,7 +1,7 @@
 import { toRomaji } from 'wanakana';
 import { hasLongVowel, kanaChars, kanjiChars } from '../common/japanese-script';
 import type { CourseContext } from './course-context';
-import type { LessonDraft } from './lesson-schema';
+import type { CheckQuestion, LessonDraft } from './lesson-schema';
 
 export interface CourseRuleResult {
   errors: string[];
@@ -166,6 +166,24 @@ function markerProblems(text: string, ctx: CourseContext): string[] {
     .map((m) => `uses ${m.text} before it is taught`);
 }
 
+/**
+ * P2: a typed check that makes the learner read the word: its prompt shows the
+ * word and has no rōmaji for it. The gate and the typed-reading transform both
+ * judge a check by this, so they can't drift apart (F.2.b).
+ */
+export function isFairTypedReading(
+  question: CheckQuestion,
+  surface: string,
+): boolean {
+  if (question.answerType !== 'typed') return false;
+  const prompt = looseRomaji(question.prompt);
+  return (
+    spaceless(question.prompt).includes(spaceless(surface)) &&
+    !prompt.includes(looseRomaji(romajiOf(surface))) &&
+    !prompt.includes(looseRomaji(romajiOf(question.correctAnswer)))
+  );
+}
+
 /** P2: read each target word and type it, with no rōmaji to copy. */
 function typedReadingProblems(
   draft: LessonDraft,
@@ -173,17 +191,10 @@ function typedReadingProblems(
 ): string[] {
   const problems: string[] = [];
   for (const target of ctx.targets) {
-    const typed = draft.check.questions.filter(
-      (q) => q.targetItemId === target.id && q.answerType === 'typed',
+    const fair = draft.check.questions.filter(
+      (q) =>
+        q.targetItemId === target.id && isFairTypedReading(q, target.surface),
     );
-    const fair = typed.filter((q) => {
-      const prompt = looseRomaji(q.prompt);
-      return (
-        spaceless(q.prompt).includes(spaceless(target.surface)) &&
-        !prompt.includes(looseRomaji(romajiOf(target.surface))) &&
-        !prompt.includes(looseRomaji(romajiOf(q.correctAnswer)))
-      );
-    });
     if (fair.length === 0) {
       problems.push(
         `${target.id} needs a typed check showing ${target.surface} with no rōmaji in the prompt`,

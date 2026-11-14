@@ -28,6 +28,7 @@ import { validateStructure } from './lesson-validator';
 import { readCorrections } from './corrections-log';
 import { courseContextFor } from './course-context';
 import { checkCourseRules } from './course-rules';
+import { addTypedReadingChecks } from './typed-reading';
 import {
   AUTHORING_TIMEOUT_MS,
   authoringModel,
@@ -165,7 +166,7 @@ export async function runDrafts(
     );
 
     const ctx = courseContextFor(skeleton, lesson.id);
-    const { draft, items, inputTokens, outputTokens } = await generateDraft(
+    const generated = await generateDraft(
       options.anthropic,
       options.voyage,
       options.prisma,
@@ -173,6 +174,10 @@ export async function runDrafts(
       corrections,
       ctx,
     );
+    const { items, inputTokens, outputTokens } = generated;
+    const draft = ctx
+      ? addTypedReadingChecks(generated.draft, ctx)
+      : generated.draft;
     summary.costUsd +=
       estimateCost(draft.meta.model, inputTokens, outputTokens) ?? 0;
     const cost = formatCost(draft.meta.model, inputTokens, outputTokens);
