@@ -11,13 +11,13 @@ Unit `22b-sample-lessons`. Written by the Project Manager, 2026-11-14. Reviews t
 | # | Lesson | Type | Verdict | Edits |
 |---|---|---|---|---|
 | 2 | `foundation-ja-ch01-l02` The K row | F-Kana | **APPROVE WITH CORRECTIONS** | 3, all small |
-| 19 | `foundation-ja-ch04-l05` The small っ pause | F-Vocab, sound | Not reviewed | Excluded: gate rejected both drafts; Tech Lead fixing |
+| 19 | `foundation-ja-ch04-l05` The small っ pause | F-Vocab, sound | **APPROVE WITH CORRECTIONS** | 12 wording edits: 2 in Teach, 10 check explanations the app doesn't show yet. Reviewed after `--recheck`, see section 7 |
 | 20 | `foundation-ja-ch04-l06` Reading real words | I-Reading | **APPROVE WITH CORRECTIONS** | 10 small, incl. 1 added gloss block. Borderline, see 2.2 |
 | 21 | `foundation-ja-ch05-l01` Hello and goodbye | F-Vocab, phrases | **APPROVE WITH CORRECTIONS** | 5 wording edits |
 | 43 | `foundation-ja-ch08-l03` A は B です | F-Grammar | **APPROVE WITH CORRECTIONS** | 8, incl. 1 removed block and 1 added check. Most edited |
 
 - Nothing is sent back. Every flaw was fixable by hand for less risk than a redraft, which with no `temperature` would give a different lesson with different flaws.
-- Three systematic flaws went into `tools/authoring/corrections.jsonl` (section 3), so 22c drafts of those types are steered away from them.
+- Three systematic flaws went into `tools/authoring/corrections.jsonl` (section 3), so 22c drafts of those types are steered away from them. A fourth, for sound lessons, was added with lesson 19 (section 7.4).
 - **Verified after editing (offline, no API spend):** all four edited drafts parse against `LessonDraftSchema` and pass `validateStructure` and `checkCourseRules` with zero errors and zero warnings, the same as the originals. No kanji in any learner-facing field (P9). Originals are kept in the session scratchpad and inside the corrections entries.
 
 ---
@@ -121,17 +121,17 @@ Three lines appended to `tools/authoring/corrections.jsonl`, in the README forma
 | I-Reading | With no grammar taught, the passage uses only known words: no particles (と, の, を, に, が, か) and no verb forms (みて). Questions must be answerable from known words. Describe a long vowel by the held kana (おかあさん: か lasts two beats, not お-あ). Word typed checks "Read this word and type how it sounds" |
 | F-Grammar | Teach only this lesson's grammar, no preview of the next point. Distractors must be taught too. Include a whole-sentence meaning check. Typed checks say "rōmaji is fine". No space before 。 |
 
-- **No F-Vocab entry, on purpose.** The Tech Lead's lesson 19 redraft is F-Vocab and would pick it up, which muddies the test of their fix. Lesson 21's issues are also naturalness judgements I'm not sure enough of to push into every phrase lesson.
+- **No F-Vocab entry at first, on purpose.** The Tech Lead's lesson 19 redraft is F-Vocab and would pick it up, which muddies the test of their fix. Lesson 21's issues are also naturalness judgements I'm not sure enough of to push into every phrase lesson. *Update:* lesson 19 was recovered by `--recheck` with no redraft, so an F-Vocab entry for sound lessons now exists (section 7.4). It still says nothing about phrase lessons.
 - Notes steer a model that has already ignored explicit rules: lesson 20 ignored "only the grammar listed", and lesson 19 ignored TYPED READING twice. They help, but they are not a guarantee. Section 5 has the deterministic fix.
 
 ---
 
-# 4. Batch-quality gate (brief 3.4), so far
+# 4. Batch-quality gate (brief 3.4), all five lessons
 
 | Lesson | Course-rules gate | PM review: small edits only | Critic: no critical finding left | Cost (draft + critique) ≤ $0.30 |
 |---|---|---|---|---|
 | 2 F-Kana | Pass, 1st draft | Pass | Pass (example-feel fixed by edit 2) | Pass, $0.071 |
-| 19 F-Vocab sound | **Fail, both drafts** | Not reached | Not reached | About $0.145, no usable draft |
+| 19 F-Vocab sound | **Failed both drafts; 2nd passes after the F.2.b code fix**, via `--recheck` at $0 | Pass (12 wording edits, nothing rewritten or replaced) | Pass, but missed the untaught typing rule | Pass, about $0.15 for both drafts and the critique |
 | 20 I-Reading | Pass, 1st draft | **Pass, borderline** | Pass, but missed two real problems | Pass, $0.079 |
 | 21 F-Vocab phrases | Pass, 1st draft | Pass | Pass | Pass, $0.090 |
 | 43 F-Grammar | Pass, 1st draft | Pass (one added check, nothing replaced) | Pass, but missed the か preview | Pass, $0.055 |
@@ -142,11 +142,16 @@ Three lines appended to `tools/authoring/corrections.jsonl`, in the README forma
 - **F-Vocab phrases: go.**
 - **F-Grammar: go, on watch.** Lesson 43 counts as one strike, because untaught grammar got past gate and critic. A second F-Grammar draft that previews later grammar or uses untaught distractors makes the type no-go under 3.4 until the gate catches it.
 - **I-Reading: go, on watch.** Lesson 20 is one strike on the same grounds. Five more I-Reading lessons (4, 8, 13, 32, 38) come before any grammar is taught, so the same flaw is likely. A second strike makes I-Reading no-go.
-- **F-Vocab sound: no-go.** Lesson 19 failed the gate on both drafts. Per 3.4: fix, then sample lesson 19 once more. 22c can't draft the sound lessons until that passes.
+- **F-Vocab sound: go, on watch** (was no-go; updated after the lesson 19 review in section 7).
+  - *The gate failure is fixed at its cause.* Both rejections were recall prompts on the typed checks. Code now owns that wording (F.2.b), so it can't recur in lessons 15 to 18. I accept the Tech Lead's view that a fresh paid draft would add no evidence on it. The `--recheck` of lesson 19 counts as 3.4's "sample once more".
+  - *No strike.* The one real content gap, no rule for typing っ, traces to my own 22a author note ("rōmaji only in the cards"), not to the drafter. The drafter's `kkou` was the right instinct. The other flaws are in explanations the app doesn't show yet.
+  - *On watch* because only one sound lesson has been reviewed, and it's the one whose typing differs from its cards. Lessons 15 to 18 (and 39, katakana sounds) get a full PM review in 22c. If one needs a rewritten Teach beat or a replaced check, the rest of the type stops for a prompt fix before it's published.
 
-**Overall: no full go for 22c yet.** It waits on lesson 19. Cost is not a concern: the worst lesson is $0.090, under a third of the bar, and 22b has spent about $0.44 of its $2.50 cap.
+**Overall: go for 22c.** All five types pass the 3.4 bar. Three are on watch (F-Grammar, I-Reading, F-Vocab sound), and none has a second strike. The four corrections entries are in place. Cost is not a concern: the worst lesson is about $0.15 including a wasted draft, half the bar. 22b has spent about $0.45 of its $2.50 cap.
 
-**Lesson for 22c review effort.** The Haiku critic passed lessons 20 and 43 on all nine points, though it was told the taught grammar and both broke it, and lesson 20 taught a wrong long-vowel rule. A critic pass is weak evidence of course-rule compliance. In 22c the PM will review every I-Reading and F-Grammar draft in full and skim F-Kana and phrase lessons.
+**What does not block 22c drafting:** the Tech Lead's particle-gate backlog (`test.md` N1, N2) and the mobile items in section 5. PM review is the backstop for the first, and the second changes the app, not the drafts. Section 5 item 5 should still land before the 22c Alpha run, because it decides whether a learner who misses a reading check ever sees the right rōmaji.
+
+**Lesson for 22c review effort.** The Haiku critic passed lessons 20 and 43 on all nine points, though it was told the taught grammar and both broke it, and lesson 20 taught a wrong long-vowel rule. It also passed lesson 19 on `learner-confusion`, though the lesson asked the learner to type something it never taught. A critic pass is weak evidence. In 22c the PM will review every I-Reading, F-Grammar and sound-lesson draft in full, and skim F-Kana and phrase lessons.
 
 ---
 
@@ -155,7 +160,8 @@ Three lines appended to `tools/authoring/corrections.jsonl`, in the README forma
 1. **Gate gap: untaught particles and て-forms.** Drafts must put a space between words, so a space-separated lone particle (と, の, を, に, が, か, も, で) is a particle. The gate could reject one used before it is taught, except where a single kana is what's being taught (kana lessons and their choices). This would have caught lesson 20 (と, の) and lesson 43 (か, を) for free, and makes the I-Reading and F-Grammar strikes in section 4 preventable. みて also got past the verb-ending check. How is yours.
 2. **Typed input says nothing about rōmaji.** The placeholder is "Type your answer". "Type in rōmaji or kana" would fix every typed check at once, including lessons written before this review's wording fix.
 3. **Kana answer with a trailing 。 is marked wrong** (backlog N6): `ともだちはいしゃです。` fails for lesson 43 q4, while rōmaji with a full stop passes. A learner with a Japanese keyboard will hit it in a sample lesson.
-4. **Example blocks print the reading twice** when `reading` equals `japanese` (lesson 20). Hide the reading line when they match.
+4. **Example blocks print the reading twice** when `reading` equals `japanese` (lesson 20, and all five examples in lesson 19). Hide the reading line when they match.
+5. **A missed reading check shows the kana the learner just failed to read** (your own `tech.md` section 7). After a miss on lesson 19 q8 the app says `Answer: きっぷ`, never "kippu". Lesson 19's typed explanations now carry the rōmaji (`In rōmaji, きっぷ is kippu: the っ doubles the p`), so showing `explanation` after a miss would fix this for every reading check that has one. How is yours. I'll rule on priority in triage, but I want it before the 22c Alpha run.
 
 ---
 
@@ -173,3 +179,87 @@ Ask specifically about:
 3. **Lesson 43, あなた in `あなた は せんせい です`.** It is grammatical, but real speech often uses a name instead. Should lesson 41 or 43 say so? Is "dess" a fair description of です?
 4. **Lesson 20 passage and gloss**: is `ちょっと みて` natural, and is "Take a look!" a fair gloss? Is ちょっと as "a little" (q9) acceptable when the passage uses it as "for a moment"?
 5. **Lesson 2 mnemonics**: nothing specific, but they were invented by the model.
+6. **Lesson 19, describing っ with no audio.** Is "a short silent beat" fair for いっしょ and ざっし, where the beat may be a held s-sound rather than silence? Is "then hit the next sound a bit harder" helpful, or does it push English speakers toward stress? Is "がっこう has four beats: が, っ, こ, う" an accurate way to count it?
+
+---
+
+# 7. Lesson 19, The small っ pause (F-Vocab, sound)
+
+Reviewed 2026-11-14, after `--recheck` (F.2.b) rewrote its five typed prompts to `Read this word and type how it sounds: <word>`. Draft: `tools/authoring/output/foundation-ja-ch04-l05.json`. The critic passed it on all nine points.
+
+**Verdict: APPROVE WITH CORRECTIONS.** 12 wording edits. No Teach beat rewritten, no check replaced, and the prompts are untouched, because code owns them.
+
+## 7.1 Works
+
+- The shape suits a silent sound lesson: what っ is (a small つ with no sound of its own), the one rule, a kana card (っ / short pause), one worked word, the five words, then a mnemonic. The player skips the audio block, as intended.
+- P4's "makes clear in words that っ is a short pause" is met four times: in the first text block, the rule block, the card and the mnemonic ("a speed bump").
+- The checks alternate meaning (multiple choice) and reading (typed) for each word. Every distractor is a word from this lesson, and the five typed prompts show only kana.
+- The mnemonic's "がっこう turns into 'gakou'" is a good contrast: one k means no pause.
+- There's no kanji in any learner-facing field (P9). Every word is built from sounds taught in lessons 15 to 18 (ざ, ぷ, しょ, ちょ, long おう) plus っ.
+
+## 7.2 The Tester's question: does "ga … kkou" help or confuse?
+
+**The lesson has to spell a worked word out. This spelling only half helps, so I changed it.**
+
+- **Why it's necessary.** The check accepts rōmaji (wanakana, the library the grader uses to fold rōmaji into kana, turns `kippu` into きっぷ), and cards are the only place the course gives rōmaji. Every other sound in lessons 15 to 18 has a card that says how to type it (が = ga, しょ = sho). っ has no rōmaji of its own, and its card says "short pause". The doubled letter is a convention a learner can't work out. Without one worked example, q4 to q10 ask for something the lesson never taught.
+  - My 22a author note caused this. "Write the sound in rōmaji only in the cards" didn't foresee a sound with no rōmaji. The drafter broke the note, and it was right to.
+- **Why this spelling confuses.**
+  1. It mixes a sound description with a spelling rule. `kkou` after a pause reads as a doubled, harder k, and the same sentence said "then say the next sound strongly". A learner takes away force, not timing.
+  2. It never says why there are two k's, so the learner has to guess the typing rule.
+  3. Rōmaji used as a pronunciation guide invites English readings: "kou" can come out as "cow".
+  4. A split form copied into the answer box fails. Wanakana turns `ga-kkou` into がーっこう and `gak kou` into がk こう. `ga kkou` happens to pass.
+- **What replaced it.** The sound is given in kana and beats, and the rōmaji once, unbroken, as the typed form: *Take がっこう (school). It has four beats: が, っ, こ, う. Say が, stay silent for one beat on っ, then say こう. In rōmaji, a small っ doubles the next letter, so you type がっこう as gakkou.*
+  - "Beats" is already the course's timing word (lesson 18's note, lesson 20's approved text). It frames っ as time, which is the point.
+- **The other four words get no rōmaji in Teach.** The learner applies the rule to きっぷ and ざっし, which is what P4 tests. Each follows from the rule and earlier cards:
+  - き + っ + ぷ (pu) = kippu
+  - ざ (za) + っ + し = zasshi
+  - い + っ + しょ (sho) = issho
+  - ちょ (cho) + っ + と = chotto
+  - All five are accepted by the grader.
+
+## 7.3 Edits
+
+1. Teach block 1: `Have you noticed the tiny っ inside some words?` → *Some words have a tiny っ inside them.* The learner hasn't seen っ yet (22a P1), so the question invites the answer "no".
+2. Teach block 4: the worked example above. It replaces `Pause where the っ sits, then say the next sound strongly: がっこう (school) — say 'ga', pause, then 'kkou'.`
+3. to 7. Typed explanations q2, q4, q6, q8 and q10. Each opened with praise (`Nice!`, `Perfect!`) and gave no rōmaji. The explanation is the only field that can tell a learner who missed what to type, and praise is wrong after a miss.
+   - Now *In rōmaji, がっこう is gakkou: the っ doubles the k.* The others follow the same pattern: issho (s), chotto (t), kippu (p), zasshi (s).
+8. to 12. Multiple-choice explanations q1, q3, q5, q7 and q9. Each spelled out the word's rōmaji (`ki-(pause)-ppu`) one question before the typed check that asks for it. The 22a triage rejected that pattern: the answer one tap before a check.
+   - Now they give the meaning only: *きっぷ means 'ticket'.*
+
+- **Edits 3 to 12 are invisible today**, because the app doesn't show `explanation` (section 5 item 5). They are published, though, so I fixed them now. The change that shows them should find correct text.
+- **Not changed:**
+  - The practice hints still spell out `ki-(pause)-ppu`. They are never published or shown, so they cost nothing.
+  - "Hit the next sound a bit harder" stays in the rule block. It's a common simplification and I can't judge it, so it goes to the native speaker (6.1 item 6).
+- **Verified after editing** (offline, no API spend):
+  - It parses against `LessonDraftSchema`.
+  - It passes `validateStructure` and `checkCourseRules` with zero errors and zero warnings, the same as before.
+  - The typed-reading transform leaves it unchanged, so a later recheck or publish won't touch it.
+  - It has 10 questions and no kanji in learner-facing fields.
+  - The pre-edit draft is kept in the corrections entry and the session scratchpad.
+
+## 7.4 Corrections log
+
+I added one F-Vocab line, scoped to "a sound lesson with typed reading checks" so that phrase lessons aren't affected. In short:
+- Timing in beats, and sound in kana.
+- Rōmaji only in cards, except one worked example for a sound with no rōmaji of its own.
+- Typed explanations give the rōmaji answer and no praise.
+- No rōmaji in other explanations or hints.
+- No "Have you noticed" about a sound not yet taught.
+
+The next F-Vocab drafts are lessons 15 to 18, all sound lessons.
+
+## 7.5 P4, and what the Alpha should watch
+
+- **P4 is met on the page.**
+  - "っ is a short pause" is said in words four times.
+  - The typed prompts show kana only.
+  - The typing rule is stated once, with one example.
+  - `gakkou`, `kippu` and `zasshi` are accepted.
+- **Risk 1: a miss teaches nothing.** The app shows `Answer: きっぷ`. A learner who typed `kipu` sees the kana they misread and no rōmaji (section 5 item 5).
+- **Risk 2: macrons.** `gakkō` is rejected. The lesson never shows a macron, so I accept this.
+- **Risk 3: kana twice.** Each example prints the word twice (section 5 item 4). It looks odd but isn't confusing.
+
+## 7.6 What I could not verify
+
+- Whether any description of っ in words lets a beginner produce the sound. Without audio, this lesson can teach the rule and the typing, but not the sound. That's Blocker 2, acceptable for alpha only.
+- Whether "silent beat", "harder" and "four beats" are linguistically accurate (6.1 item 6).
