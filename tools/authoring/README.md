@@ -119,7 +119,7 @@ Reads the skeleton, loads item data from DB, optionally retrieves relevant corpu
 and calls Claude Opus. Runs the structural validator after each draft.
 
 ```bash
-pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--corrections <path>] [--force] [--max-cost <usd>]
+pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--corrections <path>] [--force | --recheck] [--max-cost <usd>]
 ```
 
 | Flag | Default | Description |
@@ -127,7 +127,8 @@ pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--
 | `<slug>` | required | Lesson ID (`foundation-ja-ch01-l01`) or chapter ID (`foundation-ja-ch01`) |
 | `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file to read |
 | `--corrections` | `tools/authoring/corrections.jsonl` | Corrections log (few-shot) |
-| `--force` | off | Redraft. Keeps the old draft as `<id>.prev.json`, deletes `<id>.critique.json` and clears `<id>.rejected.json` |
+| `--force` | off | Redraft. Keeps the old draft as `<id>.prev.json`, deletes `<id>.critique.json` and clears `<id>.rejected.json`. A lesson with a `<id>.rejected.json` is told why that draft was rejected |
+| `--recheck` | off | No model call, $0. Reruns the gate on each `<id>.rejected.json` (see below). Can't be combined with `--force` |
 | `--max-cost` | none | Stop before the next paid lesson once the running estimate reaches this many US dollars |
 
 Output: `tools/authoring/output/<lesson-id>.json` (gitignored).
@@ -137,9 +138,26 @@ with no API call, so a batch can be resumed. The last line reports drafted, skip
 estimated cost.
 
 With a compiled outline, the drafter sees what the learner has been taught, and a free deterministic
-gate checks the result for untaught kana, kanji and verb endings. A draft that fails is written to
-`<id>.rejected.json`, never `<id>.json`, the batch carries on and the command exits 1. Publishing runs
-the same gate. It can't tell particles apart in kana, so those stay with the critic and PM review.
+gate checks the result for untaught kana, kanji, verb endings and particles. A draft that fails is
+written to `<id>.rejected.json`, never `<id>.json`, the batch carries on and the command exits 1.
+Publishing runs the same gate.
+
+- **Particles (F.2.c).** A particle standing alone as a word next to a kana word (`ともだち と がっこう`)
+  is rejected until it is taught. A mention in English (`the little word と`) and a kana row
+  (`は ひ ふ へ ほ`) pass. Outside kana and sound lessons, a choice or answer that is only an untaught
+  particle is rejected. Still left to the critic and PM review: a particle joined to a word
+  (`ともだちと`), て-forms such as `みて`, and に in lessons 65 to 80, where it is also the number two.
+- **Typed reading (F.2.b).** In a lesson with `typedReading`, the pipeline makes sure each target word
+  has a typed check showing it in kana with no rōmaji. It keeps a fair check, rewrites the prompt of a
+  typed check whose answer is the word to `Read this word and type how it sounds: <word>`, or appends
+  one. The gate's rule stays as the safety net.
+
+**Recovering a rejected draft at $0.** Run `--recheck` first whenever a code change could cure a
+rejection. For each lesson with a `<id>.rejected.json`, it drops the old errors, applies the
+typed-reading transform, and reruns the validator and the gate, exactly as for a fresh draft. A pass
+is saved as `<id>.json` the way a fresh pass is. A fail rewrites `<id>.rejected.json` with the new
+errors. It needs no `ANTHROPIC_API_KEY`. Only if it still fails, redraft with `--force`: the redraft
+prompt lists the last rejection's errors and asks for every one to be fixed.
 
 If `VOYAGE_API_KEY` is set, the drafter retrieves top-5 reference passages from the vector DB for context.
 If not set, vector search is skipped silently — the drafter still works.
