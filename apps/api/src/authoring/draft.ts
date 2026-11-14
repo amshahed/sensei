@@ -2,7 +2,8 @@
  * authoring:draft CLI — generates a lesson draft using Claude Opus.
  *
  * Usage: pnpm --filter api authoring:draft <lesson-id|chapter-id>
- *          [--skeleton <path>] [--corrections <path>] [--force] [--max-cost <usd>]
+ *          [--skeleton <path>] [--corrections <path>] [--force | --recheck]
+ *          [--max-cost <usd>]
  *
  * Reads the skeleton from tools/authoring/output/skeleton.json, finds the
  * lesson(s), generates a draft for each, runs the structural validator and the
@@ -10,6 +11,10 @@
  *
  * A run never pays twice unless told to (F.2.a): a lesson with a draft or a
  * rejected draft is skipped, so a batch can be resumed after a crash.
+ *
+ * --recheck makes no model call (F.2.b): it reruns the typed-reading
+ * transform, the validator and the gate on each <id>.rejected.json, so a draft
+ * already paid for is recovered when a code fix cures its rejection.
  *
  * Prerequisites:
  *   - pnpm --filter api ingest:items (issue #34)
@@ -23,11 +28,13 @@ import { PrismaClient } from '@prisma/client';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { makeVoyageClient, type VoyageClient } from '../voyage/voyage-client';
 import { SkeletonSchema, type Lesson, type Skeleton } from './skeleton-schema';
-import { generateDraft } from './lesson-prompter';
+import { generateDraft, type RawItem } from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
 import { readCorrections } from './corrections-log';
-import { courseContextFor } from './course-context';
+import { courseContextFor, type CourseContext } from './course-context';
 import { checkCourseRules } from './course-rules';
+import { addTypedReadingChecks } from './typed-reading';
+import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import {
   AUTHORING_TIMEOUT_MS,
   authoringModel,
@@ -48,6 +55,7 @@ export function parseArgs(args: string[] = process.argv.slice(2)): {
   correctionsPath: string | undefined;
   outputDir: string;
   force: boolean;
+  recheck: boolean;
   maxCostUsd: number | undefined;
 } {
   const valued = ['--skeleton', '--corrections', '--max-cost'];
@@ -65,6 +73,13 @@ export function parseArgs(args: string[] = process.argv.slice(2)): {
   ) {
     throw new Error('--max-cost needs a positive number of US dollars.');
   }
+  const force = args.includes('--force');
+  const recheck = args.includes('--recheck');
+  if (force && recheck) {
+    throw new Error(
+      '--recheck makes no model call and --force pays for a redraft: pick one.',
+    );
+  }
 
   return {
     slug,
@@ -73,7 +88,8 @@ export function parseArgs(args: string[] = process.argv.slice(2)): {
       path.resolve(process.cwd(), '../../tools/authoring/output/skeleton.json'),
     correctionsPath: flagValue(args, '--corrections'),
     outputDir: path.resolve(process.cwd(), '../../tools/authoring/output'),
-    force: args.includes('--force'),
+    force,
+    recheck,
     maxCostUsd,
   };
 }
@@ -99,6 +115,8 @@ export interface DraftRunOptions {
   outputDir: string;
   correctionsPath?: string;
   force: boolean;
+  /** Rerun the gate on each <id>.rejected.json, with no model call (F.2.b). */
+  recheck?: boolean;
   maxCostUsd?: number;
   anthropic: AnthropicLike;
   prisma: PrismaClient;
@@ -107,11 +125,82 @@ export interface DraftRunOptions {
 
 export interface DraftRunSummary {
   drafted: number;
+  /** Rejected drafts that pass on --recheck, saved as drafts at $0. */
+  rechecked: number;
   skipped: number;
   rejected: number;
   costUsd: number;
   /** The lesson the run stopped before, when --max-cost was reached. */
   stoppedBefore?: string;
+}
+
+/** Why the gate rejected the last draft, told to the redraft (F.2.c). */
+function rejectionReasons(file: string): string[] {
+  if (!fs.existsSync(file)) return [];
+  const { courseRuleErrors } = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+    courseRuleErrors?: unknown;
+  };
+  return Array.isArray(courseRuleErrors)
+    ? courseRuleErrors.filter((e): e is string => typeof e === 'string')
+    : [];
+}
+
+/**
+ * A rejected draft, without the verdict the gate gave it last time: the schema
+ * drops keys it doesn't know, courseRuleErrors among them.
+ */
+function readRejectedDraft(file: string): LessonDraft {
+  return LessonDraftSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
+}
+
+/**
+ * The one path every draft takes, fresh or rechecked (F.2.b): the typed-reading
+ * transform, the structural validator, then the course rules. A draft that
+ * breaks a rule goes to <id>.rejected.json, never <id>.json, so review can't
+ * pick it up. Returns whether the draft was saved.
+ */
+async function gateAndSave(
+  generated: LessonDraft,
+  ctx: CourseContext | null,
+  file: (suffix: string) => string,
+  prisma: PrismaClient,
+  items: RawItem[] | undefined,
+  spent: string,
+): Promise<boolean> {
+  const draft = ctx ? addTypedReadingChecks(generated, ctx) : generated;
+
+  const validation = await validateStructure(draft, prisma, items);
+  if (!validation.pass) {
+    console.warn(`  [validator] FAIL — ${validation.errors.join('; ')}`);
+  } else {
+    console.log(`  [validator] pass`);
+  }
+
+  const rules = ctx ? checkCourseRules(draft, ctx) : null;
+  for (const w of rules?.warnings ?? []) {
+    console.warn(`  [course rules] warning: ${w}`);
+  }
+  if (rules && rules.errors.length > 0) {
+    fs.writeFileSync(
+      file('.rejected.json'),
+      JSON.stringify({ ...draft, courseRuleErrors: rules.errors }, null, 2),
+      'utf8',
+    );
+    console.warn(
+      `  [course rules] REJECTED — ${rules.errors.join('; ')}  (${spent})`,
+    );
+    return false;
+  }
+
+  if (fs.existsSync(file('.json'))) {
+    fs.renameSync(file('.json'), file('.prev.json'));
+    console.log(`  the draft it replaces is kept as ${file('.prev.json')}`);
+  }
+  fs.rmSync(file('.critique.json'), { force: true });
+  fs.rmSync(file('.rejected.json'), { force: true });
+  fs.writeFileSync(file('.json'), JSON.stringify(draft, null, 2), 'utf8');
+  console.log(`  ${spent}  → ${file('.json')}`);
+  return true;
 }
 
 /** Drafts each lesson in order, paying only for those that need it (F.2.a). */
@@ -130,6 +219,7 @@ export async function runDrafts(
 
   const summary: DraftRunSummary = {
     drafted: 0,
+    rechecked: 0,
     skipped: 0,
     rejected: 0,
     costUsd: 0,
@@ -139,6 +229,36 @@ export async function runDrafts(
   for (const lesson of lessons) {
     const file = (suffix: string) =>
       path.join(outputDir, `${lesson.id}${suffix}`);
+    const ctx = courseContextFor(skeleton, lesson.id);
+
+    if (options.recheck) {
+      if (!fs.existsSync(file('.rejected.json'))) {
+        console.log(`  skipping "${lesson.id}": no rejected draft to recheck`);
+        summary.skipped++;
+        continue;
+      }
+      if (!ctx) {
+        // Without course context there is no gate, so nothing to recheck it by.
+        console.warn(
+          `  skipping "${lesson.id}": this skeleton has no course context, so the gate can't run`,
+        );
+        summary.skipped++;
+        continue;
+      }
+      console.log(`  rechecking "${lesson.id}" (no model call)`);
+      const saved = await gateAndSave(
+        readRejectedDraft(file('.rejected.json')),
+        ctx,
+        file,
+        options.prisma,
+        undefined,
+        'recheck, no model call, $0',
+      );
+      if (saved) summary.rechecked++;
+      else summary.rejected++;
+      continue;
+    }
+
     const existing = ['.json', '.rejected.json'].find((s) =>
       fs.existsSync(file(s)),
     );
@@ -160,11 +280,12 @@ export async function runDrafts(
       CORRECTIONS_N,
       options.correctionsPath,
     );
+    // Only a --force redraft gets here with a rejected draft on disk.
+    const previousErrors = rejectionReasons(file('.rejected.json'));
     console.log(
-      `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections)`,
+      `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections${previousErrors.length > 0 ? `, ${previousErrors.length} rejection reasons` : ''})`,
     );
 
-    const ctx = courseContextFor(skeleton, lesson.id);
     const { draft, items, inputTokens, outputTokens } = await generateDraft(
       options.anthropic,
       options.voyage,
@@ -172,57 +293,47 @@ export async function runDrafts(
       lesson,
       corrections,
       ctx,
+      previousErrors,
     );
     summary.costUsd +=
       estimateCost(draft.meta.model, inputTokens, outputTokens) ?? 0;
     const cost = formatCost(draft.meta.model, inputTokens, outputTokens);
 
-    const validation = await validateStructure(draft, options.prisma, items);
-    if (!validation.pass) {
-      console.warn(`  [validator] FAIL — ${validation.errors.join('; ')}`);
-    } else {
-      console.log(`  [validator] pass`);
-    }
-
-    const rules = ctx ? checkCourseRules(draft, ctx) : null;
-    for (const w of rules?.warnings ?? []) {
-      console.warn(`  [course rules] warning: ${w}`);
-    }
-    if (rules && rules.errors.length > 0) {
-      // Never <id>.json, so review can't pick up a draft that breaks the rules.
-      fs.writeFileSync(
-        file('.rejected.json'),
-        JSON.stringify({ ...draft, courseRuleErrors: rules.errors }, null, 2),
-        'utf8',
-      );
-      console.warn(
-        `  [course rules] REJECTED — ${rules.errors.join('; ')}  (${cost})`,
-      );
-      summary.rejected++;
-      continue;
-    }
-
-    if (fs.existsSync(file('.json'))) {
-      fs.renameSync(file('.json'), file('.prev.json'));
-    }
-    fs.rmSync(file('.critique.json'), { force: true });
-    fs.rmSync(file('.rejected.json'), { force: true });
-    fs.writeFileSync(file('.json'), JSON.stringify(draft, null, 2), 'utf8');
-    summary.drafted++;
-    console.log(
-      `  tokens: ${inputTokens} in / ${outputTokens} out  (${cost})  → ${file('.json')}`,
+    const saved = await gateAndSave(
+      draft,
+      ctx,
+      file,
+      options.prisma,
+      items,
+      `tokens: ${inputTokens} in / ${outputTokens} out  (${cost})`,
     );
+    if (saved) summary.drafted++;
+    else summary.rejected++;
   }
 
   return summary;
 }
 
+/** --recheck never calls the model, and this makes it so by construction. */
+const NO_MODEL: AnthropicLike = {
+  messages: {
+    create: () => Promise.reject(new Error('--recheck makes no model call.')),
+  },
+};
+
 async function main(): Promise<void> {
-  const { slug, skeletonPath, correctionsPath, outputDir, force, maxCostUsd } =
-    parseArgs();
+  const {
+    slug,
+    skeletonPath,
+    correctionsPath,
+    outputDir,
+    force,
+    recheck,
+    maxCostUsd,
+  } = parseArgs();
 
   const apiKey = process.env['ANTHROPIC_API_KEY'] ?? '';
-  if (!apiKey) {
+  if (!apiKey && !recheck) {
     throw new Error('ANTHROPIC_API_KEY is required for authoring:draft.');
   }
 
@@ -250,13 +361,16 @@ async function main(): Promise<void> {
       outputDir,
       correctionsPath,
       force,
+      recheck,
       maxCostUsd,
-      anthropic: new Anthropic({ apiKey, timeout: AUTHORING_TIMEOUT_MS }),
+      anthropic: recheck
+        ? NO_MODEL
+        : new Anthropic({ apiKey, timeout: AUTHORING_TIMEOUT_MS }),
       prisma,
       voyage: makeVoyageClient(),
     });
     console.log(
-      `authoring:draft — drafted ${summary.drafted}, skipped ${summary.skipped}, rejected ${summary.rejected}, estimated cost ~$${summary.costUsd.toFixed(4)}${summary.stoppedBefore ? `, stopped before ${summary.stoppedBefore}` : ''}`,
+      `authoring:draft — drafted ${summary.drafted}, rechecked ${summary.rechecked}, skipped ${summary.skipped}, rejected ${summary.rejected}, estimated cost ~$${summary.costUsd.toFixed(4)}${summary.stoppedBefore ? `, stopped before ${summary.stoppedBefore}` : ''}`,
     );
     if (summary.rejected > 0) process.exitCode = 1;
   } finally {

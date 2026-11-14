@@ -8,6 +8,8 @@ import {
   passagesFor,
 } from './lesson-prompter';
 import type { CourseContext } from './course-context';
+import { untaughtParticles } from './course-rules';
+import { compiledOutline } from '../testing/compiled-outline';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -192,6 +194,71 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     const plain = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], []);
     expect(plain).not.toContain('COURSE CONTEXT');
     expect(plain).toContain('ja:vocab:鍵(鍵・かぎ・key)');
+  });
+});
+
+describe('buildDraftPrompt after a rejection (F.2.c)', () => {
+  const build = (previousErrors?: string[]) =>
+    buildDraftPrompt(
+      VOCAB_LESSON,
+      [VOCAB_ITEM],
+      [],
+      [],
+      COURSE_CONTEXT,
+      previousErrors,
+    );
+
+  it('tells a redraft why the last draft was rejected', () => {
+    const prompt = build([
+      'teach[0]: uses the particle と before it is taught',
+      'check q5: uses the particle の before it is taught',
+    ]);
+    expect(prompt).toContain(
+      'Your last draft of this lesson was rejected for:\n' +
+        '  - teach[0]: uses the particle と before it is taught\n' +
+        '  - check q5: uses the particle の before it is taught\n' +
+        'Fix every one.',
+    );
+  });
+
+  it('adds nothing when there are no errors', () => {
+    expect(build([])).not.toContain('rejected');
+    expect(build()).toBe(build([]));
+  });
+});
+
+describe('buildDraftPrompt names the particles not taught yet (F.2.d)', () => {
+  const { lessons, ctxAt } = compiledOutline();
+  const promptAt = (n: number) =>
+    buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
+  const listedAt = (n: number) =>
+    /^PARTICLES NOT TAUGHT YET: (.*?)\. Don't use them as particles/m
+      .exec(promptAt(n))?.[1]
+      .split(' ');
+
+  it('lists と and の at lesson 20, where its passage first used them', () => {
+    expect(listedAt(20)).toEqual(expect.arrayContaining(['と', 'の']));
+  });
+
+  it('lists neither か nor は at lesson 44, once both are taught', () => {
+    expect(listedAt(44)).not.toContain('か');
+    expect(listedAt(44)).not.toContain('は');
+  });
+
+  it('lists only the particles the slice never teaches at lesson 120', () => {
+    expect(listedAt(120)).toEqual(['ね', 'よ', 'や', 'から', 'まで']);
+  });
+
+  it("takes the gate's own list, so the two can't drift apart", () => {
+    for (const n of [2, 20, 44, 83, 120]) {
+      expect(listedAt(n)).toEqual(untaughtParticles(ctxAt(n)));
+    }
+  });
+
+  it('says how to show a kana on its own without it reading as a particle', () => {
+    expect(promptAt(5)).toContain(
+      'A kana shown on its own is fine when punctuation or English sets it apart, as in "と: そと" or "In はな, は says ha."',
+    );
   });
 });
 

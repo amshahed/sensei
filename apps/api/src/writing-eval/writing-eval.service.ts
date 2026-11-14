@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { toHiragana } from 'wanakana';
+import { ANSWER_PUNCTUATION } from '../common/japanese-script';
 import {
   buildTokenizer,
   type JapaneseTokenizer,
@@ -13,7 +14,9 @@ const SPOKEN: Record<string, string> = {
   こんにちは: 'こんにち[はわ]',
   こんばんは: 'こんばん[はわ]',
 };
-const SEPARATORS = /[\s、。,.!?！？]/g;
+/** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
+const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
+const SEPARATORS = new RegExp(`[\\s${ANSWER_PUNCTUATION}]`, 'g');
 
 /**
  * Whole words only, so wana stays wrong for はな. Each position is independent,
@@ -40,7 +43,8 @@ function matchesSpoken(
  * Japanese writing-answer evaluation (H.2).
  *
  * Exact-match path for closed TYPED checks:
- *   1. Normalize: romaji/katakana → hiragana (wanakana), collapse whitespace.
+ *   1. Normalize: romaji/katakana → hiragana (wanakana), collapse whitespace,
+ *      drop punctuation (H.2.c).
  *   2. Tokenize: kuromoji morpheme split → surface forms joined.
  *   3. Compare the joined token strings so whitespace in the learner's input
  *      doesn't cause false negatives (e.g. "ねこ が いる" == "ねこがいる").
@@ -87,9 +91,10 @@ export class WritingEvalService implements OnModuleInit {
   /**
    * Exact-match comparison for closed TYPED checks (H.2).
    * Normalizes both sides (romaji/katakana → hiragana) and compares joined
-   * token strings so spacing differences don't cause false negatives. Rōmaji
-   * input also passes when it spells a particle as it sounds (H.2.a), except
-   * for a lone kana when `kanaTarget` says the check is on the kana itself.
+   * token strings so spacing and punctuation differences don't cause false
+   * negatives. Rōmaji input also passes when it spells a particle as it sounds
+   * (H.2.a), except for a lone kana when `kanaTarget` says the check is on the
+   * kana itself.
    */
   exactMatch(
     answer: string,
@@ -98,8 +103,12 @@ export class WritingEvalService implements OnModuleInit {
   ): boolean {
     const normAnswer = this.normalizeJapanese(answer);
     const normExemplar = this.normalizeJapanese(exemplar);
-    const joinedAnswer = this.tokenize(normAnswer).join('');
-    const joinedExemplar = this.tokenize(normExemplar).join('');
+    const joinedAnswer = this.tokenize(
+      normAnswer.replace(PUNCTUATION, ''),
+    ).join('');
+    const joinedExemplar = this.tokenize(
+      normExemplar.replace(PUNCTUATION, ''),
+    ).join('');
     if (joinedAnswer === joinedExemplar) return true;
     return (
       /[a-z]/i.test(answer) &&

@@ -3,7 +3,7 @@ import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import type { Lesson } from './skeleton-schema';
 import type { CourseContext } from './course-context';
-import { scriptProblems } from './course-rules';
+import { scriptProblems, untaughtParticles } from './course-rules';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -150,6 +150,11 @@ function courseContextBlock(ctx: CourseContext): string {
   const typed = ctx.typedReading
     ? `\nTYPED READING: for every target item, include a check with answerType "typed". Its prompt shows the word in kana and contains no rōmaji for it. Its correctAnswer is the word in kana.\n`
     : '';
+  // The gate's own list (F.2.d), so a draft is told before it is rejected.
+  const untaught = untaughtParticles(ctx);
+  const particles = untaught.length
+    ? `PARTICLES NOT TAUGHT YET: ${untaught.join(' ')}. Don't use them as particles in Japanese. A kana shown on its own is fine when punctuation or English sets it apart, as in "と: そと" or "In はな, は says ha."\n`
+    : '';
   const note = ctx.authorNote ? `\nAUTHOR NOTE: ${ctx.authorNote}\n` : '';
   // A reading lesson on kana comes before there are words to list.
   const kanaReading =
@@ -162,7 +167,7 @@ COURSE CONTEXT: this is lesson ${ctx.position} of ${ctx.totalLessons}. The learn
 KANA THE LEARNER CAN READ: ${list(ctx.kana)}
 ${longVowels}
 GRAMMAR TAUGHT SO FAR: ${list(ctx.grammar.map((g) => g.surface))}
-WORDS THE LEARNER KNOWS: ${list(ctx.words)}
+${particles}WORDS THE LEARNER KNOWS: ${list(ctx.words)}
 ${kanji}
 ${note}${cards}${typed}
 Course rules:
@@ -179,6 +184,8 @@ export function buildDraftPrompt(
   passages: string[],
   corrections: CorrectionEntry[],
   ctx?: CourseContext | null,
+  /** Why the gate rejected this lesson's last draft (F.2.c). */
+  previousErrors: string[] = [],
 ): string {
   const itemsBlock = formatItemsForPrompt(items, ctx);
   const contextBlock = ctx ? courseContextBlock(ctx) : '';
@@ -197,13 +204,20 @@ export function buildDraftPrompt(
           .join('\n')}\n`
       : '';
 
+  const rejectionBlock =
+    previousErrors.length > 0
+      ? `\nYour last draft of this lesson was rejected for:\n${previousErrors
+          .map((e) => `  - ${e}`)
+          .join('\n')}\nFix every one.\n`
+      : '';
+
   return `Draft a ${lesson.type} lesson for Foundation Japanese.
 
 LESSON: ${lesson.id} — "${lesson.title}"
 ESTIMATED MINUTES: ${lesson.estimatedMinutes}
 TARGET ITEMS (${items.length}):
   ${itemsBlock}
-${contextBlock}${passagesBlock}${correctionsBlock}
+${contextBlock}${passagesBlock}${correctionsBlock}${rejectionBlock}
 OUTPUT the lesson draft as JSON matching this exact shape (no other text):
 {
   "lessonId": "${lesson.id}",
@@ -270,6 +284,7 @@ export async function generateDraft(
   lesson: Lesson,
   corrections: CorrectionEntry[],
   ctx?: CourseContext | null,
+  previousErrors: string[] = [],
 ): Promise<GenerateDraftResult> {
   const model = authoringModel();
   const items = await loadLessonItems(prisma, lesson.itemIds);
@@ -292,6 +307,7 @@ export async function generateDraft(
     passages,
     corrections,
     ctx,
+    previousErrors,
   );
 
   // No sampling parameters: current Opus models reject `temperature`.

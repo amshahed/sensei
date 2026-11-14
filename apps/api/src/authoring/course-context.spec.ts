@@ -1,23 +1,8 @@
 import { courseContextFor } from './course-context';
-import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
-import type { OutlineItemRow } from './outline-compiler';
-import type { Skeleton } from './skeleton-schema';
+import { compiledOutline } from '../testing/compiled-outline';
 
-const spec = loadOutlineSpec();
-const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
-  const kind = id.split(':')[1];
-  const surface = spec.surfaces[id] ?? id.split(':')[2];
-  return {
-    id,
-    type: kind.toUpperCase() as OutlineItemRow['type'],
-    display: surface,
-    reading: kind === 'grammar' ? null : surface,
-  };
-});
-const skeleton: Skeleton = compile(spec, rows);
-const lessonAt = (n: number) =>
-  skeleton.module.chapters.flatMap((c) => c.lessons)[n - 1];
-const at = (n: number) => courseContextFor(skeleton, lessonAt(n).id)!;
+const { skeleton, lessons, ctxAt: at } = compiledOutline();
+const lessonAt = (n: number) => lessons[n - 1];
 
 describe('courseContextFor', () => {
   it('is null for a model-written skeleton and an unknown lesson', () => {

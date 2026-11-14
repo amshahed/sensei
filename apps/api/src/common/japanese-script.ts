@@ -17,6 +17,13 @@ export const isKanaOnly = (s: string): boolean => s.length > 0 && isKana(s);
 export const kanaChars = (s: string): string[] =>
   [...s].filter((ch) => isKana(ch) && ch !== '・');
 
+/**
+ * Punctuation a typed answer is compared without (H.2.c), so こんにちは。 is
+ * こんにちは. The grader and the authoring gate share it, so a check the gate
+ * calls fair is one the grader can mark right.
+ */
+export const ANSWER_PUNCTUATION = '、。,.!?！？';
+
 /** Every kanji character in the text. */
 export const kanjiChars = (s: string): string[] =>
   [...s].filter((ch) => KANJI_CHAR.test(ch));

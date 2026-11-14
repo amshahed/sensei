@@ -1,24 +1,8 @@
-import { courseContextFor, type CourseContext } from './course-context';
+import { compiledOutline } from '../testing/compiled-outline';
 import { checkCourseRules, scriptProblems } from './course-rules';
 import type { LessonDraft, TeachBlock } from './lesson-schema';
-import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
-import type { OutlineItemRow } from './outline-compiler';
 
-const spec = loadOutlineSpec();
-const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
-  const kind = id.split(':')[1];
-  const surface = spec.surfaces[id] ?? id.split(':')[2];
-  return {
-    id,
-    type: kind.toUpperCase() as OutlineItemRow['type'],
-    display: surface,
-    reading: kind === 'grammar' ? null : surface,
-  };
-});
-const skeleton = compile(spec, rows);
-const lessons = skeleton.module.chapters.flatMap((c) => c.lessons);
-const ctxAt = (n: number): CourseContext =>
-  courseContextFor(skeleton, lessons[n - 1].id)!;
+const { spec, lessons, ctxAt } = compiledOutline();
 
 function draftWith(
   text: string,
@@ -180,7 +164,6 @@ describe('verbs and endings as whole words (test.md F1, F4)', () => {
     [24, 'よろしく おねがい します'],
     [22, 'すみません かばん'],
     [47, 'がくせい じゃありません か'],
-    [60, 'それ で した'],
     [88, 'ありません'],
     [88, 'いません'],
     [92, 'ありました'],
@@ -189,6 +172,13 @@ describe('verbs and endings as whole words (test.md F1, F4)', () => {
     [117, 'たべたい です'],
   ])('lesson %i passes %s', (lesson, japanese) => {
     expect(errors(japanese, lesson)).toEqual([]);
+  });
+
+  // Was a pass before F.2.c: で there is the particle, taught at lesson 91.
+  it('reads それ で した at lesson 60 as the particle で, never でした', () => {
+    const errs = errors('それ で した', 60).join();
+    expect(errs).not.toMatch(/uses でした/);
+    expect(errs).toContain('uses the particle で before it is taught');
   });
 
   it.each([
@@ -278,6 +268,25 @@ describe('sound lessons (P2, P3)', () => {
     expect(checkCourseRules(draft, ctxAt(n)).errors.join()).toMatch(
       /needs a typed check/,
     );
+  });
+
+  it('fails when the only typed check asks for the meaning, not the reading', () => {
+    const questions = typed();
+    questions[0].correctAnswer = 'mother';
+    expect(check(questions).join()).toMatch(/needs a typed check/);
+  });
+
+  it('fails when the only typed check is open', () => {
+    const questions = typed();
+    questions[0].grading = 'open';
+    expect(check(questions).join()).toMatch(/needs a typed check/);
+  });
+
+  it('fails a prompt that adds rōmaji to the pipeline wording', () => {
+    const questions = typed();
+    const word = spec.surfaces[lesson.itemIds[0]];
+    questions[0].prompt = `Read this word and type how it sounds: ${word} (okaasan)`;
+    expect(check(questions).join()).toMatch(/needs a typed check/);
   });
 
   it('fails when the prompt does not show the word', () => {
@@ -387,6 +396,170 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
         choices: ['わたしは がくせい です', 'b', 'c', 'd'],
       }),
     ).toEqual([]);
+  });
+});
+
+describe('untaught particles (F.2.c, P2, P7)', () => {
+  // Lessons 15 to 20 also want typed checks, which these drafts don't have.
+  const onlyParticles = (errs: string[]) =>
+    errs.filter((e) => e.includes('the particle'));
+  const choiceCheck = (choices: string[], n: number) =>
+    checkCourseRules(
+      draftWith('', n, {
+        check: {
+          questions: [
+            {
+              id: 'q1',
+              targetItemId: lessons[n - 1].itemIds[0],
+              prompt: 'Which one?',
+              answerType: 'multiple-choice',
+              choices,
+              correctAnswer: choices[0],
+            },
+          ],
+        },
+      }),
+      ctxAt(n),
+    ).errors.filter((e) => e.includes('the particle'));
+
+  it.each([
+    ['ともだち と がっこう', 20, 'と'],
+    ['ともだち と がっこう。 おかあさん の しゃしん。', 20, 'の'],
+    ['おかあさん の しゃしん', 20, 'の'],
+    ['あなた は せんせい です か', 43, 'か'],
+    ['あなた は せんせい です か？', 43, 'か'],
+    ['そう です ね', 24, 'ね'],
+    // はい is a known word, but it can't swallow the particle in は いちご.
+    ['わたし は いちご', 42, 'は'],
+    // にほん is a known word, but no word starts with a lone particle.
+    ['ともだち に ほん', 60, 'に'],
+    ['がっこう から えき まで', 83, 'から'],
+    // F.2.d: the kana reading lessons stay covered.
+    ['はな と ひと', 8, 'と'],
+    ['ねこ と いぬ', 9, 'と'],
+    // Lesson 43's original preview, verbatim: か before 。 ends a sentence.
+    [
+      "To ask a question, just add か at the end: あなた は いしゃ です か 。 means 'Are you a doctor?' Easy, right?",
+      43,
+      'か',
+    ],
+    ['にほん から きました', 49, 'から'],
+    // ご (five) is a known word of one kana: "five and six" uses と.
+    ['ご と ろく', 70, 'と'],
+  ])('rejects %s at lesson %i for %s', (japanese, n, particle) => {
+    expect(onlyParticles(errors(japanese, n))).toContainEqual(
+      expect.stringMatching(
+        new RegExp(
+          `^teach\\[0\\]: uses the particle ${particle} before it is taught, in "`,
+        ),
+      ),
+    );
+  });
+
+  it('quotes the stretch of Japanese the particle was used in (F.2.d)', () => {
+    expect(onlyParticles(errors('ともだち と がっこう', 20))).toEqual([
+      'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
+    ]);
+    expect(
+      onlyParticles(
+        errors('ともだち と がっこう。 おかあさん の しゃしん。', 20),
+      ),
+    ).toEqual([
+      'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
+      'teach[0]: uses the particle の before it is taught, in "おかあさん の しゃしん"',
+    ]);
+  });
+
+  it.each([
+    ['あなた は せんせい です か', 44],
+    ['わたし の ほん', 46],
+    ['へや に いぬ が います', 83],
+    ['か き く け こ', 2],
+    ['は ひ ふ へ ほ', 7],
+    ['は — はな', 7],
+    ['Two small marks turn か into が', 15],
+    ["The little words と (and) and の ('s)", 20],
+    ['In ちょっと you pause before と.', 20],
+    ['おげんき です か', 24],
+    ['いち に さん', 65],
+    ['ともだちと がっこう', 20],
+    ['わたし は いちご', 43],
+    ['に ほん', 45],
+    ['ろく じ に', 99],
+    // Rows still pass once に, し and ご are known words (lesson 65).
+    ['な に ぬ ね の', 70],
+    ['さ し す せ そ', 70],
+    ['いち に さん し ご', 70],
+  ])('accepts %s at lesson %i', (japanese, n) => {
+    expect(onlyParticles(errors(japanese, n))).toEqual([]);
+  });
+
+  // test.md F1: a kana lesson's own sounds, shown next to example words. The
+  // first nine are the Tester's reproduction on b16f481, where all nine failed.
+  it.each([
+    ['た ち つ て と そと くつ', 5], // lesson 2's passage shape: the row, then words
+    ['な に ぬ ね の ねこ いぬ', 6],
+    ['ま み む め も もも あめ', 9],
+    ['や ゆ よ やま ゆき', 10],
+    ['と: そと (outside)', 5],
+    ['In はな, は says ha.', 7],
+    ['かさ (か + さ)', 4],
+    ['Two small marks turn か into が: かぎ (key)', 15],
+    ['で: でんわ (phone)', 16],
+    ['こえ か き く け こ', 2], // a row after a word is a listing
+    ['いぬ な に ぬ ね の', 6],
+    ['ね ねこ ねずみ', 6],
+    ['Words with ね: ね, ねこ', 6],
+    ['か: かさ', 2],
+    ['名 な, 何 なに', 62], // a kanji ends the stretch
+    ['一 いち, 二 に, 三 さん', 50],
+    // The PM's gloss in lesson 20, verbatim.
+    [
+      "The little words と (and), の ('s) and みて (look) come later in the course.",
+      20,
+    ],
+  ])('accepts kana-lesson content %s at lesson %i (F.2.d)', (text, n) => {
+    expect(onlyParticles(errors(text, n))).toEqual([]);
+  });
+
+  // Known residuals of F.2.d, pinned so a change to them is deliberate.
+  it('still rejects a mention written right after a word with no punctuation', () => {
+    // The draft prompt asks for a lone kana to be set apart (R1.4).
+    expect(onlyParticles(errors('はな は says ha', 7))).toEqual([
+      'teach[0]: uses the particle は before it is taught, in "はな は"',
+    ]);
+  });
+
+  it.each([
+    ['ねこ の え', 9], // a particle before a one-kana word
+    ['日本 から', 49], // a particle after a kanji
+  ])('misses %s at lesson %i, left to review', (text, n) => {
+    expect(onlyParticles(errors(text, n))).toEqual([]);
+  });
+
+  it('rejects a choice that is only an untaught particle', () => {
+    expect(choiceCheck(['です', 'か', 'を', 'は'], 43)).toEqual([
+      'check q1: uses the particle か before it is taught',
+      'check q1: uses the particle を before it is taught',
+    ]);
+  });
+
+  it('rejects a closed answer that is only an untaught particle', () => {
+    expect(choiceCheck(['か', 'です', 'さん', 'は'], 43)).toEqual([
+      'check q1: uses the particle か before it is taught',
+    ]);
+  });
+
+  it('accepts sound choices in a sound lesson', () => {
+    expect(choiceCheck(['が', 'か', 'ざ', 'さ'], 15)).toEqual([]);
+  });
+
+  it('accepts a known word of one kana as a choice (に, two)', () => {
+    expect(choiceCheck(['に', 'いち', 'さん', 'ご'], 65)).toEqual([]);
+  });
+
+  it('accepts a particle once it is taught', () => {
+    expect(choiceCheck(['か', 'は', 'です', 'さん'], 44)).toEqual([]);
   });
 });
 

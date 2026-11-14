@@ -41,6 +41,17 @@ const SPOKEN_REJECTED: Array<[string, string]> = [
   ['ano watashi wa gakusei desu', 'わたし は がくせい です'],
 ];
 
+/** Punctuation is not part of the answer (N6, H.2.c). */
+const PUNCTUATION_ACCEPTED: Array<[string, string]> = [
+  ['ともだちはいしゃです。', 'ともだち は いしゃ です'],
+  ['ともだち は いしゃ です', 'ともだちはいしゃです。'],
+  ['わたしはがくせいですか', 'わたし は がくせい です か？'],
+  ['わたし は がくせい です か?', 'わたし は がくせい です か'],
+  ['こんにちは!', 'こんにちは！'],
+  ['こんにちは', 'こんにちは！'],
+  ['はい、そうです', 'はい そうです'],
+];
+
 /** A check on the kana itself wants its own sound (test.md N1, N5). */
 const STRICT_REJECTED: Array<[string, string]> = [
   ['wa', 'は'],
@@ -49,12 +60,14 @@ const STRICT_REJECTED: Array<[string, string]> = [
   ['e', 'へ'],
   ['wa.', 'は'],
   ['wa', 'は。'],
+  ['わ。', 'は'],
   ['o', 'を'],
   ['wana', 'はな'],
 ];
 const STRICT_ACCEPTED: Array<[string, string]> = [
   ['ha', 'は'],
   ['は', 'は'],
+  ['は。', 'は'],
   ['ha', 'ハ'],
   ['he', 'へ'],
   ['ha.', 'は'],
@@ -120,6 +133,13 @@ describe('WritingEvalService — exactMatch (with tokenizer)', () => {
     expect(svc.exactMatch(typed, answer)).toBe(false);
   });
 
+  it.each(PUNCTUATION_ACCEPTED)(
+    'accepts %s for %s, ignoring punctuation (N6)',
+    (typed, answer) => {
+      expect(svc.exactMatch(typed, answer)).toBe(true);
+    },
+  );
+
   it.each(STRICT_REJECTED)(
     'rejects %s for %s on a kana target',
     (typed, answer) => {
@@ -172,6 +192,13 @@ describe('WritingEvalService — exactMatch (tokenizer not loaded)', () => {
   it.each(SPOKEN_REJECTED)('rejects %s for %s (H.2.a)', (typed, answer) => {
     expect(svc.exactMatch(typed, answer)).toBe(false);
   });
+
+  it.each(PUNCTUATION_ACCEPTED)(
+    'accepts %s for %s, ignoring punctuation (N6)',
+    (typed, answer) => {
+      expect(svc.exactMatch(typed, answer)).toBe(true);
+    },
+  );
 
   it.each(STRICT_REJECTED)(
     'rejects %s for %s on a kana target',
