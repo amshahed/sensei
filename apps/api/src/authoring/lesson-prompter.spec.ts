@@ -7,7 +7,10 @@ import {
   buildCritiquePrompt,
   passagesFor,
 } from './lesson-prompter';
-import type { CourseContext } from './course-context';
+import { courseContextFor, type CourseContext } from './course-context';
+import { untaughtParticles } from './course-rules';
+import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
+import type { OutlineItemRow } from './outline-compiler';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -222,6 +225,54 @@ describe('buildDraftPrompt after a rejection (F.2.c)', () => {
   it('adds nothing when there are no errors', () => {
     expect(build([])).not.toContain('rejected');
     expect(build()).toBe(build([]));
+  });
+});
+
+describe('buildDraftPrompt names the particles not taught yet (F.2.d)', () => {
+  const spec = loadOutlineSpec();
+  const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
+    const kind = id.split(':')[1];
+    const surface = spec.surfaces[id] ?? id.split(':')[2];
+    return {
+      id,
+      type: kind.toUpperCase() as OutlineItemRow['type'],
+      display: surface,
+      reading: kind === 'grammar' ? null : surface,
+    };
+  });
+  const skeleton = compile(spec, rows);
+  const lessons = skeleton.module.chapters.flatMap((c) => c.lessons);
+  const ctxAt = (n: number) => courseContextFor(skeleton, lessons[n - 1].id)!;
+  const promptAt = (n: number) =>
+    buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
+  const listedAt = (n: number) =>
+    /^PARTICLES NOT TAUGHT YET: (.*?)\. Don't use them as particles/m
+      .exec(promptAt(n))?.[1]
+      .split(' ');
+
+  it('lists と and の at lesson 20, where its passage first used them', () => {
+    expect(listedAt(20)).toEqual(expect.arrayContaining(['と', 'の']));
+  });
+
+  it('lists neither か nor は at lesson 44, once both are taught', () => {
+    expect(listedAt(44)).not.toContain('か');
+    expect(listedAt(44)).not.toContain('は');
+  });
+
+  it('lists only the particles the slice never teaches at lesson 120', () => {
+    expect(listedAt(120)).toEqual(['ね', 'よ', 'や', 'から', 'まで']);
+  });
+
+  it("takes the gate's own list, so the two can't drift apart", () => {
+    for (const n of [2, 20, 44, 83, 120]) {
+      expect(listedAt(n)).toEqual(untaughtParticles(ctxAt(n)));
+    }
+  });
+
+  it('says how to show a kana on its own without it reading as a particle', () => {
+    expect(promptAt(5)).toContain(
+      'A kana shown on its own is fine when punctuation or English sets it apart, as in "と: そと" or "In はな, は says ha."',
+    );
   });
 });
 
