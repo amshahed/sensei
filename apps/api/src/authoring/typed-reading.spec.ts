@@ -1,11 +1,11 @@
 import { toRomaji } from 'wanakana';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { courseContextFor, type CourseContext } from './course-context';
-import { checkCourseRules } from './course-rules';
+import { checkCourseRules, TYPED_READING_PROMPT } from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
 import { compile, loadOutlineSpec, outlineItemIds } from './outline-compiler';
 import type { OutlineItemRow } from './outline-compiler';
-import { addTypedReadingChecks, TYPED_READING_PROMPT } from './typed-reading';
+import { addTypedReadingChecks } from './typed-reading';
 
 const spec = loadOutlineSpec();
 const rows: OutlineItemRow[] = outlineItemIds(spec).map((id) => {
@@ -188,6 +188,46 @@ describe('addTypedReadingChecks (F.2.b)', () => {
     };
     const after = addTypedReadingChecks(draftAt(19, [other]), ctxAt(19));
     expect(after.check.questions[0]).toEqual(other);
+  });
+
+  it('appends a reading check when the only typed check asks for the meaning', () => {
+    const [first] = ctxAt(19).targets;
+    const meaning: CheckQuestion = {
+      id: 'q1',
+      targetItemId: first.id,
+      prompt: `What does ${first.surface} mean? Type it in English.`,
+      answerType: 'typed',
+      correctAnswer: 'school',
+    };
+    const before = draftAt(19, [meaning]);
+    expect(typedReadingErrors(before, 19).join()).toContain(first.id);
+    const after = addTypedReadingChecks(before, ctxAt(19));
+    expect(after.check.questions[0]).toEqual(meaning);
+    expect(
+      after.check.questions.filter((q) => q.targetItemId === first.id),
+    ).toHaveLength(2);
+    expect(typedReadingErrors(after, 19)).toEqual([]);
+  });
+
+  it('writes a prompt the gate accepts even for a short reading (いい, ii)', () => {
+    const n = lessons.findIndex((l) =>
+      l.itemIds.some((id) => spec.surfaces[id] === 'いい'),
+    );
+    const ctx: CourseContext = {
+      ...ctxAt(n + 1),
+      typedReading: true,
+      targets: [{ id: 'ja:vocab:いい', surface: 'いい' }],
+    };
+    const after = addTypedReadingChecks(draftAt(n + 1, []), ctx);
+    expect(after.check.questions[0].prompt).toBe(
+      `${TYPED_READING_PROMPT} いい`,
+    );
+    expect(
+      checkCourseRules(after, ctx).errors.filter((e) =>
+        e.includes('needs a typed check'),
+      ),
+    ).toEqual([]);
+    expect(addTypedReadingChecks(after, ctx)).toEqual(after);
   });
 
   it.each(typedReadingLessons.map(({ n }) => n))(

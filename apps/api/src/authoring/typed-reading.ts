@@ -1,12 +1,11 @@
 import { toRomaji } from 'wanakana';
 import type { CourseContext } from './course-context';
-import { isFairTypedReading } from './course-rules';
+import {
+  isFairTypedReading,
+  spaceless,
+  TYPED_READING_PROMPT,
+} from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
-
-/** The PM's approved wording for a reading check, from lesson 20. */
-export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
-
-const spaceless = (s: string) => s.replace(/\s/g, '');
 
 /** The first qN after the highest one in use, so an appended id is unique. */
 function nextQuestionId(questions: CheckQuestion[]): string {

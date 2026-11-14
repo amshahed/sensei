@@ -316,6 +316,23 @@ describe('runDrafts (F.2.a)', () => {
       ]);
     });
 
+    it('skips a lesson whose skeleton gives no course context, so no gate', async () => {
+      write('l1.rejected.json', {
+        ...replyFor('l1', 'か'),
+        courseRuleErrors: ['teach[0]: uses か before it is taught'],
+      });
+      const bare = { ...skeleton([lesson(1)]), surfaces: undefined };
+      const summary = await run([lesson(1)], {
+        skeleton: bare,
+        recheck: true,
+      });
+      expect(summary).toMatchObject({ rechecked: 0, rejected: 0, skipped: 1 });
+      expect(fs.existsSync(inDir('l1.json'))).toBe(false);
+      expect(read('l1.rejected.json').courseRuleErrors).toEqual([
+        'teach[0]: uses か before it is taught',
+      ]);
+    });
+
     it('skips a lesson with no rejected draft, even one with a draft', async () => {
       write('l1.json', { kept: true });
       const summary = await run([lesson(1), lesson(2)], { recheck: true });

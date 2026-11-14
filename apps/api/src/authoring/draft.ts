@@ -145,14 +145,12 @@ function rejectionReasons(file: string): string[] {
     : [];
 }
 
-/** A rejected draft, without the verdict the gate gave it last time. */
+/**
+ * A rejected draft, without the verdict the gate gave it last time: the schema
+ * drops keys it doesn't know, courseRuleErrors among them.
+ */
 function readRejectedDraft(file: string): LessonDraft {
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<
-    string,
-    unknown
-  >;
-  delete raw['courseRuleErrors'];
-  return LessonDraftSchema.parse(raw);
+  return LessonDraftSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
 }
 
 /**
@@ -196,6 +194,7 @@ async function gateAndSave(
 
   if (fs.existsSync(file('.json'))) {
     fs.renameSync(file('.json'), file('.prev.json'));
+    console.log(`  the draft it replaces is kept as ${file('.prev.json')}`);
   }
   fs.rmSync(file('.critique.json'), { force: true });
   fs.rmSync(file('.rejected.json'), { force: true });
@@ -235,6 +234,14 @@ export async function runDrafts(
     if (options.recheck) {
       if (!fs.existsSync(file('.rejected.json'))) {
         console.log(`  skipping "${lesson.id}": no rejected draft to recheck`);
+        summary.skipped++;
+        continue;
+      }
+      if (!ctx) {
+        // Without course context there is no gate, so nothing to recheck it by.
+        console.warn(
+          `  skipping "${lesson.id}": this skeleton has no course context, so the gate can't run`,
+        );
         summary.skipped++;
         continue;
       }

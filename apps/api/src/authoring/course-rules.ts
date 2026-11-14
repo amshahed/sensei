@@ -69,7 +69,7 @@ const SPOKEN_PARTICLES = new Set([
   'ja:grammar:を',
 ]);
 
-const spaceless = (s: string) => s.replace(/\s/g, '');
+export const spaceless = (s: string) => s.replace(/\s/g, '');
 const romajiOf = (s: string) => toRomaji(s).replace(/\s/g, '').toLowerCase();
 const KANA_RUN = /[ぁ-ゖ]+/g;
 const PUNCTUATION = /\p{P}/gu;
@@ -166,16 +166,21 @@ const TAUGHT_VERBS = [
 ];
 
 /**
- * Blanks out a known string, including when a draft puts spaces inside it.
- * With `wholeWords`, only where it starts and ends at a space, so the word
- * はい can't swallow the particle in は いしゃ.
+ * A known string as a pattern that also matches it with spaces inside. With
+ * `wholeWords`, only where it starts and ends at a space, so the word はい
+ * can't swallow the particle in は いしゃ.
  */
-function maskKnown(text: string, known: string, wholeWords = false): string {
+function knownPattern(known: string, wholeWords = false): RegExp {
   const pattern = [...known]
     .map((c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'))
     .join('\\s*');
   const edged = wholeWords ? `(?<!\\S)${pattern}(?!\\S)` : pattern;
-  return text.replace(new RegExp(edged, 'g'), '|');
+  return new RegExp(edged, 'g');
+}
+
+/** Blanks out a known string, including when a draft puts spaces inside it. */
+function maskKnown(text: string, known: string): string {
+  return text.replace(knownPattern(known), '|');
 }
 
 function markerProblems(text: string, ctx: CourseContext): string[] {
@@ -200,8 +205,8 @@ function markerProblems(text: string, ctx: CourseContext): string[] {
 /** What the particle rules need to know about a lesson (F.2.c). */
 interface ParticleContext {
   untaught: Set<string>;
-  /** Known strings of two characters or more, punctuation removed. */
-  phrases: string[];
+  /** Known strings of two characters or more, as whole-word patterns. */
+  phrases: RegExp[];
   /** Every known string, so a known word of one kana (に, two) is spared. */
   known: Set<string>;
 }
@@ -217,7 +222,9 @@ function particleContext(ctx: CourseContext): ParticleContext {
         .filter(([, ids]) => !ids.some((id) => taught.has(id)))
         .map(([particle]) => particle),
     ),
-    phrases: known.filter((k) => k.length > 1),
+    phrases: known
+      .filter((k) => k.length > 1)
+      .map((k) => knownPattern(k, true)),
     known: new Set(known),
   };
 }
@@ -230,8 +237,9 @@ const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
  * word of two or more characters, is a use in Japanese (ともだち と がっこう).
  * Next to English (the little word と) or a lone kana (は ひ ふ へ ほ) it is a
  * mention. Known words and taught grammar count as words and aren't inspected,
- * including when written across spaces (おげんき です か). A word that is only
- * punctuation (は — はな) stays in place and is not a kana word.
+ * including when written across spaces (おげんき です か), but no known word
+ * starts with a particle standing alone, so に ほん is not にほん. A word that
+ * is only punctuation (は — はな) stays in place and is not a kana word.
  */
 function particleProblems(text: string, pc: ParticleContext): string[] {
   if (pc.untaught.size === 0) return [];
@@ -239,8 +247,12 @@ function particleProblems(text: string, pc: ParticleContext): string[] {
     .split(/\s+/)
     .map((t) => t.replace(PUNCTUATION, ''))
     .join(' ');
+  const mask = (match: string) => {
+    const [first] = match.split(' ');
+    return first !== match && pc.untaught.has(first) ? match : '|';
+  };
   const words = pc.phrases
-    .reduce((t, k) => maskKnown(t, k, true), line)
+    .reduce((t, pattern) => t.replace(pattern, mask), line)
     .split(' ');
   const isWord = (w?: string) =>
     w !== undefined && (w === '|' || KANA_WORD.test(w));
@@ -255,20 +267,28 @@ function particleProblems(text: string, pc: ParticleContext): string[] {
 }
 
 /**
- * P2: a typed check that makes the learner read the word: its prompt shows the
- * word and has no rōmaji for it. The gate and the typed-reading transform both
+ * The PM's approved wording for a reading check, from lesson 20. It has no
+ * rōmaji in it, so a short reading (いい, ii) can't be found in "this".
+ */
+export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
+
+/**
+ * P2: a closed typed check whose answer is the word, and whose prompt shows the
+ * word with no rōmaji for it. The gate and the typed-reading transform both
  * judge a check by this, so they can't drift apart (F.2.b).
  */
 export function isFairTypedReading(
   question: CheckQuestion,
   surface: string,
 ): boolean {
-  if (question.answerType !== 'typed') return false;
-  const prompt = looseRomaji(question.prompt);
+  if (question.answerType !== 'typed' || question.grading === 'open') {
+    return false;
+  }
+  if (spaceless(question.correctAnswer) !== spaceless(surface)) return false;
+  const prompt = looseRomaji(question.prompt.replace(TYPED_READING_PROMPT, ''));
   return (
     spaceless(question.prompt).includes(spaceless(surface)) &&
-    !prompt.includes(looseRomaji(romajiOf(surface))) &&
-    !prompt.includes(looseRomaji(romajiOf(question.correctAnswer)))
+    !prompt.includes(looseRomaji(romajiOf(surface)))
   );
 }
 

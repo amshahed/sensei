@@ -286,6 +286,25 @@ describe('sound lessons (P2, P3)', () => {
     );
   });
 
+  it('fails when the only typed check asks for the meaning, not the reading', () => {
+    const questions = typed();
+    questions[0].correctAnswer = 'mother';
+    expect(check(questions).join()).toMatch(/needs a typed check/);
+  });
+
+  it('fails when the only typed check is open', () => {
+    const questions = typed();
+    questions[0].grading = 'open';
+    expect(check(questions).join()).toMatch(/needs a typed check/);
+  });
+
+  it('fails a prompt that adds rōmaji to the pipeline wording', () => {
+    const questions = typed();
+    const word = spec.surfaces[lesson.itemIds[0]];
+    questions[0].prompt = `Read this word and type how it sounds: ${word} (okaasan)`;
+    expect(check(questions).join()).toMatch(/needs a typed check/);
+  });
+
   it('fails when the prompt does not show the word', () => {
     const questions = typed();
     questions[0].prompt = 'Type the word for mother.';
@@ -426,8 +445,10 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
     ['あなた は せんせい です か', 43, 'か'],
     ['あなた は せんせい です か？', 43, 'か'],
     ['そう です ね', 24, 'ね'],
-    // はい is a known word, but it can't swallow the particle in は いしゃ.
+    // はい is a known word, but it can't swallow the particle in は いちご.
     ['わたし は いちご', 42, 'は'],
+    // にほん is a known word, but no word starts with a lone particle.
+    ['ともだち に ほん', 60, 'に'],
     ['がっこう から えき まで', 83, 'から'],
   ])('rejects %s at lesson %i for %s', (japanese, n, particle) => {
     expect(errors(japanese, n)).toContain(

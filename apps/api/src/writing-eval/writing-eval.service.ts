@@ -13,9 +13,10 @@ const SPOKEN: Record<string, string> = {
   こんにちは: 'こんにち[はわ]',
   こんばんは: 'こんばん[はわ]',
 };
-const SEPARATORS = /[\s、。,.!?！？]/g;
 /** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
-const PUNCTUATION = /[、。,.!?！？]/g;
+const PUNCTUATION_CHARS = '、。,.!?！？';
+const PUNCTUATION = new RegExp(`[${PUNCTUATION_CHARS}]`, 'g');
+const SEPARATORS = new RegExp(`[\\s${PUNCTUATION_CHARS}]`, 'g');
 
 /**
  * Whole words only, so wana stays wrong for はな. Each position is independent,
