@@ -18,7 +18,7 @@ Get real lessons into the app and run them end to end. The app has its full feat
 
 ## Next actions
 
-1. Unit `22b-sample-lessons` (PM brief in progress): draft 3 lessons (about $0.15 each), critique, PM review, publish, Alpha run on the simulator. The Alpha run closes the HTTP paraphrase check from PR #69.
+1. Unit `22b-sample-lessons`: lessons 2, 20, 21, 43 are **published**. PR #74 (`fix/22b-typed-reading`, worktree `.claude/worktrees/wt-22b`) got Tester FAIL at `b16f481` (F1 high: the particle rule rejects correct kana lessons). The Tech Lead has ruled: tasks R1.1 to R1.6 in `ops/work/22b-sample-lessons/tech.md` "Round 1 findings" (F.2.d logged). **Next:** Developer implements R1.1 to R1.6 on PR #74, then a fresh Tester re-verifies (must pass the Tester's 9-case reproduction in `test.md`), merge, then `authoring:draft foundation-ja-ch04-l05 --recheck` (no model call), PM review of lesson 19 (Teach spells out "ga … kkou"), approve and publish. Then the Alpha run, in a session that has the iOS simulator tool.
 2. Unit `22c-full-batch`: draft the rest in course order, audio-blocked lessons last. Tech Lead recommends the Message Batches API (50% off, about $7 for 120 lessons); confirm cost from 22b usage.
 
 ## In flight
@@ -30,7 +30,10 @@ Get real lessons into the app and run them end to end. The app has its full feat
 
 ## PM backlog
 
-- Set the beta to 18+ (Gemini terms, BLOCKERS 9).
+- Age confirmation at sign-up is needed before any real learner (M.5, beta is 18+). New small unit.
+- **The app never shows a check's explanation.** After a wrong answer the learner sees only the answer. Likely the biggest teaching gap; worth its own unit (22b tech.md).
+- Lesson 20 is live, but republishing it is refused until its passage drops と and の (new particle gate).
+- Lesson 39 doesn't require typed reading; one outline flag turns it on.
 - Exact-match before calling the grading model would cut most calls.
 - Drafts and critiques record the requested model, not the served one (Tester N1 on #66, low).
 - Grading: a rare 12-second timeout shows a right paraphrase as wrong in lessons (`grading-model-404/test.md` F2).
