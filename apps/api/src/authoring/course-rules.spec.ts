@@ -460,6 +460,8 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
       'か',
     ],
     ['にほん から きました', 49, 'から'],
+    // ご (five) is a known word of one kana: "five and six" uses と.
+    ['ご と ろく', 70, 'と'],
   ])('rejects %s at lesson %i for %s', (japanese, n, particle) => {
     expect(onlyParticles(errors(japanese, n))).toContainEqual(
       expect.stringMatching(
@@ -500,6 +502,10 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
     ['わたし は いちご', 43],
     ['に ほん', 45],
     ['ろく じ に', 99],
+    // Rows still pass once に, し and ご are known words (lesson 65).
+    ['な に ぬ ね の', 70],
+    ['さ し す せ そ', 70],
+    ['いち に さん し ご', 70],
   ])('accepts %s at lesson %i', (japanese, n) => {
     expect(onlyParticles(errors(japanese, n))).toEqual([]);
   });

@@ -246,15 +246,16 @@ function particleContext(ctx: CourseContext): ParticleContext {
  * and a sentence doesn't run through a colon, a comma, a bracket or English.
  * So each stretch of kana and spaces is read on its own, and a word in it that
  * is exactly an untaught particle is a use (ともだち と がっこう) only when:
- *   - the word before it is a word: two kana or more, or a known phrase;
+ *   - the word before it is a word: two kana or more, or a known word or
+ *     phrase, so ご と ろく is a use;
  *   - the word after it, if any, is not a lone kana, because a row after a
  *     word (こえ か き く け こ) is a listing, not a sentence.
  * A kana pointed out on its own (と: そと, In はな, は says ha) or in a row
  * (た ち つ て と そと) is a mention. Known words and taught grammar count as
  * words, including across spaces (おげんき です か), but no known word starts
  * with a particle standing alone, so に ほん is not にほん. A known word of
- * one kana (に, two) is never a particle. The error quotes the stretch, so a
- * redraft sees the exact phrase to fix.
+ * one kana (に, two) is never itself a particle. The error quotes the
+ * stretch, so a redraft sees the exact phrase to fix.
  */
 function particleProblems(text: string, pc: ParticleContext): string[] {
   if (pc.untaught.size === 0) return [];
@@ -262,7 +263,8 @@ function particleProblems(text: string, pc: ParticleContext): string[] {
     const [first] = match.split(' ');
     return first !== match && pc.untaught.has(first) ? match : '|';
   };
-  const isWord = (w?: string) => w === '|' || (w ?? '').length > 1;
+  const isWord = (w?: string) =>
+    !!w && (w === '|' || w.length > 1 || pc.known.has(w));
   const problems = new Set<string>();
   for (const stretch of text.match(STRETCH) ?? []) {
     const line = stretch.trim().split(/\s+/).join(' ');
