@@ -441,6 +441,7 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
     ['へや に いぬ が います', 83],
     ['か き く け こ', 2],
     ['は ひ ふ へ ほ', 7],
+    ['は — はな', 7],
     ['Two small marks turn か into が', 15],
     ["The little words と (and) and の ('s)", 20],
     ['In ちょっと you pause before と.', 20],

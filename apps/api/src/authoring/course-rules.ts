@@ -200,7 +200,7 @@ function markerProblems(text: string, ctx: CourseContext): string[] {
 /** What the particle rules need to know about a lesson (F.2.c). */
 interface ParticleContext {
   untaught: Set<string>;
-  /** Known strings of two kana or more, longest first, punctuation removed. */
+  /** Known strings of two characters or more, punctuation removed. */
   phrases: string[];
   /** Every known string, so a known word of one kana (に, two) is spared. */
   known: Set<string>;
@@ -230,14 +230,14 @@ const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
  * word of two or more characters, is a use in Japanese (ともだち と がっこう).
  * Next to English (the little word と) or a lone kana (は ひ ふ へ ほ) it is a
  * mention. Known words and taught grammar count as words and aren't inspected,
- * including when written across spaces (おげんき です か).
+ * including when written across spaces (おげんき です か). A word that is only
+ * punctuation (は — はな) stays in place and is not a kana word.
  */
 function particleProblems(text: string, pc: ParticleContext): string[] {
   if (pc.untaught.size === 0) return [];
   const line = text
     .split(/\s+/)
     .map((t) => t.replace(PUNCTUATION, ''))
-    .filter(Boolean)
     .join(' ');
   const words = pc.phrases
     .reduce((t, k) => maskKnown(t, k, true), line)
