@@ -276,7 +276,9 @@ function particleProblems(text: string, pc: ParticleContext): string[] {
       if (!pc.untaught.has(w) || pc.known.has(w)) return;
       const next = words[i + 1];
       if (isWord(words[i - 1]) && !(next && LONE_KANA.test(next))) {
-        problems.add(`uses the particle ${w} before it is taught, in "${line}"`);
+        problems.add(
+          `uses the particle ${w} before it is taught, in "${line}"`,
+        );
       }
     });
   }

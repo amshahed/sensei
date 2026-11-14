@@ -1,10 +1,6 @@
 import { toRomaji } from 'wanakana';
 import type { CourseContext } from './course-context';
-import {
-  bare,
-  isFairTypedReading,
-  TYPED_READING_PROMPT,
-} from './course-rules';
+import { bare, isFairTypedReading, TYPED_READING_PROMPT } from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
 
 /** The first qN after the highest one in use, so an appended id is unique. */

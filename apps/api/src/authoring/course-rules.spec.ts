@@ -475,7 +475,9 @@ describe('untaught particles (F.2.c, P2, P7)', () => {
       'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
     ]);
     expect(
-      onlyParticles(errors('ともだち と がっこう。 おかあさん の しゃしん。', 20)),
+      onlyParticles(
+        errors('ともだち と がっこう。 おかあさん の しゃしん。', 20),
+      ),
     ).toEqual([
       'teach[0]: uses the particle と before it is taught, in "ともだち と がっこう"',
       'teach[0]: uses the particle の before it is taught, in "おかあさん の しゃしん"',

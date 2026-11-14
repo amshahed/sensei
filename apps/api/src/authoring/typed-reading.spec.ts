@@ -263,7 +263,8 @@ describe('addTypedReadingChecks (F.2.b)', () => {
   });
 
   describe('an answer with punctuation is still the word (test.md F3)', () => {
-    const school = () => ctxAt(19).targets.find((t) => t.surface === 'がっこう')!;
+    const school = () =>
+      ctxAt(19).targets.find((t) => t.surface === 'がっこう')!;
     /** Lesson 19's recall draft with q2, the typed check on がっこう, changed. */
     const withQ2 = (over: Partial<CheckQuestion>) => {
       const draft = lesson19Recall();
