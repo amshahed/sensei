@@ -142,15 +142,34 @@ gate checks the result for untaught kana, kanji, verb endings and particles. A d
 written to `<id>.rejected.json`, never `<id>.json`, the batch carries on and the command exits 1.
 Publishing runs the same gate.
 
-- **Particles (F.2.c).** A particle standing alone as a word next to a kana word (`ともだち と がっこう`)
-  is rejected until it is taught. A mention in English (`the little word と`) and a kana row
-  (`は ひ ふ へ ほ`) pass. Outside kana and sound lessons, a choice or answer that is only an untaught
-  particle is rejected. Still left to the critic and PM review: a particle joined to a word
-  (`ともだちと`), て-forms such as `みて`, and に in lessons 65 to 80, where it is also the number two.
+- **Particles (F.2.c, F.2.d).** Each learner field is read in stretches of kana and spaces.
+  Punctuation, symbols, English, digits and kanji end a stretch, because a sentence doesn't run
+  through them. Inside one stretch, a word that is exactly an untaught particle is rejected when the
+  word before it is a word (two kana or more, or a known phrase) and the word after it, if any, is
+  not a single kana. The error quotes the stretch:
+  `uses the particle と before it is taught, in "ともだち と がっこう"`. Known words and taught
+  grammar count as words, also across spaces (`おげんき です か`), and a known word of one kana
+  (に, two) is never a particle.
+  - **Pass:** a kana row, also after a word (`は ひ ふ へ ほ`, `こえ か き く け こ`); a row then
+    words (`た ち つ て と そと くつ`); a kana set apart by punctuation or English (`と: そと`,
+    `で: でんわ (phone)`, `In はな, は says ha.`, `かさ (か + さ)`, `Words with ね: ね, ねこ`);
+    a mention in English (`The little words と (and), の ('s)`); a kana after a kanji (`名 な`).
+  - **Rejected:** a real use (`ともだち と がっこう`, `はな と ひと`, `あなた は いしゃ です か 。`),
+    and one mention: a kana written right after a word with nothing between them (`はな は says ha`).
+    Write `In はな, は says ha.` instead.
+  - **Choices:** outside kana and sound lessons, a choice or answer that is only an untaught
+    particle is rejected.
+  - **Still left to the critic and PM review:** a particle joined to a word (`ともだちと`), one
+    before a one-kana word (`ねこ の え`) or after a kanji (`日本 から`), て-forms such as `みて`,
+    and に in lessons 65 to 80, where it is also the number two.
+  - **The draft prompt** lists the particles not taught yet, from the gate's own list, and says a
+    kana shown on its own is fine when punctuation or English sets it apart.
 - **Typed reading (F.2.b).** In a lesson with `typedReading`, the pipeline makes sure each target word
-  has a typed check showing it in kana with no rōmaji. It keeps a fair check, rewrites the prompt of a
-  typed check whose answer is the word to `Read this word and type how it sounds: <word>`, or appends
-  one. The gate's rule stays as the safety net.
+  the draft declares has a typed check showing it in kana with no rōmaji. It keeps a fair check,
+  rewrites the prompt of a typed check whose answer is the word (punctuation aside, as the grader
+  reads it) to `Read this word and type how it sounds: <word>`, or appends one. A target the draft
+  left out of `targetItemIds` gets no check, so the gate's rule, which stays as the safety net,
+  rejects the draft.
 
 **Recovering a rejected draft at $0.** Run `--recheck` first whenever a code change could cure a
 rejection. For each lesson with a `<id>.rejected.json`, it drops the old errors, applies the
