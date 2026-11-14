@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { toHiragana } from 'wanakana';
+import { ANSWER_PUNCTUATION } from '../common/japanese-script';
 import {
   buildTokenizer,
   type JapaneseTokenizer,
@@ -14,9 +15,8 @@ const SPOKEN: Record<string, string> = {
   こんばんは: 'こんばん[はわ]',
 };
 /** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
-const PUNCTUATION_CHARS = '、。,.!?！？';
-const PUNCTUATION = new RegExp(`[${PUNCTUATION_CHARS}]`, 'g');
-const SEPARATORS = new RegExp(`[\\s${PUNCTUATION_CHARS}]`, 'g');
+const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
+const SEPARATORS = new RegExp(`[\\s${ANSWER_PUNCTUATION}]`, 'g');
 
 /**
  * Whole words only, so wana stays wrong for はな. Each position is independent,

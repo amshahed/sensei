@@ -304,6 +304,21 @@ describe('addTypedReadingChecks (F.2.b)', () => {
       ]);
       expect(after.check.questions).toHaveLength(draft.check.questions.length);
     });
+
+    it('does not take 「がっこう」 for the word, because the grader keeps the brackets', () => {
+      const draft = withQ2({
+        prompt: `${TYPED_READING_PROMPT} がっこう`,
+        correctAnswer: '「がっこう」',
+      });
+      const [q2] = typedOnSchool(draft);
+      expect(isFairTypedReading(q2, 'がっこう')).toBe(false);
+      const after = addTypedReadingChecks(draft, ctxAt(19));
+      expect(typedOnSchool(after)).toEqual([
+        q2,
+        expect.objectContaining({ correctAnswer: 'がっこう' }),
+      ]);
+      expect(typedReadingErrors(after, 19)).toEqual([]);
+    });
   });
 
   it.each(typedReadingLessons.map(({ n }) => n))(
@@ -333,6 +348,30 @@ describe('every typed-reading target accepts its rōmaji (P4, P5)', () => {
       15, 16, 17, 18, 19, 20,
     ]);
     expect(targets).toHaveLength(30);
+  });
+
+  // The gate calls a check fair only if a learner typing the word is marked
+  // right against its answer, so the two can't disagree on punctuation.
+  it.each([
+    'がっこう。',
+    'がっこう！',
+    'がっこう？',
+    'がっこう、',
+    '「がっこう」',
+    'がっこう…',
+    'がっこう・',
+    '〜がっこう',
+  ])('the gate and the grader agree on the answer %s', (answer) => {
+    const check: CheckQuestion = {
+      id: 'q1',
+      targetItemId: 'ja:vocab:学校',
+      prompt: `${TYPED_READING_PROMPT} がっこう`,
+      answerType: 'typed',
+      correctAnswer: answer,
+    };
+    expect(isFairTypedReading(check, 'がっこう')).toBe(
+      svc.exactMatch('gakkou', answer),
+    );
   });
 
   it.each(targets)('lesson %i: %s', (_n, surface) => {

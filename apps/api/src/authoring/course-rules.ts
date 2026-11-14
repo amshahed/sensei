@@ -1,5 +1,10 @@
 import { toRomaji } from 'wanakana';
-import { hasLongVowel, kanaChars, kanjiChars } from '../common/japanese-script';
+import {
+  ANSWER_PUNCTUATION,
+  hasLongVowel,
+  kanaChars,
+  kanjiChars,
+} from '../common/japanese-script';
 import type { CourseContext } from './course-context';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
 
@@ -81,8 +86,15 @@ const STRETCH = /[ぁ-ゖァ-ヺー\s]+/g;
 /** One hiragana or katakana: a sound in a row, not a word. */
 const LONE_KANA = /^[ぁ-ゖァ-ヺー]$/;
 
-/** Text with no punctuation and no spaces, so がっこう。 equals がっこう. */
-export const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
+/** A choice, answer or known string as one bare token: no punctuation, no spaces. */
+const bare = (s: string) => spaceless(s.replace(PUNCTUATION, ''));
+
+const NOT_GRADED = new RegExp(`[\\s${ANSWER_PUNCTUATION}]`, 'g');
+/**
+ * An answer as the grader compares it (H.2.c): no spaces and none of its
+ * punctuation, so がっこう。 is がっこう but 「がっこう」 is not.
+ */
+export const asGraded = (s: string) => s.replace(NOT_GRADED, '');
 
 /** Rōmaji with macrons and doubled vowels removed, so okāsan equals okaasan. */
 const looseRomaji = (s: string) =>
@@ -297,8 +309,8 @@ export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
  * P2: a closed typed check whose answer is the word, and whose prompt shows the
  * word with no rōmaji for it. The gate and the typed-reading transform both
  * judge a check by this, so they can't drift apart (F.2.b). The answer is
- * compared without punctuation, as the grader compares it (H.2.c), so
- * がっこう。 is the word.
+ * compared as the grader compares it (H.2.c), so がっこう。 is the word and
+ * 「がっこう」, which no learner could match, is not.
  */
 export function isFairTypedReading(
   question: CheckQuestion,
@@ -307,7 +319,7 @@ export function isFairTypedReading(
   if (question.answerType !== 'typed' || question.grading === 'open') {
     return false;
   }
-  if (bare(question.correctAnswer) !== bare(surface)) return false;
+  if (asGraded(question.correctAnswer) !== asGraded(surface)) return false;
   const prompt = looseRomaji(question.prompt.replace(TYPED_READING_PROMPT, ''));
   return (
     spaceless(question.prompt).includes(spaceless(surface)) &&

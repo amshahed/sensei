@@ -1,6 +1,10 @@
 import { toRomaji } from 'wanakana';
 import type { CourseContext } from './course-context';
-import { bare, isFairTypedReading, TYPED_READING_PROMPT } from './course-rules';
+import {
+  asGraded,
+  isFairTypedReading,
+  TYPED_READING_PROMPT,
+} from './course-rules';
 import type { CheckQuestion, LessonDraft } from './lesson-schema';
 
 /** The first qN after the highest one in use, so an appended id is unique. */
@@ -19,8 +23,8 @@ function nextQuestionId(questions: CheckQuestion[]): string {
  * F.2.b: in a typedReading lesson, the pipeline owns the reading check. For
  * each target word the draft declares, in order:
  *   1. a fair typed check (the gate's own test) is left alone;
- *   2. else a closed typed check whose answer is the word (punctuation
- *      aside) gets the reading prompt in place, keeping its id, position
+ *   2. else a closed typed check whose answer is the word, as the grader
+ *      reads it, gets the reading prompt in place, keeping its id, position
  *      and explanation;
  *   3. else a reading check is appended, explained with wanakana's rōmaji,
  *      which the grader always accepts.
@@ -48,7 +52,7 @@ export function addTypedReadingChecks(
         onTarget(q) &&
         q.answerType === 'typed' &&
         q.grading !== 'open' &&
-        bare(q.correctAnswer) === bare(surface),
+        asGraded(q.correctAnswer) === asGraded(surface),
     );
     if (recall !== -1) {
       questions[recall] = { ...questions[recall], prompt };
