@@ -1,4 +1,5 @@
 import { toRomaji } from 'wanakana';
+import { answerFormsOf, normalizeJapanese } from '../common/answer-romaji';
 import {
   ANSWER_PUNCTUATION,
   hasLongVowel,
@@ -347,6 +348,68 @@ function typedReadingProblems(
   return problems;
 }
 
+/** One kana, or one with a small ゃ, ゅ or ょ: a sound, not a word (F.2.e). */
+const ONE_SOUND = /^[ぁ-ゖ][ゃゅょ]?$/;
+
+/**
+ * The Latin words of a text, each folded as looseRomaji folds it, so gakkō,
+ * gakko and gakkou are all gakko, and kin'you is kinyou (F.2.e).
+ */
+function foldedWords(s: string): string[] {
+  const words: string[] =
+    s
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .toLowerCase()
+      .match(/[a-z']+/g) ?? [];
+  return words.map((w) => looseRomaji(w.replace(/'/g, ''))).filter(Boolean);
+}
+
+/**
+ * The rōmaji a closed typed check asks the learner to type, as the app shows
+ * it after a miss (B.2.b, the same resolver), or null for one kana's sound,
+ * which pointing out is fine, and for an answer with no one rōmaji. An answer
+ * stored in rōmaji counts only when the prompt shows its kana, so an English
+ * answer such as "school" is never taken for one.
+ */
+function askedRomaji(q: CheckQuestion): string | null {
+  if (q.answerType !== 'typed' || q.grading === 'open') return null;
+  if (ONE_SOUND.test(asGraded(normalizeJapanese(q.correctAnswer)))) {
+    return null;
+  }
+  const forms = answerFormsOf(q.correctAnswer, {
+    kanaTarget: q.targetItemId.startsWith('ja:kana:'),
+    prompt: q.prompt,
+  });
+  return forms?.romaji ?? null;
+}
+
+/**
+ * P5 (F.2.e): the learner reads each explanation before the next question, so
+ * none may spell out in rōmaji a word that a later check is the first to ask
+ * them to type. Whole words only. The check's own explanation, and every one
+ * after the first check that asks for the word, may give it.
+ */
+function giveawayProblems(questions: CheckQuestion[]): string[] {
+  const problems: string[] = [];
+  const asked = new Set<string>();
+  questions.forEach((ask, i) => {
+    const romaji = askedRomaji(ask);
+    const words = romaji ? foldedWords(romaji) : [];
+    const needle = ` ${words.join(' ')} `;
+    if (words.length === 0 || asked.has(needle)) return;
+    asked.add(needle);
+    for (const q of questions.slice(0, i)) {
+      if (` ${foldedWords(q.explanation ?? '').join(' ')} `.includes(needle)) {
+        problems.push(
+          `check ${q.id}: the explanation spells out "${romaji}" before check ${ask.id} asks for it`,
+        );
+      }
+    }
+  });
+  return problems;
+}
+
 /**
  * The free deterministic gate (F.2.a), run after every draft and again at
  * publish. Errors reject the draft. A warning is a heuristic, left to review.
@@ -386,6 +449,11 @@ export function checkCourseRules(
   // sound lessons are left out, because their choices are characters.
   const choicesAreWords = !ctx.hasKanaTargets && ctx.kanaCards.length === 0;
   for (const q of draft.check.questions) {
+    // The learner reads it after every answer (B.2.a), so a check without one
+    // is a content defect (F.2.e).
+    if (!q.explanation?.trim()) {
+      errors.add(`check ${q.id}: needs an explanation`);
+    }
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
     }
@@ -412,6 +480,8 @@ export function checkCourseRules(
       }
     }
   }
+
+  for (const p of giveawayProblems(draft.check.questions)) errors.add(p);
 
   if (ctx.typedReading) {
     for (const p of typedReadingProblems(draft, ctx)) errors.add(p);

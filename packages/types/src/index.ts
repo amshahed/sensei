@@ -111,6 +111,17 @@ export interface CheckResultDto {
   correctAnswer: string;
   /** One line of tutor feedback — present for AI-graded open responses (#8). */
   feedback?: string;
+  /**
+   * The check's written explanation, on every result, right or wrong (B.2.a).
+   * Absent when the check has none. Like the answer, it only arrives here.
+   */
+  explanation?: string;
+  /**
+   * A closed typed check's answer in kana and in rōmaji, spelled as grading
+   * accepts it (B.2.b). Shown after a miss. Absent when there is no one
+   * spelling of each, and the answer line then shows `correctAnswer`.
+   */
+  answerForms?: { kana: string; romaji: string };
 }
 
 export interface LessonCompletionDto {

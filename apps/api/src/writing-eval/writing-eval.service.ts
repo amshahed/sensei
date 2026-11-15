@@ -1,43 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { toHiragana } from 'wanakana';
-import { ANSWER_PUNCTUATION } from '../common/japanese-script';
+import {
+  answerFormsOf,
+  normalizeJapanese,
+  typedAnswersMatch,
+  type AnswerForms,
+} from '../common/answer-romaji';
 import {
   buildTokenizer,
   type JapaneseTokenizer,
 } from '../common/japanese-tokenizer';
 
-/** は, へ and を as spoken, and how rōmaji usually spells them (H.2.a). */
-const SPOKEN: Record<string, string> = {
-  は: '[はわ]',
-  へ: '[へえ]',
-  を: '[をお]',
-  こんにちは: 'こんにち[はわ]',
-  こんばんは: 'こんばん[はわ]',
-};
-/** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
-const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
-const SEPARATORS = new RegExp(`[\\s${ANSWER_PUNCTUATION}]`, 'g');
-
-/**
- * Whole words only, so wana stays wrong for はな. Each position is independent,
- * so watashi wa hon wo yomimasu passes. On a check of a kana item, an answer
- * that is one kana is that character, so は is ha and wa stays wrong.
- */
-function matchesSpoken(
-  answer: string,
-  exemplar: string,
-  kanaTarget: boolean,
-): boolean {
-  const words = exemplar.split(SEPARATORS).filter(Boolean);
-  const literal = kanaTarget && words.join('').length === 1;
-  const pattern = words
-    .map(
-      (w) =>
-        (!literal && SPOKEN[w]) || w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
-    )
-    .join('');
-  return new RegExp(`^${pattern}$`).test(answer.replace(SEPARATORS, ''));
-}
+export type { AnswerForms };
 
 /**
  * Japanese writing-answer evaluation (H.2).
@@ -68,9 +41,12 @@ export class WritingEvalService implements OnModuleInit {
     }
   }
 
-  /** Romaji → hiragana, katakana → hiragana, trim, collapse spaces. */
+  /**
+   * Romaji → hiragana, katakana → hiragana, trim, collapse spaces, and ー as
+   * the vowel it holds (H.2.d). Shared with the authoring gate.
+   */
   normalizeJapanese(text: string): string {
-    return toHiragana(text.trim().replace(/\s+/g, ' '));
+    return normalizeJapanese(text);
   }
 
   /**
@@ -101,18 +77,38 @@ export class WritingEvalService implements OnModuleInit {
     exemplar: string,
     { kanaTarget = false }: { kanaTarget?: boolean } = {},
   ): boolean {
-    const normAnswer = this.normalizeJapanese(answer);
-    const normExemplar = this.normalizeJapanese(exemplar);
-    const joinedAnswer = this.tokenize(
-      normAnswer.replace(PUNCTUATION, ''),
-    ).join('');
-    const joinedExemplar = this.tokenize(
-      normExemplar.replace(PUNCTUATION, ''),
-    ).join('');
-    if (joinedAnswer === joinedExemplar) return true;
-    return (
-      /[a-z]/i.test(answer) &&
-      matchesSpoken(normAnswer, normExemplar, kanaTarget)
-    );
+    return typedAnswersMatch(answer, exemplar, {
+      kanaTarget,
+      join: (s) => this.tokenize(s).join(''),
+    });
+  }
+
+  /**
+   * The answer to a closed typed check in kana and in rōmaji, shown after a
+   * miss (B.2.b). Kana stored: the answer as written, and its rōmaji from the
+   * shared table. Rōmaji stored: the kana is the first run of kana in the
+   * prompt that the grader takes for the answer. Null unless the grader
+   * accepts both forms against the stored answer, so the app never shows a
+   * spelling the learner would be marked wrong for.
+   */
+  answerForms(
+    answer: string,
+    {
+      kanaTarget = false,
+      prompt = '',
+    }: { kanaTarget?: boolean; prompt?: string },
+  ): AnswerForms | null {
+    const opts = { kanaTarget };
+    const forms = answerFormsOf(answer, {
+      kanaTarget,
+      prompt,
+      match: (typed, stored) => this.exactMatch(typed, stored, opts),
+    });
+    if (!forms) return null;
+    const stored = answer.trim();
+    const accepted =
+      this.exactMatch(forms.romaji, stored, opts) &&
+      this.exactMatch(forms.kana, stored, opts);
+    return accepted ? forms : null;
   }
 }

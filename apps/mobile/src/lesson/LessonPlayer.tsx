@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import type { CheckDto, CheckResultDto, LessonDetailDto } from '@sensei/types';
@@ -285,6 +288,9 @@ function CheckBeat({
         answer,
         isMultipleChoice && guessed,
       );
+      // The keyboard would cover the result in the footer. The typed answer
+      // stays in the box, so the learner can compare it.
+      Keyboard.dismiss();
       setResult(r);
     } catch {
       // Don't score a network blip as a wrong answer — let the learner retry.
@@ -295,11 +301,16 @@ function CheckBeat({
   }
 
   const lastAnswer = isMultipleChoice ? (selected ?? '') : typed;
+  // The result sits in the pinned footer, above Next, so it is in view without
+  // scrolling however long the question is (B.2.b).
   const footer = result ? (
-    <PrimaryButton
-      label={index + 1 < total ? 'Next →' : 'Finish'}
-      onPress={() => onNext(result.correct)}
-    />
+    <View style={styles.resultFooter}>
+      <ResultPanel result={result} />
+      <PrimaryButton
+        label={index + 1 < total ? 'Next →' : 'Finish'}
+        onPress={() => onNext(result.correct)}
+      />
+    </View>
   ) : failed ? (
     <PrimaryButton label="Retry" onPress={() => submit(lastAnswer)} />
   ) : !isMultipleChoice ? (
@@ -367,17 +378,46 @@ function CheckBeat({
       {failed ? (
         <Text style={ui.err}>Couldn’t reach the grader — tap Retry.</Text>
       ) : null}
-
-      {result ? (
-        <Text style={result.correct ? ui.ok : ui.err}>
-          {result.correct
-            ? 'Correct!'
-            : `Answer: ${result.correctAnswer || '—'}`}
-        </Text>
-      ) : null}
     </Screen>
   );
 }
+
+/**
+ * What a check tells the learner once it is graded (B.2.a): the verdict, then
+ * the right answer if they missed, in kana with its rōmaji under it when the
+ * server sends both, then the explanation. A check with no explanation shows
+ * nothing in its place. Text is never truncated. The panel never takes more
+ * than about half the screen, so Next stays on screen and the question keeps
+ * room: real results fit well inside that, and only an extreme one (a long
+ * model answer at a large text size) scrolls within the panel.
+ */
+function ResultPanel({ result }: { result: CheckResultDto }) {
+  const { height } = useWindowDimensions();
+  const forms = result.correct ? undefined : result.answerForms;
+  return (
+    <ScrollView
+      style={{ maxHeight: height * RESULT_MAX_SHARE }}
+      contentContainerStyle={styles.result}
+      bounces={false}
+    >
+      <Text style={result.correct ? ui.ok : ui.err}>
+        {result.correct ? 'Correct!' : 'Not quite.'}
+      </Text>
+      {result.correct ? null : (
+        <Text style={styles.resultAnswer}>
+          Answer: {forms?.kana ?? (result.correctAnswer || '—')}
+        </Text>
+      )}
+      {forms ? <Text style={styles.resultRomaji}>{forms.romaji}</Text> : null}
+      {result.explanation ? (
+        <Text style={ui.body}>{result.explanation}</Text>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+/** The most of the window the result panel may take (B.2.b, P2). */
+const RESULT_MAX_SHARE = 0.45;
 
 /**
  * End of lesson. Owns the completion write, which is what advances the
@@ -483,6 +523,10 @@ const styles = StyleSheet.create({
   guessToggleOn: { backgroundColor: '#FFF4E5', borderColor: '#E8A33D' },
   guessText: { fontSize: 14, color: '#888' },
   guessTextOn: { fontSize: 14, color: '#B26A00', fontWeight: '600' },
+  resultFooter: { gap: 12 },
+  result: { gap: 4 },
+  resultAnswer: { fontSize: 17, fontWeight: '600', color: '#111' },
+  resultRomaji: { fontSize: 16, color: '#555' },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
