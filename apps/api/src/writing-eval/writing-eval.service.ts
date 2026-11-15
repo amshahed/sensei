@@ -1,22 +1,54 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { toHiragana } from 'wanakana';
+import { toHiragana, toRomaji } from 'wanakana';
+import {
+  ANSWER_SEPARATORS,
+  answerRomaji,
+  answerWords,
+  isLoneKana,
+  SPOKEN,
+} from '../common/answer-romaji';
 import { ANSWER_PUNCTUATION } from '../common/japanese-script';
 import {
   buildTokenizer,
   type JapaneseTokenizer,
 } from '../common/japanese-tokenizer';
 
-/** は, へ and を as spoken, and how rōmaji usually spells them (H.2.a). */
-const SPOKEN: Record<string, string> = {
-  は: '[はわ]',
-  へ: '[へえ]',
-  を: '[をお]',
-  こんにちは: 'こんにち[はわ]',
-  こんばんは: 'こんばん[はわ]',
-};
 /** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
 const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
-const SEPARATORS = new RegExp(`[\\s${ANSWER_PUNCTUATION}]`, 'g');
+
+/** Each held-vowel mark, with the kana before it (H.2.d). */
+const LONG_VOWEL_MARK = /([ぁ-ゖ])(ー+)/g;
+const VOWEL_KANA: Record<string, string> = {
+  a: 'あ',
+  i: 'い',
+  u: 'う',
+  e: 'え',
+  o: 'お',
+};
+
+/**
+ * ー spelled as the vowel it holds, so ノー is のお: what nooto and no-to type
+ * (H.2.d). A ー after a kana with no vowel (ん, っ) is left as it is.
+ */
+function spellLongVowels(hiragana: string): string {
+  return hiragana.replace(LONG_VOWEL_MARK, (match, kana: string, marks) => {
+    const vowel = VOWEL_KANA[toRomaji(kana).at(-1) ?? ''];
+    return vowel ? kana + vowel.repeat(String(marks).length) : match;
+  });
+}
+
+/** A typed answer stored in rōmaji: Latin letters and no Japanese at all. */
+const isRomajiAnswer = (s: string) =>
+  /[a-z]/i.test(s) && !/[぀-ヿ㐀-鿿]/.test(s);
+
+/**
+ * The kana a check's prompt shows, as candidates for the kana of an answer
+ * stored in rōmaji (B.2.b): each run of kana words, then each word in it.
+ */
+function kanaCandidates(prompt: string): string[] {
+  const runs = prompt.match(/[ぁ-ゖァ-ヺー]+(?:\s+[ぁ-ゖァ-ヺー]+)*/g) ?? [];
+  return [...new Set(runs.flatMap((run) => [run, ...run.split(/\s+/)]))];
+}
 
 /**
  * Whole words only, so wana stays wrong for はな. Each position is independent,
@@ -28,15 +60,22 @@ function matchesSpoken(
   exemplar: string,
   kanaTarget: boolean,
 ): boolean {
-  const words = exemplar.split(SEPARATORS).filter(Boolean);
-  const literal = kanaTarget && words.join('').length === 1;
+  const words = answerWords(exemplar);
+  const literal = isLoneKana(words, kanaTarget);
   const pattern = words
     .map(
       (w) =>
-        (!literal && SPOKEN[w]) || w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
+        (!literal && SPOKEN[w]?.pattern) ||
+        w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
     )
     .join('');
-  return new RegExp(`^${pattern}$`).test(answer.replace(SEPARATORS, ''));
+  return new RegExp(`^${pattern}$`).test(answer.replace(ANSWER_SEPARATORS, ''));
+}
+
+/** A typed answer as the learner sees it after a miss (B.2.a). */
+export interface AnswerForms {
+  kana: string;
+  romaji: string;
 }
 
 /**
@@ -68,9 +107,17 @@ export class WritingEvalService implements OnModuleInit {
     }
   }
 
-  /** Romaji → hiragana, katakana → hiragana, trim, collapse spaces. */
+  /**
+   * Romaji → hiragana, katakana → hiragana, trim, collapse spaces. ー becomes
+   * the vowel it holds (H.2.d), so ノート is のおと, as nooto and no-to type,
+   * and never のうと, which wanakana makes of it and which spells nouto.
+   */
   normalizeJapanese(text: string): string {
-    return toHiragana(text.trim().replace(/\s+/g, ' '));
+    return spellLongVowels(
+      toHiragana(text.trim().replace(/\s+/g, ' '), {
+        convertLongVowelMark: false,
+      }),
+    );
   }
 
   /**
@@ -114,5 +161,36 @@ export class WritingEvalService implements OnModuleInit {
       /[a-z]/i.test(answer) &&
       matchesSpoken(normAnswer, normExemplar, kanaTarget)
     );
+  }
+
+  /**
+   * The answer to a closed typed check in kana and in rōmaji, shown after a
+   * miss (B.2.b). Kana stored: the answer as written, and its rōmaji from the
+   * shared table. Rōmaji stored: the kana is the first run of kana in the
+   * prompt that the grader takes for the answer. Null unless the grader
+   * accepts both forms against the stored answer, so the app never shows a
+   * spelling the learner would be marked wrong for.
+   */
+  answerForms(
+    answer: string,
+    {
+      kanaTarget = false,
+      prompt = '',
+    }: { kanaTarget?: boolean; prompt?: string },
+  ): AnswerForms | null {
+    const stored = answer.trim();
+    const opts = { kanaTarget };
+    const romajiStored = isRomajiAnswer(stored);
+    const kana = romajiStored
+      ? kanaCandidates(prompt).find((c) => this.exactMatch(stored, c, opts))
+      : stored;
+    const romaji = romajiStored
+      ? stored.toLowerCase().replace(/\s+/g, ' ')
+      : answerRomaji(stored, opts);
+    if (!kana || !romaji) return null;
+    const accepted =
+      this.exactMatch(romaji, stored, opts) &&
+      this.exactMatch(kana, stored, opts);
+    return accepted ? { kana, romaji } : null;
   }
 }
