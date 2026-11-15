@@ -1,4 +1,9 @@
-import { answerRomaji, answerWords, SPOKEN } from './answer-romaji';
+import {
+  answerRomaji,
+  answerWords,
+  isRomajiAnswer,
+  SPOKEN,
+} from './answer-romaji';
 
 describe('answerRomaji (B.2.b)', () => {
   it.each([
@@ -71,4 +76,20 @@ describe('answerRomaji (B.2.b)', () => {
       expect(romaji).toMatch(/^[a-z]+$/);
     }
   });
+});
+
+describe('isRomajiAnswer', () => {
+  it.each(['ao', 'Kasa', 'tomodachi wa isha desu', "kin'you", 'school'])(
+    'takes %j for an answer stored in Latin letters',
+    (answer) => {
+      expect(isRomajiAnswer(answer)).toBe(true);
+    },
+  );
+
+  it.each(['あお', 'ノート', 'Tシャツ', '日本', '。', ''])(
+    'does not take %j for one',
+    (answer) => {
+      expect(isRomajiAnswer(answer)).toBe(false);
+    },
+  );
 });

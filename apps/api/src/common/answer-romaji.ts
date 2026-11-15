@@ -1,5 +1,5 @@
 import { toHiragana, toRomaji } from 'wanakana';
-import { ANSWER_PUNCTUATION, isKanaOnly } from './japanese-script';
+import { ANSWER_PUNCTUATION, hasKanji, isKanaOnly } from './japanese-script';
 
 /** Each held-vowel mark, with the kana before it (H.2.d). */
 const LONG_VOWEL_MARK = /([ぁ-ゖ])(ー+)/g;
@@ -36,9 +36,9 @@ export function normalizeJapanese(text: string): string {
   );
 }
 
-/** A typed answer stored in rōmaji: Latin letters and no Japanese at all. */
+/** A typed answer stored in rōmaji: Latin letters and no kana or kanji. */
 export const isRomajiAnswer = (s: string): boolean =>
-  /[a-z]/i.test(s) && !/[぀-ヿ㐀-鿿豈-﫿]/.test(s);
+  /[a-z]/i.test(s) && !/[ぁ-ゖァ-ヺー]/.test(s) && !hasKanji(s);
 
 /**
  * The kana a check's prompt shows, as candidates for the kana of an answer
