@@ -172,7 +172,7 @@ ${kanji}
 ${note}${cards}${typed}
 Course rules:
 - Every piece of Japanese you write (examples, passages, questions, choices, answers, hints) uses only the kana, grammar and words listed above
-- Write Japanese in kana, with a space between words, including in a typed correctAnswer
+- Write Japanese in kana, with a space between words. A typed correctAnswer is always the Japanese in kana, never rōmaji: the app shows the rōmaji and accepts either.
 - Kanji appear only in F-Kanji lessons${kanaReading}
 - A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for
 `;
@@ -262,6 +262,9 @@ OUTPUT the lesson draft as JSON matching this exact shape (no other text):
 Rules:
 - Produce at least 2 teach blocks, 1 practice template per target item, 2 check questions per target item
 - Multiple-choice questions must include exactly 4 choices
+- Every check question has an "explanation": one or two short sentences the learner reads straight after answering, whether they were right or wrong. Say why the answer is the answer. No praise ("Nice!", "Great work!") and nothing that assumes a wrong answer ("Not quite").
+- For a typed question, the explanation says why the answer is spelled that way, for example "the っ doubles the k". It may give the rōmaji.
+- Explanations are shown before the later questions, so until a question has asked the learner to type a word, no explanation spells that word out in rōmaji. Pointing out one kana's sound is fine.
 - Audio src must be a relative placeholder path (e.g. "audio/kana/a.mp3")
 - All targetItemIds in questions/templates must be from the TARGET ITEMS list above
 - For I-Reading lessons: open with a "passage" block containing the reading text, then use "text" blocks for comprehension guidance; check questions test the passage content (multiple-choice or typed)

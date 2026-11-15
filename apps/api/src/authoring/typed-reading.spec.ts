@@ -1,4 +1,5 @@
 import { toRomaji } from 'wanakana';
+import { answerRomaji } from '../common/answer-romaji';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { compiledOutline } from '../testing/compiled-outline';
 import type { CourseContext } from './course-context';
@@ -48,6 +49,7 @@ function lesson19Recall(): LessonDraft {
       answerType: 'multiple-choice' as const,
       choices: [surface, 'か', 'き', 'く'],
       correctAnswer: surface,
+      explanation: `It is ${surface}.`,
     },
     {
       id: `q${2 * i + 2}`,
@@ -112,7 +114,7 @@ describe('addTypedReadingChecks (F.2.b)', () => {
       prompt: `${TYPED_READING_PROMPT} ${first.surface}`,
       answerType: 'typed',
       correctAnswer: first.surface,
-      explanation: `${first.surface} is read "${toRomaji(first.surface)}".`,
+      explanation: `${first.surface} is read "${answerRomaji(first.surface)}".`,
     });
     const ids = after.check.questions.map((q) => q.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -217,6 +219,18 @@ describe('addTypedReadingChecks (F.2.b)', () => {
       ),
     ).toEqual([]);
     expect(addTypedReadingChecks(after, ctx)).toEqual(after);
+  });
+
+  it('explains an appended check with the rōmaji the app shows, never konnichiha (F.2.e)', () => {
+    const ctx: CourseContext = {
+      ...ctxAt(21),
+      typedReading: true,
+      targets: [{ id: 'ja:vocab:こんにちは', surface: 'こんにちは' }],
+    };
+    const after = addTypedReadingChecks(draftAt(21, []), ctx);
+    expect(after.check.questions[0].explanation).toBe(
+      'こんにちは is read "konnichiwa".',
+    );
   });
 
   it('adds no check for a target the draft leaves out, so the gate rejects it (test.md F2)', () => {

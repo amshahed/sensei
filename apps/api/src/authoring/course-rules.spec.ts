@@ -28,6 +28,7 @@ function draftWith(
           answerType: 'multiple-choice',
           choices: ['a', 'b', 'c', 'd'],
           correctAnswer: 'a',
+          explanation: 'It is a.',
         },
       ],
     },
@@ -215,6 +216,7 @@ describe('sound lessons (P2, P3)', () => {
       prompt: `How does ${spec.surfaces[id]} sound?`,
       answerType: 'typed' as const,
       correctAnswer: spec.surfaces[id],
+      explanation: 'Read each kana in turn.',
       ...over,
     }));
   const check = (questions: LessonDraft['check']['questions']) =>
@@ -342,6 +344,7 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
               prompt: 'Type it',
               answerType: 'typed',
               correctAnswer,
+              explanation: 'One word at a time.',
               ...over,
             },
           ],
@@ -591,5 +594,177 @@ describe('scriptProblems', () => {
     expect(scriptProblems('私', ctxAt(10))).toEqual([
       'uses kanji 私 outside a kanji lesson',
     ]);
+  });
+});
+
+describe('explanations (F.2.e, P5, P6)', () => {
+  type Question = LessonDraft['check']['questions'][number];
+  const q = (id: string, over: Partial<Question>): Question => ({
+    id,
+    targetItemId: 'ja:vocab:x',
+    prompt: 'Which is it?',
+    answerType: 'multiple-choice',
+    choices: ['a', 'b', 'c', 'd'],
+    correctAnswer: 'a',
+    explanation: 'It is a.',
+    ...over,
+  });
+  const typed = (id: string, over: Partial<Question>): Question =>
+    q(id, { answerType: 'typed', choices: undefined, ...over });
+  const errorsFor = (n: number, questions: Question[]) =>
+    checkCourseRules(draftWith('', n, { check: { questions } }), ctxAt(n))
+      .errors;
+  const giveaways = (n: number, questions: Question[]) =>
+    errorsFor(n, questions).filter((e) => e.includes('spells out'));
+
+  describe('every check needs one (P6)', () => {
+    it.each([
+      ['missing', undefined],
+      ['empty', ''],
+      ['blank', '  \n '],
+    ])('rejects a check whose explanation is %s', (_how, explanation) => {
+      expect(errorsFor(43, [q('q1', {}), q('q2', { explanation })])).toEqual([
+        'check q2: needs an explanation',
+      ]);
+    });
+
+    it('asks it of an open check too', () => {
+      const open = typed('q1', {
+        grading: 'open',
+        rubric: 'Greets',
+        correctAnswer: 'こんにちは',
+        explanation: undefined,
+      });
+      expect(errorsFor(43, [open])).toContain('check q1: needs an explanation');
+    });
+  });
+
+  describe('no rōmaji before the check that asks for it (P5)', () => {
+    const school = (id: string) =>
+      typed(id, {
+        targetItemId: 'ja:vocab:学校',
+        prompt: 'Read this word and type how it sounds: がっこう',
+        correctAnswer: 'がっこう',
+        explanation: 'The っ doubles the k.',
+      });
+
+    it.each([
+      ['In rōmaji, がっこう is gakkou.', 'gakkou'],
+      ['がっこう (gakkō) is school.', 'gakkō'],
+      ['Spelled gakko, with a pause.', 'gakko'],
+      ['GAKKOU is school.', 'GAKKOU'],
+    ])('rejects "%s" before the typed がっこう', (explanation) => {
+      expect(
+        giveaways(19, [q('q1', { explanation }), q('q2', {}), school('q4')]),
+      ).toEqual([
+        'check q1: the explanation spells out "gakkou" before check q4 asks for it',
+      ]);
+    });
+
+    it('rejects a rōmaji-stored answer given away (lesson 4, kasa)', () => {
+      const kasa = typed('q5', {
+        targetItemId: 'ja:kana:ka',
+        prompt: 'Read this word and type how it sounds: かさ',
+        correctAnswer: 'kasa',
+      });
+      expect(
+        giveaways(4, [
+          q('q1', { explanation: 'かさ is kasa, umbrella.' }),
+          kasa,
+        ]),
+      ).toEqual([
+        'check q1: the explanation spells out "kasa" before check q5 asks for it',
+      ]);
+    });
+
+    it('rejects a sentence given away, spelled as the app shows it', () => {
+      const sentence = typed('q4', {
+        targetItemId: 'ja:grammar:は',
+        prompt: "Type this sentence: 'My friend is a doctor.'",
+        correctAnswer: 'ともだち は いしゃ です',
+      });
+      expect(
+        giveaways(43, [
+          q('q1', { explanation: 'It reads tomodachi wa isha desu.' }),
+          sentence,
+        ]),
+      ).toEqual([
+        'check q1: the explanation spells out "tomodachi wa isha desu" before check q4 asks for it',
+      ]);
+    });
+
+    it('allows the rōmaji in the check’s own explanation and after it', () => {
+      expect(
+        giveaways(19, [
+          q('q1', {}),
+          { ...school('q2'), explanation: 'In rōmaji, がっこう is gakkou.' },
+          q('q3', { explanation: 'Like gakkou, with a pause.' }),
+        ]),
+      ).toEqual([]);
+    });
+
+    it("allows lesson 13's yama after q1 has asked for it, though q4 asks again", () => {
+      const yama = (id: string, targetItemId: string) =>
+        typed(id, {
+          targetItemId,
+          prompt: 'Read this word and type how it sounds: やま',
+          correctAnswer: 'yama',
+          explanation: 'や then ま: yama.',
+        });
+      expect(
+        giveaways(13, [
+          yama('q1', 'ja:kana:ya'),
+          q('q2', { explanation: 'やま is yama, a mountain.' }),
+          yama('q4', 'ja:kana:ma'),
+        ]),
+      ).toEqual([]);
+    });
+
+    it('allows one kana’s sound before a typed は sentence', () => {
+      const sentence = typed('q4', {
+        targetItemId: 'ja:grammar:は',
+        correctAnswer: 'ともだち は いしゃ です',
+      });
+      expect(
+        giveaways(43, [
+          q('q1', { explanation: 'は is ha as a kana, but wa as a particle.' }),
+          sentence,
+        ]),
+      ).toEqual([]);
+    });
+
+    it('never treats a single kana typed on its own as a word to protect', () => {
+      expect(
+        giveaways(8, [
+          q('q1', { explanation: 'は says ha.' }),
+          typed('q2', { targetItemId: 'ja:kana:ha', correctAnswer: 'は' }),
+          typed('q3', { targetItemId: 'ja:kana:ha', correctAnswer: 'ha' }),
+        ]),
+      ).toEqual([]);
+    });
+
+    it('matches whole words only', () => {
+      const soto = typed('q3', {
+        targetItemId: 'ja:kana:to',
+        prompt: 'Read this word and type how it sounds: そと',
+        correctAnswer: 'soto',
+      });
+      expect(
+        giveaways(8, [q('q1', { explanation: 'Not like "sotol".' }), soto]),
+      ).toEqual([]);
+    });
+
+    it('does not take an English typed answer for rōmaji', () => {
+      const meaning = typed('q2', {
+        prompt: 'What does がっこう mean? Type it in English.',
+        correctAnswer: 'school',
+      });
+      expect(
+        giveaways(19, [
+          q('q1', { explanation: 'がっこう is a school.' }),
+          meaning,
+        ]),
+      ).toEqual([]);
+    });
   });
 });

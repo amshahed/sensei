@@ -35,6 +35,7 @@ function replyFor(id: string, japanese: string) {
           answerType: 'multiple-choice',
           choices: ['a', 'b', 'c', 'd'],
           correctAnswer: 'a',
+          explanation: 'It is a.',
         },
       ],
     },

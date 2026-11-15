@@ -1,4 +1,5 @@
 import { toRomaji } from 'wanakana';
+import { answerRomaji } from '../common/answer-romaji';
 import type { CourseContext } from './course-context';
 import {
   asGraded,
@@ -26,8 +27,8 @@ function nextQuestionId(questions: CheckQuestion[]): string {
  *   2. else a closed typed check whose answer is the word, as the grader
  *      reads it, gets the reading prompt in place, keeping its id, position
  *      and explanation;
- *   3. else a reading check is appended, explained with wanakana's rōmaji,
- *      which the grader always accepts.
+ *   3. else a reading check is appended, explained with the rōmaji the app
+ *      shows after a miss (B.2.b), so never konnichiha (F.2.e).
  * Pure and idempotent: a second run changes nothing.
  */
 export function addTypedReadingChecks(
@@ -65,7 +66,7 @@ export function addTypedReadingChecks(
       prompt,
       answerType: 'typed',
       correctAnswer: surface,
-      explanation: `${surface} is read "${toRomaji(surface)}".`,
+      explanation: `${surface} is read "${answerRomaji(surface) ?? toRomaji(surface)}".`,
     });
   }
 

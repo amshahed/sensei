@@ -163,7 +163,10 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     expect(prompt).toContain('GRAMMAR TAUGHT SO FAR: です');
     expect(prompt).toContain('WORDS THE LEARNER KNOWS: かぎ');
     expect(prompt).toContain(
-      'with a space between words, including in a typed correctAnswer',
+      'Write Japanese in kana, with a space between words.',
+    );
+    expect(prompt).toContain(
+      'A typed correctAnswer is always the Japanese in kana, never rōmaji: the app shows the rōmaji and accepts either.',
     );
     expect(prompt).toContain('Kanji appear only in F-Kanji lessons');
   });
@@ -194,6 +197,39 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     const plain = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], []);
     expect(plain).not.toContain('COURSE CONTEXT');
     expect(plain).toContain('ja:vocab:鍵(鍵・かぎ・key)');
+  });
+});
+
+describe('buildDraftPrompt carries the rules for explanations (B.2.a, F.2.e)', () => {
+  const withContext = buildDraftPrompt(
+    VOCAB_LESSON,
+    [VOCAB_ITEM],
+    [],
+    [],
+    COURSE_CONTEXT,
+  );
+  const plain = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], []);
+
+  it.each([
+    [
+      'every check has one, read after a right or a wrong answer',
+      'Every check question has an "explanation": one or two short sentences the learner reads straight after answering, whether they were right or wrong.',
+    ],
+    [
+      'no praise and no verdict (P4)',
+      'No praise ("Nice!", "Great work!") and nothing that assumes a wrong answer ("Not quite").',
+    ],
+    [
+      'a typed explanation says why it is spelled so',
+      'For a typed question, the explanation says why the answer is spelled that way, for example "the っ doubles the k". It may give the rōmaji.',
+    ],
+    [
+      'no rōmaji before the question that asks for it (P5)',
+      "until a question has asked the learner to type a word, no explanation spells that word out in rōmaji. Pointing out one kana's sound is fine.",
+    ],
+  ])('says %s, with or without course context', (_rule, text) => {
+    expect(withContext).toContain(text);
+    expect(plain).toContain(text);
   });
 });
 

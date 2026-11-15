@@ -1,5 +1,53 @@
-import { toRomaji } from 'wanakana';
+import { toHiragana, toRomaji } from 'wanakana';
 import { ANSWER_PUNCTUATION, isKanaOnly } from './japanese-script';
+
+/** Each held-vowel mark, with the kana before it (H.2.d). */
+const LONG_VOWEL_MARK = /([ぁ-ゖ])(ー+)/g;
+const VOWEL_KANA: Record<string, string> = {
+  a: 'あ',
+  i: 'い',
+  u: 'う',
+  e: 'え',
+  o: 'お',
+};
+
+/**
+ * ー spelled as the vowel it holds, so ノー is のお: what nooto and no-to type
+ * (H.2.d). A ー after a kana with no vowel (ん, っ) is left as it is.
+ */
+function spellLongVowels(hiragana: string): string {
+  return hiragana.replace(LONG_VOWEL_MARK, (match, kana: string, marks) => {
+    const vowel = VOWEL_KANA[toRomaji(kana).at(-1) ?? ''];
+    return vowel ? kana + vowel.repeat(String(marks).length) : match;
+  });
+}
+
+/**
+ * A typed answer as grading compares it: rōmaji and katakana to hiragana,
+ * trimmed, spaces collapsed. ー becomes the vowel it holds (H.2.d), so ノート
+ * is のおと, as nooto and no-to type, and never のうと, which wanakana makes
+ * of it and which spells nouto.
+ */
+export function normalizeJapanese(text: string): string {
+  return spellLongVowels(
+    toHiragana(text.trim().replace(/\s+/g, ' '), {
+      convertLongVowelMark: false,
+    }),
+  );
+}
+
+/** A typed answer stored in rōmaji: Latin letters and no Japanese at all. */
+export const isRomajiAnswer = (s: string): boolean =>
+  /[a-z]/i.test(s) && !/[぀-ヿ㐀-鿿豈-﫿]/.test(s);
+
+/**
+ * The kana a check's prompt shows, as candidates for the kana of an answer
+ * stored in rōmaji (B.2.b): each run of kana words, then each word in it.
+ */
+export function kanaCandidates(prompt: string): string[] {
+  const runs = prompt.match(/[ぁ-ゖァ-ヺー]+(?:\s+[ぁ-ゖァ-ヺー]+)*/g) ?? [];
+  return [...new Set(runs.flatMap((run) => [run, ...run.split(/\s+/)]))];
+}
 
 /**
  * は, へ and を as spoken (H.2.a), with こんにちは and こんばんは, which end in
