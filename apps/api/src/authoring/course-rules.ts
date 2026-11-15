@@ -361,14 +361,14 @@ const ONE_SOUND = /^[ぁ-ゖ][ゃゅょ]?$/;
  * macrons stripped, ou and doubled vowels made one, so gakkō, gakko and gakkou
  * are all gakko (F.2.e).
  */
-const foldedWords = (s: string): string[] =>
-  (
+function foldedWords(s: string): string[] {
+  const words: string[] =
     s
       .normalize('NFD')
       .replace(/\p{M}/gu, '')
       .toLowerCase()
-      .match(/[a-z']+/g) ?? []
-  )
+      .match(/[a-z']+/g) ?? [];
+  return words
     .map((w) =>
       w
         .replace(/'/g, '')
@@ -376,6 +376,7 @@ const foldedWords = (s: string): string[] =>
         .replace(/([aeiou])\1+/g, '$1'),
     )
     .filter(Boolean);
+}
 
 /**
  * The rōmaji a closed typed check asks the learner to type, as the app shows

@@ -45,7 +45,8 @@ export const isRomajiAnswer = (s: string): boolean =>
  * stored in rōmaji (B.2.b): each run of kana words, then each word in it.
  */
 export function kanaCandidates(prompt: string): string[] {
-  const runs = prompt.match(/[ぁ-ゖァ-ヺー]+(?:\s+[ぁ-ゖァ-ヺー]+)*/g) ?? [];
+  const runs: string[] =
+    prompt.match(/[ぁ-ゖァ-ヺー]+(?:\s+[ぁ-ゖァ-ヺー]+)*/g) ?? [];
   return [...new Set(runs.flatMap((run) => [run, ...run.split(/\s+/)]))];
 }
 
