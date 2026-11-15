@@ -1669,3 +1669,69 @@ Measurements and the full comparison are in `ops/work/grading-model-404/tech.md`
 **Known gaps:** In addition to F.2.c's, a mention written right after a word with no punctuation between them (はな は says ha) is still rejected. A particle before a one-kana word (ねこ の え) or after a kanji (日本 から) is missed.
 
 **Reverse:** Restore F.2.c's neighbour test in `course-rules.ts` and remove the prompt line.
+
+---
+
+### B.2.a A lesson check shows its explanation after every answer, and a missed typed check shows the answer in rōmaji (amends B.2) (decided by Project Manager, 2026-11-14)
+
+**Decision:**
+1. After any lesson check is answered, right or wrong, the app shows the check's written explanation. It appears with the verdict, with no tap, and in view without scrolling on an iPhone SE-size screen. The order is: verdict, then the right answer if missed, then the explanation.
+2. A missed typed check whose answer is Japanese shows the answer in rōmaji as well as kana. The rōmaji is spelled the way grading accepts it and the lessons teach it: っ doubles the next letter, and particles are spelled as they sound (H.2.a), except a lone kana, which keeps its own sound (H.2.b). If sentences can't be done reliably, they show kana only. "ha" for the particle は is never shown.
+3. A check with no explanation shows the verdict and the answer only, with no placeholder. Nothing is generated at runtime. From 22c on, every published lesson check has an explanation, enforced in PM review.
+4. Explanations are one or two sentences, read right after a right or a wrong answer (no praise), say why a typed answer is spelled that way, and never spell out how to type a word before the lesson's check that asks for it.
+5. Chapter tests, reviews, practice and placement don't change. Their questions are built from item data, so they have no written explanation, and they never answer with the thing the learner was asked to read.
+
+**Why:** Every drafted check has an explanation (111 of 111), reviewed and published with each live drafted lesson, and no learner ever saw one. A missed typed reading check showed the kana the learner had just failed to read (`Answer: きっぷ`), so the typing rules for っ and long vowels couldn't be learned from a miss. Drafts don't reliably carry the rōmaji (lessons 19 and 20), and lesson 20 can't be republished, so the rōmaji has to come from the app. Converting kana to rōmaji mechanically gives `ha` for the particle は, which contradicts lesson 43. Showing the explanation after a right answer costs no tap, helps a lucky guess, and forces text that reads right either way. Full reasoning in `ops/work/check-explanation/brief.md`.
+
+**Rejected:** Showing it after a miss only. After a right answer only when "I guessed" is ticked. Behind a "Why?" tap. Relying on explanation text for the rōmaji. Rōmaji only. An AI-written explanation at the moment of the miss (unreviewed text on a teaching screen). Reusing lesson explanations in reviews.
+
+**Reverse:** Hide the explanation after a right answer; one condition. Drop the rōmaji from the answer line, and lesson 19's explanations still carry it.
+
+---
+
+### B.2.b How B.2.a is built: the grading response carries the explanation and both forms of a typed answer (decided by Tech Lead, 2026-11-15)
+
+**Decision:**
+1. `CheckResultDto` gains `explanation` (the check's stored text, when not blank) on every result, and `answerForms: { kana, romaji }` on a closed typed check. The lesson payload still carries neither.
+2. The rōmaji is built word by word, the same way grading reads the answer: one table in `common/answer-romaji.ts` gives は `wa`, へ `e`, を `o`, こんにちは `konnichiwa` and こんばんは `konbanwa`, with a lone kana on a kana check keeping its own sound (H.2.b). Every other word is `toRomaji`. Grading's `matchesSpoken` reads the same table.
+3. For an answer stored in rōmaji, the kana is the run of kana in the check's prompt that the grader judges equal to it.
+4. A pair is sent only if the grader accepts both forms against the stored answer. Otherwise the learner sees kana only.
+5. B.2.a's fallback for sentences (kana only) is not built. The gate already puts every particle in a closed typed answer in its own word once one is taught (H.2.a, H.2.b), so は is always spelled `wa`, and the self-check catches anything else.
+6. The result (verdict, answer, rōmaji, explanation) is shown in the screen's pinned footer above Next, so it is in view without scrolling whatever the question's length.
+
+**Why:** The explanation gives the answer away, so it travels with the answer. One table and a self-check mean the app can't show a spelling the grader rejects. The footer is the one place on the screen that never scrolls away.
+
+**Rejected:** Explanation in the lesson payload (it leaks the answer). A separate explanation request (extra round trip). Rōmaji built in the app with wanakana (a second copy of the grading rules, and `konnichiha`, as for B.3.a). Rōmaji stored at publish (lesson 20 can't be republished). Finding particles by kuromoji part of speech (rejected in H.2.a). Auto-scrolling to the result.
+
+**Reverse:** Drop the two fields and the footer panel. No data change is involved. Full plan in `ops/work/check-explanation/tech.md`.
+
+---
+
+### H.2.d Katakana ー is compared as the vowel before it (amends H.2) (decided by Tech Lead, 2026-11-15)
+
+**Decision:** Before comparing a typed answer, `normalizeJapanese` turns each ー after a kana into that kana's own vowel (ノート becomes のおと), on both sides. So `nooto`, `no-to`, `のーと` and `ノート` all match ノート. `nouto` no longer does. Hiragana is unchanged: `gakkoo` and `arigato` stay wrong.
+
+**Why:** `toHiragana` turns katakana オー into おう, so the grader compared ノート as のうと. It rejected the normal rōmaji (`nooto`) and the IME spelling (`no-to`), and accepted only `nouto`, which spells a different word (spike, 2026-11-15). Lesson 39 teaches ノート, コーヒー and スポーツ, and B.2.a's answer line has to show a spelling the grader accepts. No live typed check has ー, and no kanji reading has ー (Neon, 2026-11-15), so no learner and no review loses an accepted answer.
+
+**Rejected:** Showing `nouto` (it teaches a wrong spelling). Keeping `nouto` accepted alongside the new spellings (two normalisations for a spelling no learner has been accepted with). Leaving grading alone (lesson 39 would mark `koohii` wrong).
+
+**Reverse:** Restore `toHiragana(text)` alone in `normalizeJapanese`.
+
+---
+
+### F.2.e The gate requires an explanation on every check and rejects rōmaji given away before it's asked for (amends F.2.a) (decided by Tech Lead, 2026-11-15)
+
+**Decision:**
+1. A check with no explanation is a gate error.
+2. So is an explanation that spells out, in rōmaji, a typed answer before the first check that asks for it. Whole words only, with macrons and doubled vowels folded, so `gakkō` counts as `gakkou`. A single kana's sound is never caught.
+3. The drafter prompt carries B.2.a's four writing rules, and says a typed correctAnswer is kana, never rōmaji.
+4. The typed-reading transform writes its explanation with the shared rōmaji, so it never says `konnichiha`.
+
+**Why:** Learners now see every explanation (B.2.a), and both rules are brief promises (P5, P6). A gate error goes back through the free redraft loop (F.2.c) and runs again at publish, so a breach can't depend on review. 0 of 273 drafted checks lack an explanation today.
+
+**Rejected:**
+- A praise-word warning. On current drafts it flags "nice to meet you" and "Perfect reply", both fine, so the noise would train reviewers to ignore it. Rule 2 stays with the prompt and PM review.
+- A length warning (the longest explanation is 94 characters, and the footer fits two sentences).
+- Adding the rules to the critic, which is kept repeatable mid-batch.
+
+**Reverse:** Remove the two checks from `checkCourseRules` and the four prompt lines.

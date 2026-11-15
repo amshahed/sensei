@@ -76,10 +76,11 @@ for (let n = from; n <= to; n++) {
     const rejected = existsSync(join(out, `${lesson.id}.rejected.json`));
     const why = d.text
       .split('\n')
-      .filter((l) => /rror|reject|✗|fail/i.test(l))
+      .filter((l) => /rror|reject|✗|fail|status|overload|timeout|ECONN/i.test(l))
+      .filter((l) => !/ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL|authoring:draft — drafted/.test(l))
       .slice(0, 3)
       .join(' | ')
-      .slice(0, 300);
+      .slice(0, 400);
     log(`${rejected ? 'REJECTED' : 'FAILED'} ${tag} draft $${dCost.toFixed(4)} total $${total.toFixed(4)} exit ${d.code} :: ${why}`);
     continue;
   }
@@ -97,6 +98,7 @@ for (let n = from; n <= to; n++) {
     .filter((l) => /^\s+✗ /.test(l))
     .map((l) => l.trim().slice(2, 90))
     .join(' | ');
-  log(`DRAFTED ${tag} draft $${dCost.toFixed(4)} critic ${verdict} $${cCost.toFixed(4)} total $${total.toFixed(4)}${misses ? ` :: ${misses}` : ''}`);
+  const invalid = d.text.match(/\[validator\] FAIL — (.*)/);
+  log(`DRAFTED ${tag} draft $${dCost.toFixed(4)}${invalid ? ` VALIDATOR-FAIL (${invalid[1].slice(0, 200)})` : ''} critic ${verdict} $${cCost.toFixed(4)} total $${total.toFixed(4)}${misses ? ` :: ${misses}` : ''}`);
 }
 log(`wave ${from}-${to} done, total $${total.toFixed(4)}`);
