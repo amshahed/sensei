@@ -18,10 +18,16 @@ interface CheckData {
   answer?: unknown;
   exemplar?: unknown;
   rubric?: unknown;
+  explanation?: unknown;
 }
 
 function asString(v: unknown): string | undefined {
   return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
+/** Text worth showing: a string with something in it besides spaces. */
+function nonBlank(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim().length > 0 ? v : undefined;
 }
 
 @Injectable()
@@ -70,13 +76,10 @@ export class ChecksService {
     const isClosed =
       check.format === 'MULTIPLE_CHOICE' || fixedAnswer !== undefined;
 
+    // A check on a kana item tests that kana's own sound, so は is ha, never wa.
+    const kanaTarget = check.targetItemId.startsWith('ja:kana:');
     const graded = isClosed
-      ? this.gradeClosed(
-          answer,
-          fixedAnswer ?? '',
-          check.format,
-          check.targetItemId,
-        )
+      ? this.gradeClosed(answer, fixedAnswer ?? '', check.format, kanaTarget)
       : await this.gradeOpen(check.prompt, answer, data);
 
     // "I guessed" downgrade (K.1): a correct multiple-choice answer the learner
@@ -110,11 +113,24 @@ export class ChecksService {
       );
     }
 
+    // Both give the answer away, so they travel with it, never on the lesson
+    // payload (B.2.b).
+    const explanation = nonBlank(data.explanation);
+    const answerForms =
+      isClosed && check.format === 'TYPED' && fixedAnswer !== undefined
+        ? this.writingEval.answerForms(fixedAnswer, {
+            kanaTarget,
+            prompt: check.prompt,
+          })
+        : null;
+
     return {
       checkId: check.id,
       correct: graded.correct,
       correctAnswer: graded.correctAnswer,
       ...(graded.feedback ? { feedback: graded.feedback } : {}),
+      ...(explanation ? { explanation } : {}),
+      ...(answerForms ? { answerForms } : {}),
     };
   }
 
@@ -136,17 +152,14 @@ export class ChecksService {
     answer: string,
     fixedAnswer: string,
     format: string,
-    targetItemId: string,
+    kanaTarget: boolean,
   ) {
     // TYPED checks use Japanese normalization (wanakana + kuromoji, H.2) so that
     // romaji input and spacing differences don't cause false negatives.
     // MULTIPLE_CHOICE answers are option IDs — ASCII exact-match is correct there.
-    // A check on a kana item tests that kana's own sound, so は is ha, never wa.
     const correct =
       format === 'TYPED'
-        ? this.writingEval.exactMatch(answer, fixedAnswer, {
-            kanaTarget: targetItemId.startsWith('ja:kana:'),
-          })
+        ? this.writingEval.exactMatch(answer, fixedAnswer, { kanaTarget })
         : exactMatch(answer, fixedAnswer);
     return {
       correct,

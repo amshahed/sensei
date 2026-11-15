@@ -36,9 +36,11 @@ describe('ChecksService', () => {
   let gradeOpen: jest.Mock;
   let seedInferred: jest.Mock;
   let userUpsert: jest.Mock;
+  let answerForms: jest.Mock;
 
   beforeEach(async () => {
     findUnique = jest.fn();
+    answerForms = jest.fn().mockReturnValue(null);
     recordCheckResult = jest.fn().mockResolvedValue({});
     seedInferred = jest.fn().mockResolvedValue(1);
     userUpsert = jest.fn().mockResolvedValue({});
@@ -62,6 +64,7 @@ describe('ChecksService', () => {
             // (wanakana + kuromoji) is tested in writing-eval.service.spec.ts.
             exactMatch: (a: string, b: string) =>
               a.trim().toLowerCase() === b.trim().toLowerCase(),
+            answerForms,
           },
         },
       ],
@@ -223,6 +226,200 @@ describe('ChecksService', () => {
     await expect(
       service.grade('nope', 'あ', 'dev-user'),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  describe('the explanation (B.2.a, P1, P6)', () => {
+    const explanation = 'あ is a, as in "father".';
+    const typedCheck = {
+      ...check,
+      format: 'TYPED',
+      data: { answer: 'あ', explanation },
+    };
+
+    it.each([
+      [
+        'MULTIPLE_CHOICE',
+        'right',
+        { ...check, data: { ...check.data, explanation } },
+        'あ',
+      ],
+      [
+        'MULTIPLE_CHOICE',
+        'wrong',
+        { ...check, data: { ...check.data, explanation } },
+        'い',
+      ],
+      ['TYPED', 'right', typedCheck, 'あ'],
+      ['TYPED', 'wrong', typedCheck, 'い'],
+    ])(
+      'comes with a %s answer graded %s',
+      async (_format, _how, row, answer) => {
+        findUnique.mockResolvedValue(row);
+
+        const result = await service.grade('chk-1', answer, 'dev-user');
+
+        expect(result.explanation).toBe(explanation);
+      },
+    );
+
+    it('comes with an open check graded by the model', async () => {
+      findUnique.mockResolvedValue({
+        ...openCheck,
+        data: { ...openCheck.data, explanation },
+      });
+      gradeOpen.mockResolvedValue({
+        rating: 'Again',
+        correct: false,
+        feedback: 'Not a greeting.',
+        exemplar: 'おはようございます',
+        gradedBy: 'ai',
+        scored: true,
+      });
+
+      const result = await service.grade('chk-open', 'inu', 'dev-user');
+
+      expect(result.explanation).toBe(explanation);
+    });
+
+    it('is sent as written', async () => {
+      findUnique.mockResolvedValue({
+        ...check,
+        data: { ...check.data, explanation: ' Two lines.\nAs written. ' },
+      });
+
+      const result = await service.grade('chk-1', 'あ', 'dev-user');
+
+      expect(result.explanation).toBe(' Two lines.\nAs written. ');
+    });
+
+    it.each([
+      ['missing', undefined],
+      ['empty', ''],
+      ['blank', '   '],
+      ['not text', 42],
+    ])('has no key at all when it is %s', async (_how, value) => {
+      findUnique.mockResolvedValue({
+        ...check,
+        data: { ...check.data, explanation: value },
+      });
+
+      const result = await service.grade('chk-1', 'い', 'dev-user');
+
+      expect(result).not.toHaveProperty('explanation');
+      expect(result).toEqual({
+        checkId: 'chk-1',
+        correct: false,
+        correctAnswer: 'あ',
+      });
+    });
+  });
+
+  describe('the answer in kana and rōmaji (B.2.b, P3)', () => {
+    const forms = { kana: 'きっぷ', romaji: 'kippu' };
+    const typedCheck = {
+      ...check,
+      format: 'TYPED',
+      targetItemId: 'ja:vocab:切符',
+      prompt: 'Read this word and type how it sounds: きっぷ',
+      data: { answer: 'きっぷ' },
+    };
+
+    it('comes with a closed typed check, built from its answer and prompt', async () => {
+      findUnique.mockResolvedValue(typedCheck);
+      answerForms.mockReturnValue(forms);
+
+      const result = await service.grade('chk-1', 'kipu', 'dev-user');
+
+      expect(answerForms).toHaveBeenCalledWith('きっぷ', {
+        kanaTarget: false,
+        prompt: typedCheck.prompt,
+      });
+      expect(result).toMatchObject({ correct: false, answerForms: forms });
+    });
+
+    it('tells the forms when the check is on a kana item (H.2.b)', async () => {
+      findUnique.mockResolvedValue({
+        ...typedCheck,
+        targetItemId: 'ja:kana:ha',
+        data: { answer: 'は' },
+      });
+
+      await service.grade('chk-1', 'wa', 'dev-user');
+
+      expect(answerForms).toHaveBeenCalledWith('は', {
+        kanaTarget: true,
+        prompt: typedCheck.prompt,
+      });
+    });
+
+    it('has no key when there are no forms', async () => {
+      findUnique.mockResolvedValue(typedCheck);
+
+      const result = await service.grade('chk-1', 'kipu', 'dev-user');
+
+      expect(result).not.toHaveProperty('answerForms');
+    });
+
+    it('never comes with multiple choice or an open check', async () => {
+      answerForms.mockReturnValue(forms);
+      findUnique.mockResolvedValue(check);
+      expect(await service.grade('chk-1', 'い', 'dev-user')).not.toHaveProperty(
+        'answerForms',
+      );
+
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Again',
+        correct: false,
+        feedback: '',
+        exemplar: 'おはようございます',
+        gradedBy: 'ai',
+        scored: true,
+      });
+      expect(
+        await service.grade('chk-open', 'inu', 'dev-user'),
+      ).not.toHaveProperty('answerForms');
+      expect(answerForms).not.toHaveBeenCalled();
+    });
+
+    describe('on real grading', () => {
+      let writingEval: WritingEvalService;
+      beforeAll(async () => {
+        writingEval = new WritingEvalService();
+        await writingEval.onModuleInit();
+      }, 10_000);
+
+      const grade = (row: object, typedIn: string) =>
+        new ChecksService(
+          { check: { findUnique: () => Promise.resolve(row) } } as never,
+          { recordCheckResult } as never,
+          {} as never,
+          writingEval,
+        ).grade('chk-1', typedIn, 'dev-user');
+
+      it.each([
+        ['きっぷ', 'ja:vocab:切符', 'kipu', 'kippu'],
+        [
+          'ともだち は いしゃ です',
+          'ja:grammar:は',
+          'tomodachi ga isha desu',
+          'tomodachi wa isha desu',
+        ],
+        ['こんにちは', 'ja:vocab:今日は', 'konichiwa', 'konnichiwa'],
+      ])(
+        'shows %s as %s after a miss, and the rōmaji shown is then right',
+        async (answer, targetItemId, wrong, romaji) => {
+          const row = { ...typedCheck, targetItemId, data: { answer } };
+
+          const missed = await grade(row, wrong);
+          expect(missed.correct).toBe(false);
+          expect(missed.answerForms).toEqual({ kana: answer, romaji });
+
+          const retried = await grade(row, missed.answerForms!.romaji);
+          expect(retried.correct).toBe(true);
+        },
+      );
+    });
   });
 
   describe('open / free-response checks (AI grading)', () => {
