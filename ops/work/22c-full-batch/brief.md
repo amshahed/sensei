@@ -24,6 +24,7 @@ The 22b promises carry over unchanged, per lesson type (`ops/work/22b-sample-les
 - **Driver:** `node ops/work/22c-full-batch/run-wave.mjs <from> <to> <cap-usd>`, run from the main checkout. Course order; skips audio lessons, existing drafts and existing rejections; drafts each lesson with `--max-cost 0.4`, then critiques it; stops before the running total passes the cap. One line per lesson in `run.log`.
 - **Rejections:** read the `.rejected.json`. If a code fix would cure it, fix and `--recheck` ($0). Otherwise redraft once with `--force` (the redraft is told why). A second rejection of the same lesson goes to the PM and Tech Lead as a prompt problem, not a third paid try.
 - **PM review** (22b `content-review.md` section 6): every I-Reading, F-Grammar and sound lesson in full; skim F-Kana, F-Kanji and phrase lessons. Verdicts and edits go in `content-review.md` here. A second strike on an on-watch type stops that type until the prompt is fixed.
+  - Once `check-explanation` ships, learners see every check's explanation after every answer (`check-explanation` brief 3.5, B.2.a). Review explanations against those rules: present, one or two sentences, no praise, reads right after a miss, and never spells out how to type a word before the check that asks for it. Flag any open (AI-graded) check before it is published (`check-explanation` brief section 5).
 - **Publish:** the Lead approves with `EDITOR=true pnpm --filter api authoring:review <id>` after the PM's edits are in the draft, then `authoring:publish <id>`.
 
 ## Money
