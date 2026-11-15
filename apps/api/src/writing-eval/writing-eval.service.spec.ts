@@ -1,4 +1,6 @@
 import { WritingEvalService } from './writing-eval.service';
+import { answerWords } from '../common/answer-romaji';
+import { ALL_TYPED_ANSWERS, type TypedAnswer } from '../testing/typed-answers';
 
 /**
  * Build a WritingEvalService with the kuromoji tokenizer loaded (onModuleInit
@@ -108,6 +110,63 @@ describe('WritingEvalService — normalizeJapanese', () => {
 
   it('converts mixed romaji + kana', () => {
     expect(svc.normalizeJapanese('neko ga iru')).toBe('ねこ が いる');
+  });
+
+  it.each([
+    ['ノート', 'のおと'],
+    ['コーヒー', 'こおひい'],
+    ['ゲーム', 'げえむ'],
+    ['ラーメン', 'らあめん'],
+    ['スポーツ', 'すぽおつ'],
+    ['シャーベット', 'しゃあべっと'],
+    ['のーと', 'のおと'],
+    ['no-to', 'のおと'],
+  ])('spells the ー in %s as the vowel it holds: %s (H.2.d)', (text, norm) => {
+    expect(svc.normalizeJapanese(text)).toBe(norm);
+  });
+
+  it('leaves a ー with no vowel before it alone', () => {
+    expect(svc.normalizeJapanese('ンー')).toBe('んー');
+  });
+});
+
+describe('WritingEvalService — katakana long vowels (H.2.d)', () => {
+  let svc: WritingEvalService;
+  beforeAll(async () => {
+    svc = await buildService();
+  }, 10_000);
+
+  it.each([
+    ['nooto', 'ノート'],
+    ['no-to', 'ノート'],
+    ['のーと', 'ノート'],
+    ['ノート', 'ノート'],
+    ['のおと', 'ノート'],
+    ['koohii', 'コーヒー'],
+    ['ko-hi-', 'コーヒー'],
+    ['geemu', 'ゲーム'],
+    ['raamen', 'ラーメン'],
+    ['supootsu', 'スポーツ'],
+    ['ノート', 'nooto'],
+    ['スポーツ', 'supootsu'],
+  ])('accepts %s for %s', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(true);
+  });
+
+  it.each([
+    ['nouto', 'ノート'],
+    ['kouhii', 'コーヒー'],
+    ['supoutsu', 'スポーツ'],
+    ['noto', 'ノート'],
+  ])('rejects %s for %s, which spells another word', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(false);
+  });
+
+  it.each([
+    ['gakkoo', 'がっこう'],
+    ['arigato', 'ありがとう'],
+  ])('leaves hiragana as it was: %s is still wrong for %s', (typed, answer) => {
+    expect(svc.exactMatch(typed, answer)).toBe(false);
   });
 });
 
@@ -224,5 +283,100 @@ describe('WritingEvalService — exactMatch (tokenizer not loaded)', () => {
 
   it('still returns false for wrong answer', () => {
     expect(svc.exactMatch('いぬ', 'ねこ')).toBe(false);
+  });
+});
+
+describe('WritingEvalService — answerForms (B.2.b, P3)', () => {
+  let svc: WritingEvalService;
+  beforeAll(async () => {
+    svc = await buildService();
+  }, 10_000);
+
+  const formsOf = ({ answer, prompt, targetItemId }: TypedAnswer) =>
+    svc.answerForms(answer, {
+      prompt,
+      kanaTarget: targetItemId.startsWith('ja:kana:'),
+    });
+
+  it.each(ALL_TYPED_ANSWERS.map((t) => [t.source, t] as const))(
+    '%s has both forms, and the grader accepts each',
+    (_source, t) => {
+      const forms = formsOf(t);
+      expect(forms).not.toBeNull();
+      const kanaTarget = t.targetItemId.startsWith('ja:kana:');
+      expect(svc.exactMatch(forms!.romaji, t.answer, { kanaTarget })).toBe(
+        true,
+      );
+      expect(svc.exactMatch(forms!.kana, t.answer, { kanaTarget })).toBe(true);
+    },
+  );
+
+  it('never spells the particle は as ha, nor こんにちは as konnichiha', () => {
+    for (const t of ALL_TYPED_ANSWERS) {
+      const kanaTarget = t.targetItemId.startsWith('ja:kana:');
+      const { romaji } = formsOf(t)!;
+      const words = answerWords(t.answer);
+      if (words.join('') !== 'は' || !kanaTarget) {
+        words.forEach((w, i) => {
+          if (w === 'は') expect(romaji.split(' ')[i]).toBe('wa');
+        });
+      }
+      expect(romaji).not.toMatch(/konnichiha|konbanha/);
+    }
+  });
+
+  it.each([
+    ['きっぷ', 'kippu'],
+    ['ともだち は いしゃ です', 'tomodachi wa isha desu'],
+    ['こんにちは', 'konnichiwa'],
+    ['ノート', 'nooto'],
+  ])('shows %s as itself and %s', (answer, romaji) => {
+    expect(svc.answerForms(answer, { prompt: '' })).toEqual({
+      kana: answer,
+      romaji,
+    });
+  });
+
+  it('shows the kana は on a kana check as ha (H.2.b)', () => {
+    expect(svc.answerForms('は', { kanaTarget: true })).toEqual({
+      kana: 'は',
+      romaji: 'ha',
+    });
+  });
+
+  it('takes the kana of an answer stored in rōmaji from its prompt', () => {
+    expect(
+      svc.answerForms('ao', {
+        kanaTarget: true,
+        prompt: 'Read this word and type how it sounds: あお',
+      }),
+    ).toEqual({ kana: 'あお', romaji: 'ao' });
+    expect(
+      svc.answerForms(' Nooto ', { prompt: 'Type ノート in rōmaji.' }),
+    ).toEqual({ kana: 'ノート', romaji: 'nooto' });
+  });
+
+  it('picks the word in the prompt that is the answer, not the first kana', () => {
+    expect(
+      svc.answerForms('kasa', {
+        prompt: 'In そら は あお, read かさ: type it.',
+      }),
+    ).toEqual({ kana: 'かさ', romaji: 'kasa' });
+  });
+
+  it.each([
+    ['cat', 'What does ねこ mean? Type it in English.'],
+    ['ao', 'Type the word for blue.'],
+    ['日本', 'Type it: にほん'],
+  ])('has no forms for %s with the prompt %j', (answer, prompt) => {
+    expect(svc.answerForms(answer, { prompt })).toBeNull();
+  });
+
+  it('has no forms when the grader would not accept the rōmaji', () => {
+    const spy = jest
+      .spyOn(svc, 'exactMatch')
+      .mockImplementation((typed) => typed !== 'kippu');
+    expect(svc.answerForms('きっぷ', {})).toBeNull();
+    spy.mockRestore();
   });
 });
