@@ -18,6 +18,8 @@ describe('answerRomaji (B.2.b)', () => {
     ['ノート', 'nooto'],
     ['コーヒー', 'koohii'],
     ['ゲーム', 'geemu'],
+    ['らーめん', 'raamen'],
+    ['のーと', 'nooto'],
   ])('spells the word %s as %s', (answer, romaji) => {
     expect(answerRomaji(answer)).toBe(romaji);
   });

@@ -3,9 +3,11 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import type { CheckDto, CheckResultDto, LessonDetailDto } from '@sensei/types';
@@ -384,12 +386,20 @@ function CheckBeat({
  * What a check tells the learner once it is graded (B.2.a): the verdict, then
  * the right answer if they missed, in kana with its rōmaji under it when the
  * server sends both, then the explanation. A check with no explanation shows
- * nothing in its place. Text is never truncated.
+ * nothing in its place. Text is never truncated. The panel never takes more
+ * than about half the screen, so Next stays on screen and the question keeps
+ * room: real results fit well inside that, and only an extreme one (a long
+ * model answer at a large text size) scrolls within the panel.
  */
 function ResultPanel({ result }: { result: CheckResultDto }) {
+  const { height } = useWindowDimensions();
   const forms = result.correct ? undefined : result.answerForms;
   return (
-    <View style={styles.result}>
+    <ScrollView
+      style={{ maxHeight: height * RESULT_MAX_SHARE }}
+      contentContainerStyle={styles.result}
+      bounces={false}
+    >
       <Text style={result.correct ? ui.ok : ui.err}>
         {result.correct ? 'Correct!' : 'Not quite.'}
       </Text>
@@ -402,9 +412,12 @@ function ResultPanel({ result }: { result: CheckResultDto }) {
       {result.explanation ? (
         <Text style={ui.body}>{result.explanation}</Text>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
+
+/** The most of the window the result panel may take (B.2.b, P2). */
+const RESULT_MAX_SHARE = 0.45;
 
 /**
  * End of lesson. Owns the completion write, which is what advances the

@@ -1,10 +1,5 @@
 import { toRomaji } from 'wanakana';
-import {
-  answerRomaji,
-  isRomajiAnswer,
-  kanaCandidates,
-  normalizeJapanese,
-} from '../common/answer-romaji';
+import { answerFormsOf, normalizeJapanese } from '../common/answer-romaji';
 import {
   ANSWER_PUNCTUATION,
   hasLongVowel,
@@ -357,9 +352,8 @@ function typedReadingProblems(
 const ONE_SOUND = /^[ぁ-ゖ][ゃゅょ]?$/;
 
 /**
- * The Latin words of a text, folded so that spellings of one sound agree:
- * macrons stripped, ou and doubled vowels made one, so gakkō, gakko and gakkou
- * are all gakko (F.2.e).
+ * The Latin words of a text, each folded as looseRomaji folds it, so gakkō,
+ * gakko and gakkou are all gakko, and kin'you is kinyou (F.2.e).
  */
 function foldedWords(s: string): string[] {
   const words: string[] =
@@ -368,36 +362,26 @@ function foldedWords(s: string): string[] {
       .replace(/\p{M}/gu, '')
       .toLowerCase()
       .match(/[a-z']+/g) ?? [];
-  return words
-    .map((w) =>
-      w
-        .replace(/'/g, '')
-        .replace(/ou/g, 'o')
-        .replace(/([aeiou])\1+/g, '$1'),
-    )
-    .filter(Boolean);
+  return words.map((w) => looseRomaji(w.replace(/'/g, ''))).filter(Boolean);
 }
 
 /**
  * The rōmaji a closed typed check asks the learner to type, as the app shows
- * it after a miss (B.2.b), or null for one kana's sound, which pointing out is
- * fine, and for an answer with no one rōmaji. An answer stored in rōmaji
- * counts only when the prompt shows its kana, so an English answer such as
- * "school" is never taken for one.
+ * it after a miss (B.2.b, the same resolver), or null for one kana's sound,
+ * which pointing out is fine, and for an answer with no one rōmaji. An answer
+ * stored in rōmaji counts only when the prompt shows its kana, so an English
+ * answer such as "school" is never taken for one.
  */
 function askedRomaji(q: CheckQuestion): string | null {
   if (q.answerType !== 'typed' || q.grading === 'open') return null;
-  const answer = q.correctAnswer.trim();
-  const graded = (s: string) => asGraded(normalizeJapanese(s));
-  if (ONE_SOUND.test(graded(answer))) return null;
-  if (isRomajiAnswer(answer)) {
-    const kana = graded(answer);
-    const shown = kanaCandidates(q.prompt).some((c) => graded(c) === kana);
-    return shown ? answer.toLowerCase().replace(/\s+/g, ' ') : null;
+  if (ONE_SOUND.test(asGraded(normalizeJapanese(q.correctAnswer)))) {
+    return null;
   }
-  return answerRomaji(answer, {
+  const forms = answerFormsOf(q.correctAnswer, {
     kanaTarget: q.targetItemId.startsWith('ja:kana:'),
+    prompt: q.prompt,
   });
+  return forms?.romaji ?? null;
 }
 
 /**

@@ -1,50 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
-  ANSWER_SEPARATORS,
-  answerRomaji,
-  answerWords,
-  isLoneKana,
-  isRomajiAnswer,
-  kanaCandidates,
+  answerFormsOf,
   normalizeJapanese,
-  SPOKEN,
+  typedAnswersMatch,
+  type AnswerForms,
 } from '../common/answer-romaji';
-import { ANSWER_PUNCTUATION } from '../common/japanese-script';
 import {
   buildTokenizer,
   type JapaneseTokenizer,
 } from '../common/japanese-tokenizer';
 
-/** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
-const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
-
-/**
- * Whole words only, so wana stays wrong for はな. Each position is independent,
- * so watashi wa hon wo yomimasu passes. On a check of a kana item, an answer
- * that is one kana is that character, so は is ha and wa stays wrong.
- */
-function matchesSpoken(
-  answer: string,
-  exemplar: string,
-  kanaTarget: boolean,
-): boolean {
-  const words = answerWords(exemplar);
-  const literal = isLoneKana(words, kanaTarget);
-  const pattern = words
-    .map(
-      (w) =>
-        (!literal && SPOKEN[w]?.pattern) ||
-        w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
-    )
-    .join('');
-  return new RegExp(`^${pattern}$`).test(answer.replace(ANSWER_SEPARATORS, ''));
-}
-
-/** A typed answer as the learner sees it after a miss (B.2.a). */
-export interface AnswerForms {
-  kana: string;
-  romaji: string;
-}
+export type { AnswerForms };
 
 /**
  * Japanese writing-answer evaluation (H.2).
@@ -111,19 +77,10 @@ export class WritingEvalService implements OnModuleInit {
     exemplar: string,
     { kanaTarget = false }: { kanaTarget?: boolean } = {},
   ): boolean {
-    const normAnswer = this.normalizeJapanese(answer);
-    const normExemplar = this.normalizeJapanese(exemplar);
-    const joinedAnswer = this.tokenize(
-      normAnswer.replace(PUNCTUATION, ''),
-    ).join('');
-    const joinedExemplar = this.tokenize(
-      normExemplar.replace(PUNCTUATION, ''),
-    ).join('');
-    if (joinedAnswer === joinedExemplar) return true;
-    return (
-      /[a-z]/i.test(answer) &&
-      matchesSpoken(normAnswer, normExemplar, kanaTarget)
-    );
+    return typedAnswersMatch(answer, exemplar, {
+      kanaTarget,
+      join: (s) => this.tokenize(s).join(''),
+    });
   }
 
   /**
@@ -141,19 +98,17 @@ export class WritingEvalService implements OnModuleInit {
       prompt = '',
     }: { kanaTarget?: boolean; prompt?: string },
   ): AnswerForms | null {
-    const stored = answer.trim();
     const opts = { kanaTarget };
-    const romajiStored = isRomajiAnswer(stored);
-    const kana = romajiStored
-      ? kanaCandidates(prompt).find((c) => this.exactMatch(stored, c, opts))
-      : stored;
-    const romaji = romajiStored
-      ? stored.toLowerCase().replace(/\s+/g, ' ')
-      : answerRomaji(stored, opts);
-    if (!kana || !romaji) return null;
+    const forms = answerFormsOf(answer, {
+      kanaTarget,
+      prompt,
+      match: (typed, stored) => this.exactMatch(typed, stored, opts),
+    });
+    if (!forms) return null;
+    const stored = answer.trim();
     const accepted =
-      this.exactMatch(romaji, stored, opts) &&
-      this.exactMatch(kana, stored, opts);
-    return accepted ? { kana, romaji } : null;
+      this.exactMatch(forms.romaji, stored, opts) &&
+      this.exactMatch(forms.kana, stored, opts);
+    return accepted ? forms : null;
   }
 }

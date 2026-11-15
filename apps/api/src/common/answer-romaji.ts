@@ -83,9 +83,10 @@ export const isLoneKana = (words: string[], kanaTarget: boolean): boolean =>
 /**
  * The rōmaji of a typed answer, spelled the way grading accepts it and the
  * lessons teach it (B.2.a, B.2.b): word by word, a spoken word from the table
- * (は is wa) and every other word as wanakana spells it (きっぷ is kippu,
- * ノート is nooto). Null when a word isn't kana only (kanji, Latin letters),
- * because there is then no one rōmaji for it.
+ * (は is wa), and every other word as wanakana spells it once ー is the vowel
+ * it holds (きっぷ is kippu, ノート is nooto, らーめん is raamen, never
+ * ra-men). Null when a word isn't kana only (kanji, Latin letters), because
+ * there is then no one rōmaji for it.
  */
 export function answerRomaji(
   answer: string,
@@ -95,6 +96,93 @@ export function answerRomaji(
   if (words.length === 0 || !words.every(isKanaOnly)) return null;
   const literal = isLoneKana(words, kanaTarget);
   return words
-    .map((w) => (!literal && SPOKEN[w]?.romaji) || toRomaji(w))
+    .map(
+      (w) => (!literal && SPOKEN[w]?.romaji) || toRomaji(normalizeJapanese(w)),
+    )
     .join(' ');
+}
+
+/** Never part of an answer: こんにちは。 is こんにちは (N6, H.2.c). */
+const PUNCTUATION = new RegExp(`[${ANSWER_PUNCTUATION}]`, 'g');
+
+/**
+ * Whole words only, so wana stays wrong for はな. Each position is independent,
+ * so watashi wa hon wo yomimasu passes. On a check of a kana item, an answer
+ * that is one kana is that character, so は is ha and wa stays wrong.
+ */
+function matchesSpoken(
+  answer: string,
+  exemplar: string,
+  kanaTarget: boolean,
+): boolean {
+  const words = answerWords(exemplar);
+  const literal = isLoneKana(words, kanaTarget);
+  const pattern = words
+    .map(
+      (w) =>
+        (!literal && SPOKEN[w]?.pattern) ||
+        w.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&'),
+    )
+    .join('');
+  return new RegExp(`^${pattern}$`).test(answer.replace(ANSWER_SEPARATORS, ''));
+}
+
+/**
+ * Whether a typed answer matches a stored one (H.2): both normalized, then
+ * compared without spaces and punctuation, and rōmaji input may spell a
+ * particle as it sounds (H.2.a). `join` is how the grader splits and rejoins
+ * the text; the default, dropping whitespace, is what it does without its
+ * tokenizer, so the authoring gate, which has none, judges as grading does.
+ */
+export function typedAnswersMatch(
+  answer: string,
+  exemplar: string,
+  {
+    kanaTarget = false,
+    join = (s: string) => s.replace(/\s/g, ''),
+  }: { kanaTarget?: boolean; join?: (s: string) => string } = {},
+): boolean {
+  const normAnswer = normalizeJapanese(answer);
+  const normExemplar = normalizeJapanese(exemplar);
+  const joined = (s: string) => join(s.replace(PUNCTUATION, ''));
+  if (joined(normAnswer) === joined(normExemplar)) return true;
+  return (
+    /[a-z]/i.test(answer) && matchesSpoken(normAnswer, normExemplar, kanaTarget)
+  );
+}
+
+/** A typed answer as the learner sees it after a miss (B.2.a). */
+export interface AnswerForms {
+  kana: string;
+  romaji: string;
+}
+
+/**
+ * The kana and rōmaji a closed typed answer is shown with (B.2.b), before the
+ * grader's own check of them. Kana stored: the answer as written, and its
+ * rōmaji. Rōmaji stored: the first run of kana in the prompt that `match`
+ * takes for the answer, and the answer itself. Null when there is no one form
+ * of each. The app and the authoring gate both take the forms from here.
+ */
+export function answerFormsOf(
+  answer: string,
+  {
+    kanaTarget = false,
+    prompt = '',
+    match = (typed, stored) => typedAnswersMatch(typed, stored, { kanaTarget }),
+  }: {
+    kanaTarget?: boolean;
+    prompt?: string;
+    match?: (typed: string, stored: string) => boolean;
+  } = {},
+): AnswerForms | null {
+  const stored = answer.trim();
+  if (isRomajiAnswer(stored)) {
+    const kana = kanaCandidates(prompt).find((c) => match(stored, c));
+    return kana
+      ? { kana, romaji: stored.toLowerCase().replace(/\s+/g, ' ') }
+      : null;
+  }
+  const romaji = answerRomaji(stored, { kanaTarget });
+  return romaji ? { kana: stored, romaji } : null;
 }

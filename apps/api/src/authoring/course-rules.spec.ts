@@ -653,6 +653,7 @@ describe('explanations (F.2.e, P5, P6)', () => {
       ['がっこう (gakkō) is school.', 'gakkō'],
       ['Spelled gakko, with a pause.', 'gakko'],
       ['GAKKOU is school.', 'GAKKOU'],
+      ['Spelled gakkô in some books.', 'gakkô'],
     ])('rejects "%s" before the typed がっこう', (explanation) => {
       expect(
         giveaways(19, [q('q1', { explanation }), q('q2', {}), school('q4')]),
@@ -682,6 +683,22 @@ describe('explanations (F.2.e, P5, P6)', () => {
         targetItemId: 'ja:grammar:は',
         prompt: "Type this sentence: 'My friend is a doctor.'",
         correctAnswer: 'ともだち は いしゃ です',
+      });
+      expect(
+        giveaways(43, [
+          q('q1', { explanation: 'It reads tomodachi wa isha desu.' }),
+          sentence,
+        ]),
+      ).toEqual([
+        'check q1: the explanation spells out "tomodachi wa isha desu" before check q4 asks for it',
+      ]);
+    });
+
+    it('rejects a sentence stored in rōmaji with the particle said wa', () => {
+      const sentence = typed('q4', {
+        targetItemId: 'ja:grammar:は',
+        prompt: 'Type it: ともだち は いしゃ です',
+        correctAnswer: 'tomodachi wa isha desu',
       });
       expect(
         giveaways(43, [

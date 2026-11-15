@@ -1,5 +1,5 @@
 import { WritingEvalService } from './writing-eval.service';
-import { answerWords } from '../common/answer-romaji';
+import { answerWords, typedAnswersMatch } from '../common/answer-romaji';
 import { ALL_TYPED_ANSWERS, type TypedAnswer } from '../testing/typed-answers';
 
 /**
@@ -378,5 +378,49 @@ describe('WritingEvalService — answerForms (B.2.b, P3)', () => {
       .mockImplementation((typed) => typed !== 'kippu');
     expect(svc.answerForms('きっぷ', {})).toBeNull();
     spy.mockRestore();
+  });
+});
+
+describe('typedAnswersMatch, the gate’s matcher, agrees with the grader', () => {
+  let svc: WritingEvalService;
+  beforeAll(async () => {
+    svc = await buildService();
+  }, 10_000);
+
+  const cases: Array<[string, string, boolean]> = [
+    ...SPOKEN_ACCEPTED.map(
+      ([a, b]) => [a, b, false] as [string, string, boolean],
+    ),
+    ...SPOKEN_REJECTED.map(
+      ([a, b]) => [a, b, false] as [string, string, boolean],
+    ),
+    ...PUNCTUATION_ACCEPTED.map(
+      ([a, b]) => [a, b, false] as [string, string, boolean],
+    ),
+    ...STRICT_ACCEPTED.map(
+      ([a, b]) => [a, b, true] as [string, string, boolean],
+    ),
+    ...STRICT_REJECTED.map(
+      ([a, b]) => [a, b, true] as [string, string, boolean],
+    ),
+    ['nooto', 'ノート', false],
+    ['nouto', 'ノート', false],
+    ['raamen', 'らーめん', false],
+  ];
+
+  it.each(cases)(
+    '%s against %s (kana check: %s)',
+    (typed, stored, kanaTarget) => {
+      expect(typedAnswersMatch(typed, stored, { kanaTarget })).toBe(
+        svc.exactMatch(typed, stored, { kanaTarget }),
+      );
+    },
+  );
+
+  it('shows らーめん as raamen, which the grader accepts', () => {
+    expect(svc.answerForms('らーめん', {})).toEqual({
+      kana: 'らーめん',
+      romaji: 'raamen',
+    });
   });
 });
