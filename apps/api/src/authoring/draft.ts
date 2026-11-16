@@ -9,12 +9,17 @@
  * lesson(s), generates a draft for each, runs the structural validator and the
  * course rules, and writes the output to tools/authoring/output/<lesson-id>.json.
  *
- * A run never pays twice unless told to (F.2.a): a lesson with a draft or a
- * rejected draft is skipped, so a batch can be resumed after a crash.
+ * A run never pays twice unless told to (F.2.a): a lesson with a draft, a
+ * rejected draft or a failed reply is skipped, so a batch can be resumed after
+ * a crash.
  *
- * --recheck makes no model call (F.2.b): it reruns the typed-reading
- * transform, the validator and the gate on each <id>.rejected.json, so a draft
- * already paid for is recovered when a code fix cures its rejection.
+ * A paid reply is never thrown away (F.2.f): one that can't be read as a draft
+ * is saved to <id>.failed.json, its cost counts, and the batch goes on.
+ *
+ * --recheck makes no model call (F.2.b): it re-reads each <id>.failed.json,
+ * then reruns the typed-reading transform, the validator and the gate on it or
+ * on <id>.rejected.json, so a draft already paid for is recovered when a code
+ * fix cures it.
  *
  * Prerequisites:
  *   - pnpm --filter api ingest:items (issue #34)
@@ -28,12 +33,21 @@ import { PrismaClient } from '@prisma/client';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import { makeVoyageClient, type VoyageClient } from '../voyage/voyage-client';
 import { SkeletonSchema, type Lesson, type Skeleton } from './skeleton-schema';
-import { generateDraft, type RawItem } from './lesson-prompter';
+import {
+  DraftReplyError,
+  generateDraft,
+  parseDraftReply,
+  replyErrorMessage,
+  type GenerateDraftResult,
+  type RawItem,
+  type ReceivedReply,
+} from './lesson-prompter';
 import { validateStructure } from './lesson-validator';
 import { readCorrections } from './corrections-log';
 import { courseContextFor, type CourseContext } from './course-context';
 import { checkCourseRules } from './course-rules';
 import { addTypedReadingChecks } from './typed-reading';
+import { repointUndeclaredTargets } from './item-refs';
 import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import {
   AUTHORING_TIMEOUT_MS,
@@ -129,6 +143,8 @@ export interface DraftRunSummary {
   rechecked: number;
   skipped: number;
   rejected: number;
+  /** Paid replies that couldn't be read as a draft, kept in <id>.failed.json. */
+  failed: number;
   costUsd: number;
   /** The lesson the run stopped before, when --max-cost was reached. */
   stoppedBefore?: string;
@@ -153,11 +169,82 @@ function readRejectedDraft(file: string): LessonDraft {
   return LessonDraftSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
 }
 
+/** <id>.failed.json: a paid reply that couldn't be read as a draft (F.2.f). */
+type FailedReply = ReceivedReply & {
+  lessonId: string;
+  costUsd: number | null;
+  error: string;
+};
+
 /**
- * The one path every draft takes, fresh or rechecked (F.2.b): the typed-reading
- * transform, the structural validator, then the course rules. A draft that
- * breaks a rule goes to <id>.rejected.json, never <id>.json, so review can't
- * pick it up. Returns whether the draft was saved.
+ * Saves a paid reply that couldn't be read as a draft. A paid reply is never
+ * overwritten, so an older one is kept as <id>.failed.prev.json (then
+ * .failed.prev.2.json and on).
+ */
+function saveFailedReply(
+  file: (suffix: string) => string,
+  lessonId: string,
+  received: ReceivedReply,
+  error: string,
+): void {
+  const { model, inputTokens, outputTokens } = received;
+  const failed: FailedReply = {
+    lessonId,
+    receivedAt: received.receivedAt,
+    model,
+    inputTokens,
+    outputTokens,
+    costUsd: estimateCost(model, inputTokens, outputTokens),
+    stopReason: received.stopReason,
+    error,
+    ...(received.reply !== undefined ? { reply: received.reply } : {}),
+    ...(received.raw !== undefined ? { raw: received.raw } : {}),
+  };
+  keepFailedAside(file);
+  fs.writeFileSync(
+    file('.failed.json'),
+    JSON.stringify(failed, null, 2),
+    'utf8',
+  );
+  console.warn(
+    `  [reply] FAILED — ${error}  (tokens: ${inputTokens} in / ${outputTokens} out  (${formatCost(model, inputTokens, outputTokens)})) → ${file('.failed.json')}`,
+  );
+}
+
+/**
+ * Moves <id>.failed.json aside to the first free .failed.prev[.N].json, so no
+ * failed reply, each one paid for, is ever overwritten (F.2.f).
+ */
+function keepFailedAside(file: (suffix: string) => string): void {
+  if (!fs.existsSync(file('.failed.json'))) return;
+  let to = '.failed.prev.json';
+  for (let n = 2; fs.existsSync(file(to)); n++) to = `.failed.prev.${n}.json`;
+  fs.renameSync(file('.failed.json'), file(to));
+}
+
+/**
+ * Why the last attempt failed, told to a --force redraft (F.2.c). A failed
+ * reply is always the newest attempt: a later draft or rejection moves it
+ * aside. Otherwise, the rejected draft's reasons.
+ */
+function previousAttemptErrors(file: (suffix: string) => string): string[] {
+  if (fs.existsSync(file('.failed.json'))) {
+    const { error } = readFailedReply(file('.failed.json'));
+    return [`the reply could not be read as a draft: ${error}`];
+  }
+  return rejectionReasons(file('.rejected.json'));
+}
+
+function readFailedReply(file: string): FailedReply {
+  return JSON.parse(fs.readFileSync(file, 'utf8')) as FailedReply;
+}
+
+/**
+ * The one path every draft takes, fresh or rechecked (F.2.b): the repoint of a
+ * check on an undeclared item (F.2.h), the typed-reading transform, the
+ * structural validator, then the course rules. A draft that fails the
+ * validator or breaks a rule goes to <id>.rejected.json, never <id>.json, so
+ * review can't pick it up. Returns whether the draft was saved.
  */
 async function gateAndSave(
   generated: LessonDraft,
@@ -167,7 +254,19 @@ async function gateAndSave(
   items: RawItem[] | undefined,
   spent: string,
 ): Promise<boolean> {
-  const draft = ctx ? addTypedReadingChecks(generated, ctx) : generated;
+  let draft = generated;
+  if (ctx) {
+    const { draft: repointed, repointed: moves } = repointUndeclaredTargets(
+      draft,
+      ctx,
+    );
+    for (const m of moves) {
+      console.log(
+        `  [item refs] check ${m.questionId}: ${m.from} is not declared; its answer is ${m.to}, so it now targets that`,
+      );
+    }
+    draft = addTypedReadingChecks(repointed, ctx);
+  }
 
   const validation = await validateStructure(draft, prisma, items);
   if (!validation.pass) {
@@ -180,15 +279,19 @@ async function gateAndSave(
   for (const w of rules?.warnings ?? []) {
     console.warn(`  [course rules] warning: ${w}`);
   }
-  if (rules && rules.errors.length > 0) {
+  // One list, so a --force redraft is told every reason (F.2.c) and
+  // --recheck can cure a structural failure as well as a rule.
+  const errors = [
+    ...validation.errors.map((e) => `structure: ${e}`),
+    ...(rules?.errors ?? []),
+  ];
+  if (errors.length > 0) {
     fs.writeFileSync(
       file('.rejected.json'),
-      JSON.stringify({ ...draft, courseRuleErrors: rules.errors }, null, 2),
+      JSON.stringify({ ...draft, courseRuleErrors: errors }, null, 2),
       'utf8',
     );
-    console.warn(
-      `  [course rules] REJECTED — ${rules.errors.join('; ')}  (${spent})`,
-    );
+    console.warn(`  [gate] REJECTED — ${errors.join('; ')}  (${spent})`);
     return false;
   }
 
@@ -222,6 +325,7 @@ export async function runDrafts(
     rechecked: 0,
     skipped: 0,
     rejected: 0,
+    failed: 0,
     costUsd: 0,
   };
   fs.mkdirSync(outputDir, { recursive: true });
@@ -232,8 +336,11 @@ export async function runDrafts(
     const ctx = courseContextFor(skeleton, lesson.id);
 
     if (options.recheck) {
-      if (!fs.existsSync(file('.rejected.json'))) {
-        console.log(`  skipping "${lesson.id}": no rejected draft to recheck`);
+      const failed = fs.existsSync(file('.failed.json'));
+      if (!failed && !fs.existsSync(file('.rejected.json'))) {
+        console.log(
+          `  skipping "${lesson.id}": no rejected draft or failed reply to recheck`,
+        );
         summary.skipped++;
         continue;
       }
@@ -246,6 +353,12 @@ export async function runDrafts(
         continue;
       }
       console.log(`  rechecking "${lesson.id}" (no model call)`);
+      if (failed) {
+        // Before the rejected draft: it is the newer paid reply.
+        const outcome = await recheckFailedReply(lesson, ctx, file, options);
+        summary[outcome]++;
+        continue;
+      }
       const saved = await gateAndSave(
         readRejectedDraft(file('.rejected.json')),
         ctx,
@@ -259,7 +372,7 @@ export async function runDrafts(
       continue;
     }
 
-    const existing = ['.json', '.rejected.json'].find((s) =>
+    const existing = ['.json', '.rejected.json', '.failed.json'].find((s) =>
       fs.existsSync(file(s)),
     );
     if (existing && !force) {
@@ -280,38 +393,110 @@ export async function runDrafts(
       CORRECTIONS_N,
       options.correctionsPath,
     );
-    // Only a --force redraft gets here with a rejected draft on disk.
-    const previousErrors = rejectionReasons(file('.rejected.json'));
+    // Only a --force redraft gets here with a rejected draft or a failed
+    // reply on disk.
+    const previousErrors = previousAttemptErrors(file);
     console.log(
       `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections${previousErrors.length > 0 ? `, ${previousErrors.length} rejection reasons` : ''})`,
     );
 
-    const { draft, items, inputTokens, outputTokens } = await generateDraft(
-      options.anthropic,
-      options.voyage,
-      options.prisma,
-      lesson,
-      corrections,
-      ctx,
-      previousErrors,
-    );
+    let generated: GenerateDraftResult;
+    try {
+      generated = await generateDraft(
+        options.anthropic,
+        options.voyage,
+        options.prisma,
+        lesson,
+        corrections,
+        ctx,
+        previousErrors,
+      );
+    } catch (err) {
+      // Anything else failed before or during the call, so nothing was paid.
+      if (!(err instanceof DraftReplyError)) throw err;
+      const { model, inputTokens, outputTokens } = err.received;
+      summary.costUsd += estimateCost(model, inputTokens, outputTokens) ?? 0;
+      saveFailedReply(file, lesson.id, err.received, err.message);
+      summary.failed++;
+      continue;
+    }
+    const { draft, items, inputTokens, outputTokens } = generated;
     summary.costUsd +=
       estimateCost(draft.meta.model, inputTokens, outputTokens) ?? 0;
     const cost = formatCost(draft.meta.model, inputTokens, outputTokens);
 
-    const saved = await gateAndSave(
-      draft,
-      ctx,
-      file,
-      options.prisma,
-      items,
-      `tokens: ${inputTokens} in / ${outputTokens} out  (${cost})`,
-    );
-    if (saved) summary.drafted++;
-    else summary.rejected++;
+    try {
+      const saved = await gateAndSave(
+        draft,
+        ctx,
+        file,
+        options.prisma,
+        items,
+        `tokens: ${inputTokens} in / ${outputTokens} out  (${cost})`,
+      );
+      // A redraft supersedes an older failed reply, which is kept aside so a
+      // later --recheck can't put it back over this one.
+      keepFailedAside(file);
+      if (saved) summary.drafted++;
+      else summary.rejected++;
+    } catch (err) {
+      // Environmental (the database, the disk): keep the reply, then stop.
+      saveFailedReply(
+        file,
+        lesson.id,
+        {
+          model: draft.meta.model,
+          inputTokens,
+          outputTokens,
+          stopReason: null,
+          receivedAt: draft.meta.generatedAt,
+          reply: draft,
+        },
+        replyErrorMessage(err),
+      );
+      throw err;
+    }
   }
 
   return summary;
+}
+
+/**
+ * --recheck of <id>.failed.json, at $0: the saved reply is read with today's
+ * code, then gated as a fresh draft is. Once it is a draft or a rejected
+ * draft, the failed reply lives there and its file goes. A reply that still
+ * can't be read keeps its file, with the error brought up to date.
+ */
+async function recheckFailedReply(
+  lesson: Lesson,
+  ctx: CourseContext,
+  file: (suffix: string) => string,
+  options: DraftRunOptions,
+): Promise<'rechecked' | 'rejected' | 'failed'> {
+  const stored = readFailedReply(file('.failed.json'));
+  let draft: LessonDraft;
+  try {
+    draft = parseDraftReply(stored, lesson);
+  } catch (err) {
+    const error = replyErrorMessage(err);
+    fs.writeFileSync(
+      file('.failed.json'),
+      JSON.stringify({ ...stored, error }, null, 2),
+      'utf8',
+    );
+    console.warn(`  [reply] still FAILED — ${error}  (recheck, $0)`);
+    return 'failed';
+  }
+  const saved = await gateAndSave(
+    draft,
+    ctx,
+    file,
+    options.prisma,
+    undefined,
+    'recheck of a failed reply, no model call, $0',
+  );
+  fs.rmSync(file('.failed.json'));
+  return saved ? 'rechecked' : 'rejected';
 }
 
 /** --recheck never calls the model, and this makes it so by construction. */
@@ -370,9 +555,9 @@ async function main(): Promise<void> {
       voyage: makeVoyageClient(),
     });
     console.log(
-      `authoring:draft — drafted ${summary.drafted}, rechecked ${summary.rechecked}, skipped ${summary.skipped}, rejected ${summary.rejected}, estimated cost ~$${summary.costUsd.toFixed(4)}${summary.stoppedBefore ? `, stopped before ${summary.stoppedBefore}` : ''}`,
+      `authoring:draft — drafted ${summary.drafted}, rechecked ${summary.rechecked}, skipped ${summary.skipped}, rejected ${summary.rejected}, failed ${summary.failed}, estimated cost ~$${summary.costUsd.toFixed(4)}${summary.stoppedBefore ? `, stopped before ${summary.stoppedBefore}` : ''}`,
     );
-    if (summary.rejected > 0) process.exitCode = 1;
+    if (summary.rejected > 0 || summary.failed > 0) process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }

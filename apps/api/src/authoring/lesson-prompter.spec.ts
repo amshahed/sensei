@@ -6,6 +6,7 @@ import {
   buildDraftPrompt,
   buildCritiquePrompt,
   passagesFor,
+  DraftReplyError,
 } from './lesson-prompter';
 import type { CourseContext } from './course-context';
 import { untaughtParticles } from './course-rules';
@@ -230,6 +231,36 @@ describe('buildDraftPrompt carries the rules for explanations (B.2.a, F.2.e)', (
   ])('says %s, with or without course context', (_rule, text) => {
     expect(withContext).toContain(text);
     expect(plain).toContain(text);
+  });
+});
+
+describe('buildDraftPrompt describes open checks only where asked (F.2.i)', () => {
+  const OPEN_LINE =
+    'A question with no single right answer has answerType "typed", grading "open"';
+  const ONE_ANSWER =
+    'Every check has one right answer: write no open checks and no grading field.';
+  const { lessons, ctxAt } = compiledOutline();
+  const promptAt = (n: number) =>
+    buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
+
+  it('tells lesson 120, whose note asks for one, how to write it', () => {
+    expect(promptAt(120)).toContain(OPEN_LINE);
+    expect(promptAt(120)).not.toContain(ONE_ANSWER);
+  });
+
+  it('tells every other lesson to write no open check and no grading', () => {
+    for (const n of [37, 47, 75]) {
+      expect(promptAt(n)).not.toContain(OPEN_LINE);
+      expect(promptAt(n)).toContain(ONE_ANSWER);
+    }
+  });
+});
+
+describe('buildDraftPrompt for an I-Reading lesson (F.2.g)', () => {
+  it('says Teach gives a typed word its meaning, never its rōmaji', () => {
+    expect(buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [])).toContain(
+      'Teach never writes in rōmaji a word that a typed check asks for: give its meaning only.',
+    );
   });
 });
 
@@ -462,18 +493,146 @@ describe('generateDraft', () => {
     expect(embedAllFn).toHaveBeenCalledTimes(1);
   });
 
-  it('throws on non-JSON LLM output', async () => {
+  it('throws on non-JSON LLM output, keeping the text and its cost (F.2.f)', async () => {
     const createFn = jest.fn().mockResolvedValue({
       content: [{ type: 'text', text: 'Sorry, cannot help.' }],
+      stop_reason: 'end_turn',
       usage: { input_tokens: 10, output_tokens: 5 },
     });
     const fake: AnthropicLike = { messages: { create: createFn } };
     const { voyage } = makeVoyageFake(false);
     const prisma = makePrisma();
 
-    await expect(
-      generateDraft(fake, voyage, prisma, TEST_LESSON, []),
-    ).rejects.toThrow('non-JSON output');
+    const err = await generateDraft(fake, voyage, prisma, TEST_LESSON, []).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(DraftReplyError);
+    expect((err as DraftReplyError).message).toMatch('non-JSON output');
+    expect((err as DraftReplyError).received).toMatchObject({
+      model: 'claude-opus-4-8',
+      inputTokens: 10,
+      outputTokens: 5,
+      stopReason: 'end_turn',
+      raw: 'Sorry, cannot help.',
+    });
+    expect((err as DraftReplyError).received).not.toHaveProperty('reply');
+  });
+
+  describe('a reply that is not quite a draft (F.2.f)', () => {
+    const replyWith = (
+      reply: unknown,
+      stop_reason = 'end_turn',
+    ): AnthropicLike => ({
+      messages: {
+        create: jest.fn().mockResolvedValue({
+          content: [
+            {
+              type: 'text',
+              text: typeof reply === 'string' ? reply : JSON.stringify(reply),
+            },
+          ],
+          stop_reason,
+          usage: { input_tokens: 200, output_tokens: 400 },
+        }),
+      },
+    });
+    const draftFrom = (reply: unknown, stop?: string) =>
+      generateDraft(
+        replyWith(reply, stop),
+        makeVoyageFake(false).voyage,
+        makePrisma(),
+        TEST_LESSON,
+        [],
+      );
+    const failureOf = (reply: unknown, stop?: string) =>
+      draftFrom(reply, stop).then(
+        () => {
+          throw new Error('expected a DraftReplyError');
+        },
+        (e: unknown) => e as DraftReplyError,
+      );
+    const withGrading = (grading: unknown, rubric?: string) => ({
+      ...MINIMAL_DRAFT,
+      check: {
+        questions: [
+          {
+            ...MINIMAL_DRAFT.check.questions[0],
+            answerType: 'typed',
+            choices: undefined,
+            grading,
+            ...(rubric ? { rubric } : {}),
+          },
+        ],
+      },
+    });
+
+    it('drops a grading other than "open" from a check with no rubric', async () => {
+      const { draft } = await draftFrom(withGrading('closed'));
+      expect(draft.check.questions[0]).not.toHaveProperty('grading');
+    });
+
+    it('reads "Open" in any case or spacing as "open"', async () => {
+      const { draft } = await draftFrom(withGrading(' Open ', 'Any greeting.'));
+      expect(draft.check.questions[0].grading).toBe('open');
+    });
+
+    it('still refuses a non-open grading with a rubric, keeping the reply', async () => {
+      const reply = withGrading('ai', 'Any greeting.');
+      const err = await failureOf(reply);
+      expect(err).toBeInstanceOf(DraftReplyError);
+      expect(err.message).toMatch(/check\.questions\.0\.grading/);
+      expect(err.received.reply).toEqual(JSON.parse(JSON.stringify(reply)));
+      expect(err.received).not.toHaveProperty('raw');
+    });
+
+    it('keeps a non-open grading where the outline allows open checks (F.2.i)', async () => {
+      const lesson120 = {
+        ...TEST_LESSON,
+        authorNote:
+          'End with one open check: answerType "typed", grading "open".',
+      };
+      const err = await generateDraft(
+        replyWith(withGrading('ai')),
+        makeVoyageFake(false).voyage,
+        makePrisma(),
+        lesson120,
+        [],
+      ).then(
+        () => null,
+        (e: unknown) => e as DraftReplyError,
+      );
+      expect(err).toBeInstanceOf(DraftReplyError);
+      expect(err!.message).toMatch(/grading/);
+    });
+
+    it("takes the lesson's id, type, title and targets from the skeleton", async () => {
+      const { draft } = await draftFrom({
+        ...MINIMAL_DRAFT,
+        lessonId: 'foundation-ja-ch01-l1',
+        lessonType: 'F-Vocab',
+        title: 'Vowels',
+        targetItemIds: ['ja:kana:a', 'ja:kana:ii'],
+      });
+      expect(draft).toMatchObject({
+        lessonId: TEST_LESSON.id,
+        lessonType: TEST_LESSON.type,
+        title: TEST_LESSON.title,
+        targetItemIds: TEST_LESSON.itemIds,
+      });
+    });
+
+    it('keeps a reply cut off at max_tokens as text', async () => {
+      const err = await failureOf('{"lessonId": "x", "teach":', 'max_tokens');
+      expect(err).toBeInstanceOf(DraftReplyError);
+      expect(err.message).toMatch(/cut off/);
+      expect(err.received).toMatchObject({
+        raw: '{"lessonId": "x", "teach":',
+        stopReason: 'max_tokens',
+        inputTokens: 200,
+        outputTokens: 400,
+      });
+    });
   });
 
   it('strips markdown fences before parsing', async () => {

@@ -12,6 +12,7 @@ import {
   type OutlineSpec,
 } from './outline-compiler';
 import type { Lesson } from './skeleton-schema';
+import { openChecksAllowed } from './course-rules';
 
 const real = loadOutlineSpec();
 const clone = (): OutlineSpec =>
@@ -78,11 +79,31 @@ describe('the committed outline (F.1.b)', () => {
 
   it('targets words only in the sound lessons, and asks for typed readings there (P2, P3)', () => {
     expect(soundLessons).toHaveLength(6);
-    for (const l of soundLessons) {
+    for (const l of [...soundLessons, lesson(real, 38)]) {
       expect(l.typedReading).toBe(true);
       expect(l.itemIds.filter((id) => id.startsWith('ja:kana:'))).toEqual([]);
     }
-    expect(lessonsOf(real).filter((l) => l.typedReading)).toHaveLength(6);
+    expect(lessonsOf(real).filter((l) => l.typedReading)).toHaveLength(7);
+  });
+
+  it('teaches the katakana sounds at lesson 38, before the reading lesson at 39 (F.1.c)', () => {
+    const sounds = lesson(real, 38);
+    expect(sounds).toMatchObject({
+      id: 'foundation-ja-ch07-l06',
+      title: 'Katakana sounds: ー, ッ, ャ and voiced marks',
+      typedReading: true,
+    });
+    expect(
+      real.soundStages.find(
+        (s) => s.label === 'katakana ー, ッ, ャ and voiced marks',
+      )?.lessonId,
+    ).toBe('foundation-ja-ch07-l06');
+    expect(lesson(real, 39)).toMatchObject({
+      id: 'foundation-ja-ch07-l07',
+      type: 'I-Reading',
+      title: 'Reading katakana loanwords II',
+    });
+    expect(lesson(real, 39).typedReading).toBeUndefined();
   });
 
   it('teaches 25 distinct phrases before lesson 26, each with a note (P5)', () => {
@@ -114,6 +135,14 @@ describe('the committed outline (F.1.b)', () => {
   it('opens lesson 120 as a free self-introduction (P10)', () => {
     expect(lesson(real, 120).type).toBe('I-Writing');
     expect(lesson(real, 120).authorNote).toMatch(/grading "open"/);
+  });
+
+  it('allows an open check in lesson 120 only, so a reworded note fails here (F.2.i)', () => {
+    expect(
+      lessonsOf(real)
+        .filter((l) => openChecksAllowed(l.authorNote))
+        .map((l) => l.id),
+    ).toEqual(['foundation-ja-ch17-l07']);
   });
 });
 

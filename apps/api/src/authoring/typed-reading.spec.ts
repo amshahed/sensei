@@ -233,6 +233,34 @@ describe('addTypedReadingChecks (F.2.b)', () => {
     );
   });
 
+  it('rewrites a reading check whose prompt spells the answer as the app shows it (test.md F4)', () => {
+    const ctx: CourseContext = {
+      ...ctxAt(21),
+      typedReading: true,
+      targets: [{ id: 'ja:vocab:こんにちは', surface: 'こんにちは' }],
+    };
+    const draft = draftAt(21, [
+      {
+        id: 'q1',
+        targetItemId: 'ja:vocab:こんにちは',
+        prompt: `${TYPED_READING_PROMPT} こんにちは (konnichiwa)`,
+        answerType: 'typed',
+        correctAnswer: 'こんにちは',
+        explanation: 'The last kana is said wa.',
+      },
+    ]);
+    expect(isFairTypedReading(draft.check.questions[0], 'こんにちは')).toBe(
+      false,
+    );
+    const after = addTypedReadingChecks(draft, ctx);
+    expect(after.check.questions).toEqual([
+      {
+        ...draft.check.questions[0],
+        prompt: `${TYPED_READING_PROMPT} こんにちは`,
+      },
+    ]);
+  });
+
   it('adds no check for a target the draft leaves out, so the gate rejects it (test.md F2)', () => {
     const ctx = ctxAt(20);
     const dropped = ctx.targets.find((t) => t.id === 'ja:vocab:写真')!;
@@ -342,11 +370,11 @@ describe('every typed-reading target accepts its rōmaji (P4, P5)', () => {
     ctxAt(n).targets.map((t) => [n, t.surface] as const),
   );
 
-  it('covers the six typed-reading lessons, 15 to 20', () => {
+  it('covers the seven typed-reading lessons, 15 to 20 and 38 (F.1.c)', () => {
     expect(typedReadingLessons.map(({ n }) => n)).toEqual([
-      15, 16, 17, 18, 19, 20,
+      15, 16, 17, 18, 19, 20, 38,
     ]);
-    expect(targets).toHaveLength(30);
+    expect(targets).toHaveLength(35);
   });
 
   // The gate calls a check fair only if a learner typing the word is marked

@@ -324,6 +324,8 @@ export const WAVE1_TYPED_ANSWERS: TypedAnswer[] = [
     prompt: "Type in kana the word that means 'once more'.",
     answer: 'もういちど',
   },
+  // The ch07-l06 and ch07-l07 sources are the wave 1 drafts from before
+  // F.1.c swapped those two lessons: l06 was the reading lesson, l07 the sounds.
   {
     source: 'ch07-l06 q2',
     targetItemId: 'ja:kana:kata-ha',

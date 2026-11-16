@@ -4,8 +4,9 @@
  * Usage: pnpm --filter api authoring:publish <lesson-id> [--skeleton <path>]
  *
  * Reads the approved draft from tools/authoring/published/<lesson-id>.json,
- * then writes Module → Chapter → Lesson → LessonItem → Check rows
- * transactionally. Re-publishing is idempotent (upserts by slug).
+ * checks it against the structural validator and the course rules, then
+ * writes Module → Chapter → Lesson → LessonItem → Check rows transactionally.
+ * Re-publishing is idempotent (upserts by slug).
  *
  * Prerequisites:
  *   - Draft approved via authoring:review (published/ file must exist)
@@ -14,11 +15,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { PrismaClient } from '@prisma/client';
-import { SkeletonSchema } from './skeleton-schema';
-import { LessonDraftSchema } from './lesson-schema';
+import { SkeletonSchema, type Skeleton } from './skeleton-schema';
+import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import { publishLesson } from './lesson-publisher';
 import { courseContextFor } from './course-context';
 import { checkCourseRules } from './course-rules';
+import { validateStructure } from './lesson-validator';
 
 function parseArgs(): {
   lessonId: string;
@@ -44,6 +46,28 @@ function parseArgs(): {
   );
 
   return { lessonId, skeletonPath, publishedDir };
+}
+
+/**
+ * Why a draft can't be published, empty when it can (F.2.h): the structural
+ * validator, so a check on an undeclared item is named here rather than by the
+ * foreign key mid-transaction, and the course rules when the skeleton gives
+ * the lesson a context. Course-rule warnings are printed, never refused.
+ */
+export async function publishRefusals(
+  draft: LessonDraft,
+  skeleton: Skeleton,
+  prisma: PrismaClient,
+): Promise<string[]> {
+  const validation = await validateStructure(draft, prisma);
+  const refusals = validation.errors.map((e) => `structure: ${e}`);
+  const ctx = courseContextFor(skeleton, draft.lessonId);
+  if (ctx) {
+    const { errors, warnings } = checkCourseRules(draft, ctx);
+    for (const w of warnings) console.warn(`  [course rules] warning: ${w}`);
+    refusals.push(...errors);
+  }
+  return refusals;
 }
 
 async function main(): Promise<void> {
@@ -76,19 +100,14 @@ async function main(): Promise<void> {
     `authoring:publish — writing "${draft.lessonId}" (${draft.lessonType}) to DB`,
   );
 
-  const ctx = courseContextFor(skeleton, draft.lessonId);
-  if (ctx) {
-    const { errors, warnings } = checkCourseRules(draft, ctx);
-    for (const w of warnings) console.warn(`  [course rules] warning: ${w}`);
-    if (errors.length > 0) {
-      throw new Error(
-        `Refusing to publish "${draft.lessonId}": it breaks the course rules:\n  ${errors.join('\n  ')}`,
-      );
-    }
-  }
-
   const prisma = new PrismaClient();
   try {
+    const refusals = await publishRefusals(draft, skeleton, prisma);
+    if (refusals.length > 0) {
+      throw new Error(
+        `Refusing to publish "${draft.lessonId}": it fails the gate:\n  ${refusals.join('\n  ')}`,
+      );
+    }
     const result = await publishLesson(draft, skeleton, prisma);
     const action = result.created ? 'created' : 'updated';
     console.log(
@@ -100,7 +119,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
-  console.error((err as Error).message ?? err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err: unknown) => {
+    console.error((err as Error).message ?? err);
+    process.exit(1);
+  });
+}

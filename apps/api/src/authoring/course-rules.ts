@@ -1,5 +1,9 @@
 import { toRomaji } from 'wanakana';
-import { answerFormsOf, normalizeJapanese } from '../common/answer-romaji';
+import {
+  answerFormsOf,
+  answerWords,
+  normalizeJapanese,
+} from '../common/answer-romaji';
 import {
   ANSWER_PUNCTUATION,
   hasLongVowel,
@@ -307,11 +311,138 @@ function particleProblems(text: string, pc: ParticleContext): string[] {
 export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
 
 /**
+ * Rōmaji that is also a common English word (F.2.g). The gate can't tell a
+ * reading from the word there, so no give-away rule protects it. For a
+ * loanword such as ゼロ the meaning gives the same letters anyway. Curated:
+ * a rejection quoting an English word means a word belongs here.
+ */
+export const ENGLISH_LOOKALIKES: ReadonlySet<string> = new Set([
+  // the vowels
+  'a',
+  'i',
+  'u',
+  'e',
+  'o',
+  // short sound-words
+  'to',
+  'no',
+  'so',
+  'go',
+  'do',
+  'he',
+  'me',
+  'hi',
+  'be',
+  'ha',
+  'ma',
+  'mo',
+  'ya',
+  'yo',
+  're',
+  'ta',
+  'pa',
+  'pi',
+  // the beta outline's collisions: あれ それ だれ まん ふん ゼロ
+  'are',
+  'sore',
+  'dare',
+  'man',
+  'fun',
+  'zero',
+  'made',
+  'same',
+  'name',
+  'too',
+  'you',
+]);
+
+const isLookalike = (romaji: string) =>
+  ENGLISH_LOOKALIKES.has(romaji.toLowerCase().replace(/\s+/g, ' ').trim());
+
+/** A hyphen between two letters, as typed in kip-pu or no-to. */
+const HYPHEN = /(?<=[a-z])-(?=[a-z])/g;
+
+/**
+ * Text as the give-away rules read rōmaji (F.2.g): lowercased, a macron or
+ * circumflex as the vowel doubled (ō is oo), other accents and apostrophes
+ * gone (kin’you is kinyou), and ou as oo, so gakkou, gakkō and gakkoo are one
+ * spelling. Doubled vowels are never collapsed: that made いい i and どう do.
+ */
+const romajiText = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/([a-z])[\u0302\u0304]/g, '$1$1')
+    .replace(/\p{M}/gu, '')
+    .replace(/['’‘]/g, '')
+    .replace(/ou/g, 'oo');
+
+/** The Latin words of a text, padded so a match is whole words only. */
+const asWords = (s: string) => ` ${(s.match(/[a-z]+/g) ?? []).join(' ')} `;
+
+/**
+ * Whether a text spells out this rōmaji, as whole words, the whole answer in
+ * order. A hyphen is read both ways: dropped (kip-pu, na-ni) and, after a
+ * vowel, as that vowel again (no-to is nooto, as typing it is, H.2.e).
+ */
+export function spellsOut(text: string, romaji: string): boolean {
+  const needle = asWords(romajiText(romaji));
+  if (!needle.trim()) return false;
+  const t = romajiText(text);
+  return [
+    t.replace(HYPHEN, ''),
+    t.replace(/([aeiou])-(?=[a-z])/g, '$1$1').replace(HYPHEN, ''),
+  ].some((reading) => asWords(reading).includes(needle));
+}
+
+/**
+ * One kana, or one with a small kana after it (きゃ, ティ, ファ): a sound,
+ * not a word (F.2.e, F.2.g). Read after normalizeJapanese, so katakana counts.
+ */
+const ONE_SOUND = /^[ぁ-ゖ][ぁぃぅぇぉゃゅょゎ]?$/;
+
+const isOneSound = (q: CheckQuestion) =>
+  ONE_SOUND.test(asGraded(normalizeJapanese(q.correctAnswer)));
+
+/**
+ * The rōmaji of what a closed typed check asks the learner to type (F.2.g):
+ * the spelling the app shows after a miss (B.2.b, the same resolver), and the
+ * kana read literally, は as ha, so "tomodachi ha isha desu" counts. English
+ * lookalikes are left out. Empty for an open or untyped check and for an
+ * answer with no one rōmaji. An answer stored in rōmaji counts only when the
+ * prompt shows its kana, so an English answer such as "school" never does.
+ */
+function romajiOfAnswer(q: CheckQuestion): string[] {
+  if (q.answerType !== 'typed' || q.grading === 'open') return [];
+  const forms = answerFormsOf(q.correctAnswer, {
+    kanaTarget: q.targetItemId.startsWith('ja:kana:'),
+    prompt: q.prompt,
+  });
+  if (!forms) return [];
+  const literal = answerWords(forms.kana)
+    .map((w) => toRomaji(normalizeJapanese(w)))
+    .join(' ');
+  return [...new Set([forms.romaji, literal])].filter((r) => !isLookalike(r));
+}
+
+/**
+ * The rōmaji of its own answer that a closed typed check's prompt spells out,
+ * single sounds included ("Type the kana that reads 'ka'"), or undefined. The
+ * standard reading prompt is never read as rōmaji (F.2.g).
+ */
+function ownAnswerInPrompt(q: CheckQuestion): string | undefined {
+  const prompt = q.prompt.replace(TYPED_READING_PROMPT, '');
+  return romajiOfAnswer(q).find((r) => spellsOut(prompt, r));
+}
+
+/**
  * P2: a closed typed check whose answer is the word, and whose prompt shows the
  * word with no rōmaji for it. The gate and the typed-reading transform both
  * judge a check by this, so they can't drift apart (F.2.b). The answer is
  * compared as the grader compares it (H.2.c), so がっこう。 is the word and
- * 「がっこう」, which no learner could match, is not.
+ * 「がっこう」, which no learner could match, is not. A prompt spelling out the
+ * answer as the app shows it (konnichiwa) is no fairer than wanakana's
+ * spelling (F.2.g).
  */
 export function isFairTypedReading(
   question: CheckQuestion,
@@ -324,7 +455,8 @@ export function isFairTypedReading(
   const prompt = looseRomaji(question.prompt.replace(TYPED_READING_PROMPT, ''));
   return (
     spaceless(question.prompt).includes(spaceless(surface)) &&
-    !prompt.includes(looseRomaji(romajiOf(surface)))
+    !prompt.includes(looseRomaji(romajiOf(surface))) &&
+    ownAnswerInPrompt(question) === undefined
   );
 }
 
@@ -348,66 +480,86 @@ function typedReadingProblems(
   return problems;
 }
 
-/** One kana, or one with a small ゃ, ゅ or ょ: a sound, not a word (F.2.e). */
-const ONE_SOUND = /^[ぁ-ゖ][ゃゅょ]?$/;
-
 /**
- * The Latin words of a text, each folded as looseRomaji folds it, so gakkō,
- * gakko and gakkou are all gakko, and kin'you is kinyou (F.2.e).
- */
-function foldedWords(s: string): string[] {
-  const words: string[] =
-    s
-      .normalize('NFD')
-      .replace(/\p{M}/gu, '')
-      .toLowerCase()
-      .match(/[a-z']+/g) ?? [];
-  return words.map((w) => looseRomaji(w.replace(/'/g, ''))).filter(Boolean);
-}
-
-/**
- * The rōmaji a closed typed check asks the learner to type, as the app shows
- * it after a miss (B.2.b, the same resolver), or null for one kana's sound,
- * which pointing out is fine, and for an answer with no one rōmaji. An answer
- * stored in rōmaji counts only when the prompt shows its kana, so an English
- * answer such as "school" is never taken for one.
- */
-function askedRomaji(q: CheckQuestion): string | null {
-  if (q.answerType !== 'typed' || q.grading === 'open') return null;
-  if (ONE_SOUND.test(asGraded(normalizeJapanese(q.correctAnswer)))) {
-    return null;
-  }
-  const forms = answerFormsOf(q.correctAnswer, {
-    kanaTarget: q.targetItemId.startsWith('ja:kana:'),
-    prompt: q.prompt,
-  });
-  return forms?.romaji ?? null;
-}
-
-/**
- * P5 (F.2.e): the learner reads each explanation before the next question, so
- * none may spell out in rōmaji a word that a later check is the first to ask
- * them to type. Whole words only. The check's own explanation, and every one
- * after the first check that asks for the word, may give it.
+ * P5 (F.2.e, F.2.g): the learner reads each explanation before the next
+ * question, so none may spell out in rōmaji a word that a later check is the
+ * first to ask them to type. Pointing out one kana's sound is fine. The
+ * check's own explanation, and every one after the first check that asks for
+ * the word, may give it.
  */
 function giveawayProblems(questions: CheckQuestion[]): string[] {
   const problems: string[] = [];
   const asked = new Set<string>();
   questions.forEach((ask, i) => {
-    const romaji = askedRomaji(ask);
-    const words = romaji ? foldedWords(romaji) : [];
-    const needle = ` ${words.join(' ')} `;
-    if (words.length === 0 || asked.has(needle)) return;
-    asked.add(needle);
+    const forms = isOneSound(ask) ? [] : romajiOfAnswer(ask);
+    const key = forms.length ? asWords(romajiText(forms[0])) : '';
+    if (!key.trim() || asked.has(key)) return;
+    asked.add(key);
     for (const q of questions.slice(0, i)) {
-      if (` ${foldedWords(q.explanation ?? '').join(' ')} `.includes(needle)) {
+      const given = forms.find((r) => spellsOut(q.explanation ?? '', r));
+      if (given) {
         problems.push(
-          `check ${q.id}: the explanation spells out "${romaji}" before check ${ask.id} asks for it`,
+          `check ${q.id}: the explanation spells out "${given}" before check ${ask.id} asks for it`,
         );
       }
     }
   });
   return problems;
+}
+
+/**
+ * F.2.g, for I-Reading: Teach must not spell out in rōmaji a word that one of
+ * the lesson's typed checks asks the learner to read, or the check tests
+ * copying (lessons 4, 8 and 13). Every Teach field the learner reads counts,
+ * an example's reading included. A worked example no check asks for is fine.
+ */
+function readingTeachProblems(
+  draft: LessonDraft,
+  ctx: CourseContext,
+): string[] {
+  if (ctx.lessonType !== 'I-Reading') return [];
+  const teach = learnerFields(draft).filter((f) =>
+    f.where.startsWith('teach['),
+  );
+  const problems: string[] = [];
+  // One error per field and word, naming the first check that asks for it.
+  const seen = new Set<string>();
+  for (const q of draft.check.questions) {
+    if (isOneSound(q)) continue;
+    for (const romaji of romajiOfAnswer(q)) {
+      for (const { where, text } of teach) {
+        const key = `${where}${asWords(romajiText(romaji))}`;
+        if (seen.has(key) || !spellsOut(text, romaji)) continue;
+        seen.add(key);
+        problems.push(
+          `${where}: spells out "${romaji}" in rōmaji, and check ${q.id} asks the learner to type it`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/** F.2.g: a typed check whose prompt spells out its own answer. */
+function selfAnsweringProblems(questions: CheckQuestion[]): string[] {
+  return questions.flatMap((q) => {
+    const romaji = ownAnswerInPrompt(q);
+    return romaji
+      ? [
+          `check ${q.id}: the prompt spells out "${romaji}", the answer it asks for`,
+        ]
+      : [];
+  });
+}
+
+/**
+ * F.2.i: whether a lesson may have an open check, which only the AI grader can
+ * mark. Only where the outline's author note asks for one with grading
+ * "open" (lesson 120 today, pinned by a spec over the outline). The gate and
+ * the draft prompt both ask this.
+ */
+export function openChecksAllowed(authorNote?: string): boolean {
+  return authorNote?.includes('grading "open"') ?? false;
 }
 
 /**
@@ -457,6 +609,11 @@ export function checkCourseRules(
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
     }
+    if (q.grading === 'open' && !openChecksAllowed(ctx.authorNote)) {
+      errors.add(
+        `check ${q.id}: an open check is only allowed where the outline's author note asks for one`,
+      );
+    }
     if (choicesAreWords) {
       const closed = q.grading === 'open' ? [] : [q.correctAnswer];
       for (const w of [...(q.choices ?? []), ...closed].map(bare)) {
@@ -482,6 +639,8 @@ export function checkCourseRules(
   }
 
   for (const p of giveawayProblems(draft.check.questions)) errors.add(p);
+  for (const p of readingTeachProblems(draft, ctx)) errors.add(p);
+  for (const p of selfAnsweringProblems(draft.check.questions)) errors.add(p);
 
   if (ctx.typedReading) {
     for (const p of typedReadingProblems(draft, ctx)) errors.add(p);
