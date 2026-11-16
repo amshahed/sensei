@@ -1735,3 +1735,109 @@ Measurements and the full comparison are in `ops/work/grading-model-404/tech.md`
 - Adding the rules to the critic, which is kept repeatable mid-batch.
 
 **Reverse:** Remove the two checks from `checkCourseRules` and the four prompt lines.
+
+---
+
+### F.1.c The katakana reading lesson moves after the katakana sounds lesson (amends F.1.a) (decided by Project Manager, 2026-11-15)
+
+**Decision:** In chapter 7, "Katakana sounds: ー, ッ, ャ and voiced marks" becomes lesson 38 and "Reading katakana loanwords II" becomes lesson 39. Lesson ids follow position, so the sounds lesson takes `foundation-ja-ch07-l06`, the reading lesson takes `foundation-ja-ch07-l07`, and the katakana sound stage moves to `ch07-l06`. The sounds lesson also gets `typedReading`, as the hiragana sound lessons have, so each of its five words has a typed reading check that the gate enforces.
+
+**Why:**
+- Katakana a traveller meets on menus, signs and stations is mostly words with ー, voicing and small kana (ラーメン, ビール, ハンバーガー). After the sounds lesson, the reading passage can be a real café menu that practises those marks, as lesson 20 does for hiragana. Before it, the passage is limited to plain katakana, and katakana gets no reading practice with its sounds before grammar starts.
+- The wave 1 draft of the reading lesson was unusable in either position: it re-taught its five kana, its words were mostly not real, and one (マラ) is vulgar slang. The PM rewrote it, so the swap throws away no good content.
+- $0. Neither lesson is published; the Lead renames the two drafts.
+
+**Rejected:**
+- Keeping the order with a plain-katakana passage. ハム, メロン, ワイン and マラソン all work, so it was viable, but the reading lesson would then teach less of what a learner actually sees.
+- Moving the sounds lesson earlier, into chapter 6. That pulls the marks ahead of half the katakana rows.
+
+**Reverse:** Swap the two lessons back in `apps/api/data/curriculum/foundation-ja-beta.json`, recompile the outline, and rename the drafts back, before either is published. The rewritten reading lesson uses ー and voiced kana, so it would also need a plain-katakana passage. After publishing, reversing costs a republish of both.
+
+---
+
+## Authoring hardening (unit authoring-hardening)
+
+Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
+
+### F.2.f A paid reply is never thrown away, and a harmless slip in it is normalised (amends F.2.a and F.2.b) (decided by Tech Lead, 2026-11-16)
+
+**Decision:**
+1. A drafter reply that fails after the paid call (cut off at `max_tokens`, not JSON, or failing the schema) is written to `<id>.failed.json`, with the reply as the model wrote it, its token counts and the error. Its cost is printed and counted against `--max-cost`, and the batch goes on.
+2. A lesson with `.failed.json` is skipped like one with a draft or a rejected draft, unless `--force`. An older `.failed.json` is kept as `.failed.prev.json`.
+3. `--recheck` re-parses a `.failed.json` with no model call, then gates it as usual.
+4. Before the schema, a check whose `grading` isn't `"open"` and that has no `rubric` is treated as closed, and the field is dropped. `"Open"` in any case or spacing is `"open"`. A non-open `grading` with a rubric stays a failure, because it may mean open.
+5. `lessonId`, `lessonType`, `title` and `targetItemIds` are taken from the skeleton, which the prompt tells the model to copy.
+
+**Why:** In wave 2, 6 of 30 paid drafts were lost on a `grading` value the schema didn't know, and the driver logged them at $0. The reply was fine apart from that field. A check with no rubric can't be AI-graded, so treating it as closed is the only reading. Keeping the reply makes any later code fix free to apply, which F.2.b already does for gate rejections.
+
+**Rejected:**
+- Always saving every reply (doubles the files for the common case).
+- Retrying the call (pays again, and the slip repeats).
+- Accepting any string for `grading` (every reader would have to interpret it).
+- A list of closed synonyms (the model's value is unknown, and the rubric test is exact).
+
+**Reverse:** Remove the catch in `runDrafts`, `normalizeDraftReply` and the `.failed.json` branches of the skip check and `--recheck`.
+
+### F.2.g The give-away rules match rōmaji exactly, skip English lookalikes, and cover I-Reading Teach and self-answering prompts (amends F.2.e and F.2.b) (decided by Tech Lead, 2026-11-16)
+
+**Decision:**
+1. F.2.e's rōmaji folding is replaced by one matcher for every give-away rule. Both sides are lowercased. Macrons become doubled vowels, `ou` becomes `oo`, and apostrophes are removed. A hyphen is read both dropped (`kip-pu`) and as the vowel before it (`no-to`). Doubled vowels are no longer collapsed. Matching is whole words.
+2. An answer's rōmaji is both the spelling the app shows and the literal one (は as `ha`).
+3. Rōmaji that is itself a common English word is skipped: `ENGLISH_LOOKALIKES` in `course-rules.ts`, about 35 words, covering the vowels, short sound-words, and the outline's are, sore, dare, man, fun and zero.
+4. A kana with a small ぁぃぅぇぉゃゅょゎ is one sound (ティ).
+5. New gate errors, each using the same matcher:
+   - In an I-Reading lesson, a Teach field that spells out the rōmaji of one of the lesson's closed typed answers.
+   - A closed typed check whose prompt spells out its own answer, single sounds included ("Type the kana that reads 'ka'"). A typed reading check like that is no longer fair, so the F.2.b transform rewrites its prompt.
+6. The drafter prompt's I-Reading rule says Teach gives such words a meaning only.
+
+**Why:** F.2.e's folding made いい `i` and どう `do`, and some rōmaji is simply English, so fair drafts were rejected (Tester F1 on PR #78; lesson 67 on "zero"). For a loanword such as ゼロ, the meaning gives the same letters, so no lesson could avoid that "give-away". A spike over all 101 current drafts found 0 errors on approved content under the new rules, against 1 false error today. The I-Reading rule caught 6 give-aways in the PM's pre-edit lesson 13. The PM made I-Reading no-go until this rule existed.
+
+**Rejected:**
+- A warning instead of an error (the PM asked for a mechanical gate).
+- Skipping rōmaji of three letters or fewer (misses made and name, and stops catching `ii`).
+- An English dictionary dependency (it calls `ka` and `kore` English).
+- Also keeping a collapsed-vowel form: it flagged `mango`, the meaning of マンゴー, in an approved lesson.
+- Matching each word of a sentence answer: it would flag every taught word named before a sentence check.
+
+**Known gaps:**
+- A real give-away of a lookalike ("あれ is read are").
+- One word of a sentence answer.
+- wanakana spells ティ `tei`. No beta word has a small vowel kana.
+
+**Reverse:** Restore `foldedWords` in `giveawayProblems`, and remove the two new rules, the `isFairTypedReading` clause and the prompt line.
+
+### F.2.h A check on an undeclared item is repointed when its answer names one target, and otherwise refused, at draft and at publish (amends F.3) (decided by Tech Lead, 2026-11-16)
+
+**Decision:**
+1. Before the gate, a check whose `targetItemId` isn't declared is repointed when its correct answer, as graded, equals the surface of exactly one declared target.
+2. A structural validator failure now rejects the draft (`<id>.rejected.json`, errors prefixed `structure:`), so redrafts are told why and `--recheck` can cure it.
+3. `authoring:publish` runs the validator as well as the course rules, and refuses before the transaction.
+
+**Why:** Lessons 22 and 25 had garbled IDs (`ja:vocab:ありがotou`). The drafter only warned and saved the draft. Publish relied on the foreign key, which gives a raw Prisma error and backs only one of the validator's rules. In both lessons the answer equalled exactly one declared surface, which is what the Lead's hand fix used. No language judgment is involved.
+
+**Rejected:**
+- Fuzzy matching on the garbled ID (a judgment across scripts).
+- Rejecting only (a paid redraft for a mechanical fix).
+- Running the validator in `authoring:review` (needs the database there, and publish is the hard stop).
+
+**Reverse:** Remove `repointUndeclaredTargets` from `gateAndSave`, let validator failures warn again, and drop the validator call from `publishRefusals`.
+
+### F.2.i An open check only where the outline's author note asks for one (amends F.2.a) (decided by Tech Lead, 2026-11-16)
+
+**Decision:**
+1. An open check is a gate error unless the lesson's author note contains `grading "open"`. Today that is lesson 120 only, and a spec over the committed outline pins it.
+2. The drafter prompt describes open checks only in such a lesson. Elsewhere it says every check has one right answer and no `grading` field.
+
+**Why:** Three open checks appeared unasked (lessons 37, 47, 75). No lesson with one can be published until the grader's follow-up unit lands (check-explanation brief section 5). The prompt line describing open checks went to every lesson, and it is also the likely source of the `grading` slips (F.2.f).
+
+**Rejected:** A new outline flag. It's cleaner, but it changes lesson 120's compiled entry, so the post-swap rebuild diff would show more than the swap, and the note already says it.
+
+**Reverse:** Remove the error and make the prompt line unconditional again.
+
+### H.2.e A typed hyphen holds the vowel before it, in hiragana answers too (amends H.2.d's wording) (decided by Tech Lead, 2026-11-16)
+
+**Decision:** H.2.d's "Hiragana is unchanged" is corrected. A hyphen typed in rōmaji is ー, so it is accepted for any held vowel spelled with the same vowel twice: `oba-san` for おばあさん, `o-kii` for おおきい, `to-` for とお. Answers spelled with おう or えい still need every kana typed (`gakkou`, `eiga`), and `gakko-`, `arigato-` and `e-ga` stay wrong. No code change.
+
+**Why:** Tester F3 on PR #78 measured this behaviour. It only accepts spellings that sound right and match the kana, and it is the IME convention. Narrowing it to answers stored in katakana would need the grader to know the stored script, for no learner benefit.
+
+**Reverse:** Restrict `spellLongVowels` to ー present in the stored answer, with a new entry.

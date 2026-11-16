@@ -1,0 +1,120 @@
+2026-11-14T23:05:55.610Z wave 1-1 start, cap $0.50
+2026-11-14T23:06:30.311Z DRAFTED #1 the-five-vowels F-Kana draft $0.0728 critic FAIL $0.0047 total $0.0775 :: example-feel  → Examples (あい, いえ, うえ, あお) are vocabulary words but lack context or daily
+2026-11-14T23:06:30.311Z wave 1-1 done, total $0.0775
+2026-11-14T23:06:35.057Z wave 1-40 start, cap $3.50
+2026-11-14T23:07:10.047Z DRAFTED #3 foundation-ja-ch01-l03 F-Kana draft $0.0714 critic PASS $0.0044 total $0.0758
+2026-11-14T23:07:49.202Z DRAFTED #4 foundation-ja-ch01-l04 I-Reading draft $0.0743 critic FAIL $0.0069 total $0.1570 :: item-ref-match  → targetItemIds list includes 'ja:kana:ko' and 'ja:kana:so', but the pas
+2026-11-14T23:08:17.632Z REJECTED #5 foundation-ja-ch02-l01 F-Kana draft $0.0728 total $0.2298 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0728 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch02-l01 --max-cost 0.4` |   [course rules] REJECTED — teach[13]: uses に 
+2026-11-14T23:08:45.826Z REJECTED #6 foundation-ja-ch02-l02 F-Kana draft $0.0726 total $0.3024 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0726 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch02-l02 --max-cost 0.4` |   [course rules] REJECTED — teach[12]: uses th
+2026-11-14T23:09:18.013Z REJECTED #7 foundation-ja-ch02-l03 F-Kana draft $0.0726 total $0.3750 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0726 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch02-l03 --max-cost 0.4` |   [course rules] REJECTED — teach[1]: uses よ b
+2026-11-14T23:09:52.525Z DRAFTED #8 foundation-ja-ch02-l04 I-Reading draft $0.0697 critic PASS $0.0055 total $0.4502
+2026-11-14T23:10:21.032Z REJECTED #9 foundation-ja-ch03-l01 F-Kana draft $0.0725 total $0.5227 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0725 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch03-l01 --max-cost 0.4` |   [course rules] REJECTED — teach[13]: uses th
+2026-11-14T23:10:47.600Z DRAFTED #10 foundation-ja-ch03-l02 F-Kana draft $0.0547 critic PASS $0.0037 total $0.5811
+2026-11-14T23:11:19.172Z DRAFTED #11 foundation-ja-ch03-l03 F-Kana draft $0.0741 critic PASS $0.0045 total $0.6597
+2026-11-14T23:11:45.908Z DRAFTED #12 foundation-ja-ch03-l04 F-Kana draft $0.0530 critic PASS $0.0038 total $0.7165
+2026-11-14T23:12:15.906Z FAILED #13 foundation-ja-ch03-l05 I-Reading draft $0.0000 total $0.7165 exit 1 :: [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch03-l05 --max-cost 0.4`
+2026-11-14T23:12:53.492Z REJECTED #14 foundation-ja-ch03-l06 I-Writing draft $0.0955 total $0.8120 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0955 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch03-l06 --max-cost 0.4` |   [course rules] REJECTED — teach[14]: uses th
+2026-11-14T23:13:29.177Z DRAFTED #15 foundation-ja-ch04-l01 F-Vocab draft $0.0835 critic PASS $0.0047 total $0.9002
+2026-11-14T23:14:10.433Z DRAFTED #16 foundation-ja-ch04-l02 F-Vocab draft $0.0892 critic PASS $0.0065 total $0.9959
+2026-11-14T23:14:56.761Z DRAFTED #17 foundation-ja-ch04-l03 F-Vocab draft $0.1041 critic PASS $0.0078 total $1.1078
+2026-11-14T23:15:33.128Z DRAFTED #18 foundation-ja-ch04-l04 F-Vocab draft $0.0837 critic PASS $0.0047 total $1.1962
+2026-11-14T23:16:10.576Z DRAFTED #22 foundation-ja-ch05-l02 F-Vocab draft $0.0874 critic FAIL $0.0050 total $1.2886 :: item-ref-match  → q2 targetItemId is 'ja:vocab:ありがotou' (typo) instead of 'ja:vocab:ありがと
+2026-11-14T23:16:50.422Z DRAFTED #23 foundation-ja-ch05-l03 F-Vocab draft $0.0873 critic PASS $0.0048 total $1.3807
+2026-11-14T23:17:29.852Z DRAFTED #24 foundation-ja-ch05-l04 F-Vocab draft $0.0916 critic PASS $0.0050 total $1.4773
+2026-11-14T23:18:12.530Z DRAFTED #25 foundation-ja-ch05-l05 F-Vocab draft $0.0925 critic FAIL $0.0052 total $1.5750 :: item-ref-match  → q3 targetItemId contains typo 'ごちosさまでした' instead of 'ja:vocab:ごちそうさまで
+2026-11-14T23:18:16.000Z RETRY #13 foundation-ja-ch03-l05 I-Reading (first try crashed before the model call, reason not captured) draft $0.0714 critic PASS $0.0043 (manual, Lead)
+2026-11-14T23:18:46.538Z DRAFTED #27 foundation-ja-ch06-l01 F-Kana draft $0.0772 critic FAIL $0.0048 total $1.6570 :: example-feel  → Example block lists vowels in isolation (ア イ ウ エ オ) rather than a natura
+2026-11-14T23:19:16.000Z REJECTED-AGAIN #14 foundation-ja-ch03-l06 I-Writing --force redraft $0.0951: teach[14] uses と before taught ("さかな と はな"); first try used の. No third paid try: PM hand-edits the .rejected.json, then --recheck (manual, Lead)
+2026-11-14T23:19:23.995Z DRAFTED #28 foundation-ja-ch06-l02 F-Kana draft $0.0762 critic FAIL $0.0066 total $1.7398 :: example-feel  → Examples are meta-linguistic (e.g., 'the katakana ka — compare it with h
+2026-11-14T23:20:01.394Z DRAFTED #29 foundation-ja-ch06-l03 F-Kana draft $0.0798 critic PASS $0.0060 total $1.8256
+2026-11-14T23:20:33.817Z REJECTED #30 foundation-ja-ch06-l04 F-Kana draft $0.0830 total $1.9086 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0830 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch06-l04 --max-cost 0.4` |   [course rules] REJECTED — check q6: uses ン b
+2026-11-14T23:21:03.335Z REJECTED #31 foundation-ja-ch06-l05 F-Kana draft $0.0777 total $1.9863 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0777 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch06-l05 --max-cost 0.4` |   [course rules] REJECTED — teach[9]: uses ー b
+2026-11-14T23:21:36.139Z DRAFTED #32 foundation-ja-ch06-l06 I-Reading draft $0.0733 critic FAIL $0.0048 total $2.0644 :: example-feel  → No example sentences or real-world usage contexts provided; lesson focus | theme-tag-accuracy  → Title claims 'Reading katakana loanwords I' but lesson teaches onl
+2026-11-14T23:22:10.705Z DRAFTED #33 foundation-ja-ch07-l01 F-Kana draft $0.0770 critic FAIL $0.0047 total $2.1461 :: example-feel  → Example 'ハ ホ' is isolated kana, not a natural daily-life sentence or wor
+2026-11-14T23:22:48.937Z DRAFTED #34 foundation-ja-ch07-l02 F-Kana draft $0.0751 critic FAIL $0.0066 total $2.2278 :: example-feel  → Examples are minimal and meta ('the katakana ma', 'the katakana mo'). Sh
+2026-11-14T23:23:12.853Z REJECTED #35 foundation-ja-ch07-l03 F-Kana draft $0.0591 total $2.2869 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0591 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch07-l03 --max-cost 0.4` |   [course rules] REJECTED — check q6: uses ヲ b
+2026-11-14T23:23:46.563Z DRAFTED #36 foundation-ja-ch07-l04 F-Kana draft $0.0755 critic FAIL $0.0047 total $2.3671 :: example-feel  → Examples are isolated kana characters (ラ, ロ) with translations like 'the
+2026-11-14T23:24:12.720Z REJECTED #37 foundation-ja-ch07-l05 F-Kana draft $0.0629 total $2.4300 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0629 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch07-l05 --max-cost 0.4` |   [course rules] REJECTED — teach[9]: uses パ b
+2026-11-14T23:24:42.620Z REJECTED #38 foundation-ja-ch07-l06 I-Reading draft $0.0775 total $2.5075 exit 1 :: authoring:draft — drafted 0, rechecked 0, skipped 0, rejected 1, estimated cost ~$0.0775 | [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] api@0.0.1 authoring:draft: `ts-node -r tsconfig-paths/register src/authoring/draft.ts foundation-ja-ch07-l06 --max-cost 0.4` |   [course rules] REJECTED — teach[0]: uses ュ b
+2026-11-14T23:25:25.331Z DRAFTED #39 foundation-ja-ch07-l07 F-Vocab draft $0.0877 critic PASS $0.0070 total $2.6022
+2026-11-14T23:25:58.675Z DRAFTED #40 foundation-ja-ch07-l08 F-Vocab draft $0.0786 critic PASS $0.0044 total $2.6852
+2026-11-14T23:25:58.676Z wave 1-40 done, total $2.6852
+2026-11-15T15:14:01.000Z FIXED item refs by script (correct answer = declared item): ch05-l02 q2 -> ja:vocab:ありがとう, ch05-l05 q3 -> ja:vocab:ごちそうさまでした (manual, Lead)
+2026-11-15T15:14:26.000Z REDRAFTED foundation-ja-ch02-l01 estimated cost ~$0.0722  critic Overall: ✓ PASS 
+2026-11-15T15:15:06.000Z REDRAFTED foundation-ja-ch02-l02 estimated cost ~$0.0757  critic Overall: ✓ PASS 
+2026-11-15T15:15:32.000Z REJECTED-AGAIN foundation-ja-ch02-l03 estimated cost ~$0.0708 :: REJECTED — teach[11]: uses the particle へ before it is taught, in "はな ふね ほし へ ひと"  (tokens: 1806 in / 2471 out  (~$0.0708))
+2026-11-15T15:16:03.000Z REJECTED-AGAIN foundation-ja-ch03-l01 estimated cost ~$0.0754 :: REJECTED — teach[17]: uses the particle の before it is taught, in "まち の みせ"  (tokens: 1817 in / 2652 out  (~$0.0754))
+2026-11-15T15:16:43.000Z REDRAFTED foundation-ja-ch06-l04 estimated cost ~$0.0765  critic Overall: ✗ FAIL ✗ example-feel  → Example block contains only 'テ' with reading 'te' and translation 'the k|
+2026-11-15T15:17:18.000Z REDRAFTED foundation-ja-ch06-l05 estimated cost ~$0.0758  critic Overall: ✗ FAIL ✗ example-feel  → Examples are minimal and abstract ('the na sound', 'the no sound'); shou|
+2026-11-15T15:17:44.000Z REDRAFTED foundation-ja-ch07-l03 estimated cost ~$0.0556  critic Overall: ✗ FAIL ✗ example-feel  → Examples are isolated kana characters with translations like 'the sound |
+2026-11-15T15:18:08.000Z REJECTED-AGAIN foundation-ja-ch07-l05 estimated cost ~$0.0619 :: REJECTED — teach[7]: uses ペ before it is taught; teach[8]: uses パ before it is taught; teach[10]: uses ペ before it is taught; teach[10]: uses パ before it is taught; check q6: uses ペ before it is taught  (tokens: 2260 in / 2025 out  (~$0.0619))
+2026-11-15T15:18:47.000Z REDRAFTED foundation-ja-ch07-l06 estimated cost ~$0.0772  critic Overall: ✗ FAIL ✗ item-ref-match  → Question q6 references 'ム' (mu) in 'ラム' but 'ja:kana:kata-mu' is not i|✗ learner-confusion  → Question q6 introduces ム (mu) without prior teaching or declaration|
+2026-11-15T15:18:47.000Z wave 1 redrafts done
+2026-11-15T15:19:14.000Z wave 1 status: 31 of 35 drafted (24 first pass, lesson 13 retry, 6 redrafts), 4 rejected twice (7, 9, 14, 37) for PM hand edit; spend about $3.53 incl. redrafts (Lead)
+2026-11-15T16:07:07.000Z Lead: wave 2 starts before the Tester's F1 (give-away false positives on 'are', 'do', 'made') is fixed. A false rejection is recovered with --recheck at $0 once the gate is fixed; PR #78 (F.2.e prompt) is merged at 3485948.
+2026-11-15T16:07:07.660Z wave 41-77 start, cap $3.50
+2026-11-15T16:07:38.932Z DRAFTED #41 foundation-ja-ch08-l01 F-Vocab draft $0.0641 critic FAIL $0.0044 total $0.0685 :: example-feel  → Only one example provided ('あなたですか'); needs more natural daily-life exam | item-ref-match  → targetItemIds list contains 'ja:vocab:皆さん' but teach blocks and practi
+2026-11-15T16:08:05.758Z DRAFTED #42 foundation-ja-ch08-l02 F-Vocab draft $0.0565 critic FAIL $0.0037 total $0.1287 :: example-feel  → Examples are isolated vocabulary items without natural daily-life contex
+2026-11-15T16:08:22.302Z FAILED #44 foundation-ja-ch08-l04 F-Grammar draft $0.0000 total $0.1287 exit 1 :: Exit status 1
+2026-11-15T16:08:57.151Z DRAFTED #45 foundation-ja-ch08-l05 F-Vocab draft $0.0722 critic PASS $0.0059 total $0.2068
+2026-11-15T16:09:22.572Z DRAFTED #46 foundation-ja-ch08-l06 F-Grammar draft $0.0495 critic FAIL $0.0037 total $0.2600 :: learner-confusion  → Translation inconsistency: 'ともだち の かばん' is translated as 'my friend
+2026-11-15T16:09:49.915Z DRAFTED #47 foundation-ja-ch08-l07 F-Grammar draft $0.0515 critic PASS $0.0053 total $0.3168
+2026-11-15T16:10:21.236Z DRAFTED #49 foundation-ja-ch08-l09 F-Kanji draft $0.0590 critic FAIL $0.0057 total $0.3815 :: example-feel  → Examples are minimal (only kanji + reading + translation). No natural da
+2026-11-15T16:10:56.887Z DRAFTED #51 foundation-ja-ch09-l01 F-Vocab draft $0.0821 critic FAIL $0.0049 total $0.4685 :: example-feel  → Examples use isolated copula sentences (ちち です, はは じゃありません) without daily | learner-confusion  → Lesson introduces おとうと and いもうと in teach blocks but these are not i
+2026-11-15T16:11:29.911Z DRAFTED #52 foundation-ja-ch09-l02 F-Vocab draft $0.0672 critic FAIL $0.0059 total $0.5416 :: example-feel  → Example sentences (わたし の かいしゃ です, だいがく の せんせい です) are somewhat textbook-
+2026-11-15T16:11:47.304Z FAILED #53 foundation-ja-ch09-l03 F-Grammar draft $0.0000 total $0.5416 exit 1 :: Exit status 1
+2026-11-15T16:12:14.317Z FAILED #54 foundation-ja-ch09-l04 F-Kanji draft $0.0000 total $0.5416 exit 1 :: Exit status 1
+2026-11-15T16:12:43.228Z FAILED #55 foundation-ja-ch09-l05 I-Reading draft $0.0000 total $0.5416 exit 1 :: Exit status 1
+2026-11-15T16:13:12.492Z DRAFTED #57 foundation-ja-ch10-l01 F-Vocab draft $0.0687 critic PASS $0.0040 total $0.6143
+2026-11-15T16:13:48.717Z DRAFTED #58 foundation-ja-ch10-l02 F-Vocab draft $0.0711 critic PASS $0.0062 total $0.6916
+2026-11-15T16:14:17.588Z DRAFTED #59 foundation-ja-ch10-l03 F-Vocab draft $0.0674 critic PASS $0.0040 total $0.7630
+2026-11-15T16:14:48.761Z DRAFTED #60 foundation-ja-ch10-l04 F-Vocab draft $0.0703 critic FAIL $0.0049 total $0.8382 :: item-ref-match  → targetItemIds list contains 'ja:vocab:何' and 'ja:vocab:誰' (kanji forms
+2026-11-15T16:15:15.136Z DRAFTED #61 foundation-ja-ch10-l05 F-Vocab draft $0.0585 critic PASS $0.0036 total $0.9003
+2026-11-15T16:15:36.568Z REJECTED #62 foundation-ja-ch10-l06 F-Kanji draft $0.0558 total $0.9561 exit 1 :: Exit status 1 |   [course rules] REJECTED — teach[5]: uses kanji 口, which is not taught  (tokens: 2548 in / 1722 out  (~$0.0558))
+2026-11-15T16:16:10.023Z DRAFTED #65 foundation-ja-ch11-l01 F-Vocab draft $0.0659 critic FAIL $0.0061 total $1.0281 :: example-feel  → Examples (いち に さん, さん し ご) are isolated number sequences, not natural da
+2026-11-15T16:16:44.024Z DRAFTED #66 foundation-ja-ch11-l02 F-Vocab draft $0.0682 critic FAIL $0.0061 total $1.1024 :: example-feel  → Examples are bare vocabulary items (ろく, しち, etc.) without natural daily-
+2026-11-15T16:17:12.488Z REJECTED #67 foundation-ja-ch11-l03 F-Vocab draft $0.0787 total $1.1811 exit 1 :: Exit status 1 |   [course rules] REJECTED — check q7: the explanation spells out "zero" before check q8 asks for it  (tokens: 3033 in / 2541 out  (~$0.0787))
+2026-11-15T16:17:47.244Z DRAFTED #68 foundation-ja-ch11-l04 F-Kanji draft $0.0700 critic PASS $0.0060 total $1.2571
+2026-11-15T16:18:24.299Z DRAFTED #69 foundation-ja-ch11-l05 F-Kanji draft $0.0752 critic FAIL $0.0066 total $1.3389 :: example-feel  → Only 2 examples provided (六 ろく, 十 じゅう) with minimal context; examples fe
+2026-11-15T16:18:52.198Z DRAFTED #70 foundation-ja-ch11-l06 F-Vocab draft $0.0487 critic PASS $0.0055 total $1.3931
+2026-11-15T16:19:20.438Z DRAFTED #72 foundation-ja-ch12-l01 F-Vocab draft $0.0652 critic FAIL $0.0044 total $1.4627 :: item-ref-match  → targetItemIds use kanji (本, 財布, 傘) but teach blocks and practice use h | learner-confusion  → Q2 explanation mentions 'ん on its own is the n sound' which is unex
+2026-11-15T16:19:45.477Z DRAFTED #73 foundation-ja-ch12-l02 F-Vocab draft $0.0567 critic FAIL $0.0040 total $1.5234 :: item-ref-match  → targetItemIds use kanji (時計, 机, 椅子) but teach blocks and practice/chec
+2026-11-15T16:20:01.486Z FAILED #74 foundation-ja-ch12-l03 F-Grammar draft $0.0000 total $1.5234 exit 1 :: Exit status 1
+2026-11-15T16:20:26.028Z DRAFTED #75 foundation-ja-ch12-l04 F-Grammar draft $0.0491 critic PASS $0.0033 total $1.5758
+2026-11-15T16:20:53.270Z REJECTED #76 foundation-ja-ch12-l05 F-Kanji draft $0.0686 total $1.6444 exit 1 :: Exit status 1 |   [course rules] REJECTED — teach[2]: uses kanji 木, which is not taught; teach[7]: uses kanji 木, which is not taught; practice[2]: uses kanji 木, which is not taught; check q6: uses kanji 木, which is not taught  (tokens: 2672 in / 2210 out  (~$0.0686))
+2026-11-15T16:21:16.900Z FAILED #77 foundation-ja-ch12-l06 I-Reading draft $0.0000 total $1.6444 exit 1 :: Exit status 1
+2026-11-15T16:21:16.900Z wave 41-77 done, total $1.6444
+2026-11-15T16:22:57.000Z REDRAFTED foundation-ja-ch10-l06 estimated cost ~$0.0553 critic Overall: ✗ FAIL ✗ example-feel  → Examples are minimal and somewhat artificial. '何 です か' (What is it?), '名|
+2026-11-15T16:23:23.000Z REJECTED-AGAIN foundation-ja-ch12-l05 estimated cost ~$0.0663 :: REJECTED — teach[4]: uses kanji 木, which is not taught; teach[8]: uses kanji 木, which is not taught  (tokens: 2782 in / 2095 out  (~$0.0663)) 
+2026-11-15T16:30:53.000Z PUBLISHED the-five-vowels (Decision: APPROVE) updated lesson cmvzqla0o00049oza1aygtfec (5 items, 10 checks)
+2026-11-15T16:30:57.000Z PUBLISHED foundation-ja-ch01-l03 (Decision: APPROVE) created lesson cmwi1x17100049oo1dqn6aqi1 (5 items, 10 checks)
+2026-11-15T16:31:00.000Z PUBLISHED foundation-ja-ch01-l04 (Decision: APPROVE) created lesson cmwi1x45i00049opnyfdqllm8 (6 items, 12 checks)
+2026-11-15T16:31:04.000Z PUBLISHED foundation-ja-ch02-l01 (Decision: APPROVE) created lesson cmwi1x74w00049orb9mg7837u (5 items, 10 checks)
+2026-11-15T16:31:08.000Z PUBLISHED foundation-ja-ch02-l02 (Decision: APPROVE) created lesson cmwi1xa3000049ot1taxs9mft (5 items, 10 checks)
+2026-11-15T16:31:12.000Z PUBLISHED foundation-ja-ch02-l03 (Decision: APPROVE) created lesson cmwi1xd1200049outu3xcfqun (5 items, 10 checks)
+2026-11-15T16:31:16.000Z PUBLISHED foundation-ja-ch02-l04 (Decision: APPROVE) created lesson cmwi1xfz700049owtg988pav5 (6 items, 12 checks)
+2026-11-15T16:31:20.000Z PUBLISHED foundation-ja-ch03-l01 (Decision: APPROVE) created lesson cmwi1xix500049oymt2qmzyxf (5 items, 10 checks)
+2026-11-15T16:31:23.000Z PUBLISHED foundation-ja-ch03-l02 (Decision: APPROVE) created lesson cmwi1xlt800049o0wqi5erwci (3 items, 6 checks)
+2026-11-15T16:31:27.000Z PUBLISHED foundation-ja-ch03-l03 (Decision: APPROVE) created lesson cmwi1xoqa00049o2u63jmiijr (5 items, 10 checks)
+2026-11-15T16:31:31.000Z PUBLISHED foundation-ja-ch03-l04 (Decision: APPROVE) created lesson cmwi1xroh00049o4koqhtnxct (3 items, 6 checks)
+2026-11-15T16:31:35.000Z PUBLISHED foundation-ja-ch03-l05 (Decision: APPROVE) created lesson cmwi1xulc00049o6j149kfsb7 (6 items, 12 checks)
+2026-11-15T16:31:39.000Z PUBLISHED foundation-ja-ch03-l06 (Decision: APPROVE) created lesson cmwi1xxi000049o87mtu9hczm (8 items, 16 checks)
+2026-11-15T16:31:42.000Z PUBLISHED foundation-ja-ch04-l01 (Decision: APPROVE) created lesson cmwi1y0fo00049o9uijq424re (5 items, 10 checks)
+2026-11-15T16:31:46.000Z PUBLISHED foundation-ja-ch04-l02 (Decision: APPROVE) created lesson cmwi1y3ca00049obqapax3p3e (5 items, 10 checks)
+2026-11-15T16:31:50.000Z PUBLISHED foundation-ja-ch04-l03 (Decision: APPROVE) created lesson cmwi1y68t00049odmxx28v31m (5 items, 10 checks)
+2026-11-15T16:31:54.000Z PUBLISHED foundation-ja-ch04-l04 (Decision: APPROVE) created lesson cmwi1y95000049ofho47297ex (5 items, 10 checks)
+2026-11-15T16:31:57.000Z PUBLISHED foundation-ja-ch05-l02 (Decision: APPROVE) created lesson cmwi1yc1d00049ohbhtm0gle4 (5 items, 10 checks)
+2026-11-15T16:32:01.000Z PUBLISHED foundation-ja-ch05-l03 (Decision: APPROVE) created lesson cmwi1yew200049oj084hfsqlr (5 items, 10 checks)
+2026-11-15T16:32:05.000Z PUBLISHED foundation-ja-ch05-l04 (Decision: APPROVE) created lesson cmwi1yhsg00049oko5qcpo12f (5 items, 10 checks)
+2026-11-15T16:32:09.000Z PUBLISHED foundation-ja-ch05-l05 (Decision: APPROVE) created lesson cmwi1ykot00049omarosz3gze (5 items, 10 checks)
+2026-11-15T16:32:12.000Z PUBLISHED foundation-ja-ch06-l01 (Decision: APPROVE) created lesson cmwi1ynla00049oo46i0bgfml (5 items, 10 checks)
+2026-11-15T16:32:16.000Z PUBLISHED foundation-ja-ch06-l02 (Decision: APPROVE) created lesson cmwi1yqge00049opt0p86ers6 (5 items, 10 checks)
+2026-11-15T16:32:20.000Z PUBLISHED foundation-ja-ch06-l03 (Decision: APPROVE) created lesson cmwi1ytd300049orlqdhb9nb1 (5 items, 10 checks)
+2026-11-15T16:32:24.000Z PUBLISHED foundation-ja-ch06-l04 (Decision: APPROVE) created lesson cmwi1ywak00049ot32ep52ojq (5 items, 10 checks)
+2026-11-15T16:32:27.000Z PUBLISHED foundation-ja-ch06-l05 (Decision: APPROVE) created lesson cmwi1yz6m00049ov089s1njxk (5 items, 10 checks)
+2026-11-15T16:32:31.000Z PUBLISHED foundation-ja-ch06-l06 (Decision: APPROVE) created lesson cmwi1z22e00049owsid4qf2u7 (5 items, 10 checks)
+2026-11-15T16:32:35.000Z PUBLISHED foundation-ja-ch07-l01 (Decision: APPROVE) created lesson cmwi1z4ys00049oy8ddgyxd9l (5 items, 10 checks)
+2026-11-15T16:32:39.000Z PUBLISHED foundation-ja-ch07-l02 (Decision: APPROVE) created lesson cmwi1z7ud00049o066eeqtdwg (5 items, 10 checks)
+2026-11-15T16:32:42.000Z PUBLISHED foundation-ja-ch07-l03 (Decision: APPROVE) created lesson cmwi1zapu00049o1vj0qwf1aj (3 items, 6 checks)
+2026-11-15T16:32:46.000Z PUBLISHED foundation-ja-ch07-l04 (Decision: APPROVE) created lesson cmwi1zdm100049o3ibxly43kv (5 items, 10 checks)
+2026-11-15T16:32:50.000Z PUBLISHED foundation-ja-ch07-l05 (Decision: APPROVE) created lesson cmwi1zgkd00049o5799ygypze (3 items, 6 checks)
