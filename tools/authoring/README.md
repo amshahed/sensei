@@ -133,14 +133,32 @@ pnpm --filter api authoring:draft <lesson-id|chapter-id> [--skeleton <path>] [--
 
 Output: `tools/authoring/output/<lesson-id>.json` (gitignored).
 
-A run never pays twice unless told to: a lesson with `<id>.json` or `<id>.rejected.json` is skipped
-with no API call, so a batch can be resumed. The last line reports drafted, skipped, rejected and
-estimated cost.
+A run never pays twice unless told to: a lesson with `<id>.json`, `<id>.rejected.json` or
+`<id>.failed.json` is skipped with no API call, so a batch can be resumed. The last line reports
+drafted, rechecked, skipped, rejected, failed and estimated cost. The cost includes failed replies,
+because they were paid for.
 
-With a compiled outline, the drafter sees what the learner has been taught, and a free deterministic
-gate checks the result for untaught kana, kanji, verb endings and particles. A draft that fails is
-written to `<id>.rejected.json`, never `<id>.json`, the batch carries on and the command exits 1.
-Publishing runs the same gate.
+With a compiled outline, the drafter sees what the learner has been taught. Every draft, fresh or
+rechecked, then takes one path:
+
+1. A check whose target isn't declared is repointed (F.2.h).
+2. The typed-reading transform runs.
+3. The structural validator runs.
+4. A free deterministic gate checks for untaught kana, kanji, verb endings and particles, and the
+   rules below.
+
+A draft that fails the validator or the gate is written to `<id>.rejected.json`, never `<id>.json`.
+The batch carries on and the command exits 1. `authoring:publish` reruns the validator and the gate,
+and refuses a draft that fails either.
+
+- **Harmless slips (F.2.f).** These don't cost a draft:
+  - A `grading` value other than `"open"` on a check with no rubric is dropped.
+  - `"Open"` is read as `"open"`.
+  - `lessonId` and `targetItemIds` always come from the skeleton, whatever the reply says.
+- **Undeclared items (F.2.h).** A check on an item the lesson doesn't declare (a garbled ID such as
+  `ja:vocab:ありがotou`) is repointed only when its answer is exactly one declared target's word.
+  Otherwise the validator rejects the draft. A practice template on an undeclared item isn't
+  repointed, so it's rejected too.
 
 - **Particles (F.2.c, F.2.d).** Each learner field is read in stretches of kana and spaces.
   Punctuation, symbols, English, digits and kanji end a stretch, because a sentence doesn't run
@@ -170,13 +188,47 @@ Publishing runs the same gate.
   reads it) to `Read this word and type how it sounds: <word>`, or appends one. A target the draft
   left out of `targetItemIds` gets no check, so the gate's rule, which stays as the safety net,
   rejects the draft.
+- **Give-aways (P5, F.2.e, F.2.g).** A closed typed check's answer must not be spelled out before
+  the learner types it. The answer's rōmaji is the spelling the app shows after a miss, plus the kana
+  read literally (は as `ha`). The rule rejects:
+  - an explanation that spells out the answer of a later check (`the explanation spells out "…"
+    before check q8 asks for it`);
+  - in an I-Reading lesson, a Teach block that spells out any typed check's answer (`teach[3]: spells
+    out "hon" in rōmaji, and check q3 asks the learner to type it`). A worked example that no typed
+    check asks for is fine;
+  - a typed check whose own prompt spells out its answer ("Type the kana that reads 'ka'").
 
-**Recovering a rejected draft at $0.** Run `--recheck` first whenever a code change could cure a
-rejection. For each lesson with a `<id>.rejected.json`, it drops the old errors, applies the
-typed-reading transform, and reruns the validator and the gate, exactly as for a fresh draft. A pass
-is saved as `<id>.json` the way a fresh pass is. A fail rewrites `<id>.rejected.json` with the new
-errors. It needs no `ANTHROPIC_API_KEY`. Only if it still fails, redraft with `--force`: the redraft
-prompt lists the last rejection's errors and asks for every one to be fixed.
+  Matching is on whole words, in order. A hyphen counts both ways: `kip-pu` is `kippu`, and `no-to`
+  is `nooto`, as typing it is (H.2.e). English words that look like rōmaji (`are`, `do`, `made`,
+  `zero`, `I`, kept in `ENGLISH_LOOKALIKES`) are left out, so a real give-away of one of them is left
+  to PM review. One kana, or one with a small kana after it (か, きゃ), is a sound, not a word.
+- **Open checks (F.2.i).** A check graded by the AI (`grading: "open"`) is allowed only where the
+  outline's author note asks for one (lesson 120 today). The draft prompt mentions open checks only
+  there.
+
+**A paid reply that can't be read is never thrown away (F.2.f).** This covers a reply cut off at the
+token limit, one that isn't JSON, and one that fails the schema. The reply is written to
+`<id>.failed.json` with `model`, token counts, `costUsd`, `stopReason` and `error`. It also holds
+either `reply`, the parsed object when the reply was JSON, or `raw`, the text when it wasn't. Its
+cost counts toward `--max-cost`, the batch goes on to the next lesson, and the command exits 1.
+
+An older `.failed.json` is moved to `<id>.failed.prev.json`, then `.failed.prev.2.json` and so on, and
+is never overwritten. To recover a failed reply, fix the cause in code, or hand-edit the `reply`
+object, which is plain JSON. Then run `--recheck`. Never edit `raw`. A reply cut off at the token
+limit can't be recovered, so redraft it with `--force`.
+
+**Recovering a rejected draft or a failed reply at $0.** Run `--recheck` first whenever a code
+change or a hand edit could cure the problem. It needs no `ANTHROPIC_API_KEY`.
+- For each lesson with a `<id>.failed.json`, it re-reads the stored `reply` with today's code and
+  then takes the same path as a fresh draft. A pass or a rejection removes `.failed.json`. A reply
+  that still can't be read keeps it, with the new error.
+- For each lesson with a `<id>.rejected.json`, it drops the old errors and reruns the path above
+  exactly as for a fresh draft.
+- A pass is saved as `<id>.json`, and the draft it replaces is kept as `<id>.prev.json`. A fail
+  rewrites `<id>.rejected.json` with the new errors.
+
+Only if it still fails, redraft with `--force`. The redraft prompt lists the last attempt's errors
+and asks for every one to be fixed.
 
 If `VOYAGE_API_KEY` is set, the drafter retrieves top-5 reference passages from the vector DB for context.
 If not set, vector search is skipped silently — the drafter still works.
@@ -270,6 +322,10 @@ pnpm --filter api authoring:publish <lesson-id> [--skeleton <path>]
 | `--skeleton` | `tools/authoring/output/skeleton.json` | Skeleton file for module/chapter hierarchy |
 
 Prerequisites: `DATABASE_URL` set, `authoring:review` approved.
+
+Before writing, publish reruns the structural validator and the course gate on the approved draft,
+and refuses it with the reasons if either fails (`publishRefusals`). So a lesson approved before a
+rule existed is refused until it is edited or the rule is changed.
 
 ## output/
 
