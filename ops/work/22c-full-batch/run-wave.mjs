@@ -61,7 +61,12 @@ for (let n = from; n <= to; n++) {
   const tag = `#${n} ${lesson.id} ${lesson.type}`;
   if (audio.has(lesson.type) && !includeAudio) continue;
   const draft = join(out, `${lesson.id}.json`);
-  if (existsSync(draft) || existsSync(join(out, `${lesson.id}.rejected.json`))) {
+  const failedPath = join(out, `${lesson.id}.failed.json`);
+  if (
+    existsSync(draft) ||
+    existsSync(join(out, `${lesson.id}.rejected.json`)) ||
+    existsSync(failedPath)
+  ) {
     continue;
   }
   if (total >= cap) {
@@ -73,6 +78,12 @@ for (let n = from; n <= to; n++) {
   const dCost = costOf(d.text, /estimated cost ~\$([0-9.]+)/);
   total += dCost;
   if (!existsSync(draft)) {
+    if (existsSync(failedPath)) {
+      // A paid reply that failed to parse is saved, not lost (authoring-hardening
+      // item 1). Recover it with a hand fix and `authoring:draft <id> --recheck`.
+      log(`PARSE-FAILED ${tag} draft $${dCost.toFixed(4)} total $${total.toFixed(4)} :: reply saved to ${lesson.id}.failed.json`);
+      continue;
+    }
     const rejected = existsSync(join(out, `${lesson.id}.rejected.json`));
     const why = d.text
       .split('\n')

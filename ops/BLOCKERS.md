@@ -6,7 +6,7 @@ Things only the founder can do. Keep this current. Each entry has the exact acti
 
 | # | Action needed from the founder | Unblocks | Needed by |
 |---|---|---|---|
-| 1 | Top up Anthropic credits at console.anthropic.com if the full lesson batch runs out. About $19.50 left as of 2026-11-08. Drafting the 120 planned lessons costs about $18 before critic passes and redrafts, so this will probably be needed. Lessons are drafted in course order, audio-blocked ones last | Full lesson batch | When the balance runs out |
+| 1 | Top up Anthropic credits at console.anthropic.com if the full lesson batch runs out. About $10 left as of 2026-11-16. All non-audio lessons are drafted; what remains (12 audio lessons once Azure exists, a few redrafts) is about $2, so no top-up is needed for 22c | Full lesson batch | When the balance runs out |
 | 2 | Create an Azure Speech resource, then put `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` in `apps/api/.env` | Listening (#10), speaking (#11), lesson audio. 12 of the 120 planned lessons are fully blocked. Kana and sound lessons work without it but are silent, which is acceptable for alpha and not for closed beta | Before those lessons can ship |
 | 3 | Create a Cloudflare R2 bucket and API token, then set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` in `apps/api/.env` | Cached lesson audio | With item 2 |
 | 4 | Create a Railway project and give the team a deploy token | Hosting the API so the app works off this machine | Before closed beta |

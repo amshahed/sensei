@@ -118,3 +118,58 @@
 2026-11-15T16:32:42.000Z PUBLISHED foundation-ja-ch07-l03 (Decision: APPROVE) created lesson cmwi1zapu00049o1vj0qwf1aj (3 items, 6 checks)
 2026-11-15T16:32:46.000Z PUBLISHED foundation-ja-ch07-l04 (Decision: APPROVE) created lesson cmwi1zdm100049o3ibxly43kv (5 items, 10 checks)
 2026-11-15T16:32:50.000Z PUBLISHED foundation-ja-ch07-l05 (Decision: APPROVE) created lesson cmwi1zgkd00049o5799ygypze (3 items, 6 checks)
+2026-11-16T21:33:19.000Z SWAP F.1.c applied after PR #82: outline rebuilt (diff = two ch07 lessons + one sound stage + generatedAt), drafts renamed, ch07-l06/l07 rechecked at $0, content unchanged
+2026-11-16T21:33:19.000Z PUBLISHED foundation-ja-ch07-l06 (Decision: APPROVE) created lesson cmwjs5g5t00049o9wnwzspbvo (5 items, 12 checks)
+2026-11-16T21:33:19.000Z PUBLISHED foundation-ja-ch07-l07 (Decision: APPROVE) created lesson cmwjs5j1g00049obauvq8q9g8 (5 items, 10 checks)
+2026-11-16T21:33:19.000Z PUBLISHED foundation-ja-ch07-l08 (Decision: APPROVE) created lesson cmwjs5lxc00049od4nwjsq2ad (5 items, 10 checks)
+2026-11-16T21:33:19.000Z RECHECK foundation-ja-ch11-l03 (lesson 67) passed the new gate, no model call, $0
+2026-11-16T21:33:43.725Z wave 41-77 start, cap $1.00
+2026-11-16T21:34:06.157Z DRAFTED #44 foundation-ja-ch08-l04 F-Grammar draft $0.0435 critic PASS $0.0031 total $0.0466
+2026-11-16T21:34:30.367Z DRAFTED #53 foundation-ja-ch09-l03 F-Grammar draft $0.0470 critic PASS $0.0032 total $0.0968
+2026-11-16T21:34:57.591Z REJECTED #54 foundation-ja-ch09-l04 F-Kanji draft $0.0723 total $0.1691 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[4]: uses kanji 田, which is not taught; teach[4]: uses kanji 力, which is not taught; check q6: uses kanji 力, which is not taught; check q6: uses kanji 田, which is not taught  (tokens: 2551 in / 2380 out  (~$0.0723))
+2026-11-16T21:35:25.762Z REJECTED #55 foundation-ja-ch09-l05 I-Reading draft $0.0766 total $0.2457 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[5]: spells out "chichi" in rōmaji, and check q4 asks the learner to type it  (tokens: 3000 in / 2464 out  (~$0.0766))
+2026-11-16T21:35:47.116Z DRAFTED #74 foundation-ja-ch12-l03 F-Grammar draft $0.0444 critic PASS $0.0031 total $0.2932
+2026-11-16T21:36:09.502Z REJECTED #77 foundation-ja-ch12-l06 I-Reading draft $0.0626 total $0.3558 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[3]: spells out "hon" in rōmaji, and check q3 asks the learner to type it  (tokens: 3114 in / 1882 out  (~$0.0626))
+2026-11-16T21:36:09.503Z wave 41-77 done, total $0.3558
+2026-11-16T21:36:34.655Z wave 78-120 start, cap $4.00
+2026-11-16T21:37:09.239Z DRAFTED #78 foundation-ja-ch13-l01 F-Vocab draft $0.0743 critic FAIL $0.0061 total $0.0804 :: example-feel  → Only one example sentence provided ('えき が あります') which is minimal and so
+2026-11-16T21:37:40.111Z DRAFTED #79 foundation-ja-ch13-l02 F-Vocab draft $0.0678 critic FAIL $0.0059 total $0.1541 :: example-feel  → Examples are isolated vocabulary items (うえ, した, etc.) without sentence c
+2026-11-16T21:38:17.271Z DRAFTED #80 foundation-ja-ch13-l03 F-Vocab draft $0.0775 critic PASS $0.0063 total $0.2379
+2026-11-16T21:38:40.906Z DRAFTED #81 foundation-ja-ch13-l04 F-Grammar draft $0.0459 critic FAIL $0.0035 total $0.2873 :: learner-confusion  → The phrase 'My friend is here' in the second example is ambiguous—i
+2026-11-16T21:39:14.933Z DRAFTED #82 foundation-ja-ch13-l05 F-Kanji draft $0.0685 critic PASS $0.0065 total $0.3623
+2026-11-16T21:39:43.449Z REJECTED #83 foundation-ja-ch13-l06 I-Reading draft $0.0745 total $0.4368 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[3]: spells out "eki" in rōmaji, and check q1 asks the learner to type it  (tokens: 3182 in / 2343 out  (~$0.0745))
+2026-11-16T21:40:14.907Z DRAFTED #84 foundation-ja-ch14-l01 F-Vocab draft $0.0659 critic PASS $0.0059 total $0.5086
+2026-11-16T21:40:45.505Z DRAFTED #85 foundation-ja-ch14-l02 F-Vocab draft $0.0637 critic FAIL $0.0058 total $0.5781 :: example-feel  → Examples are isolated vocabulary items (いく, かえる, くる, する) without sentenc
+2026-11-16T21:41:15.554Z REJECTED #86 foundation-ja-ch14-l03 F-Vocab draft $0.0831 total $0.6612 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[6]: uses ます before it is taught  (tokens: 3483 in / 2627 out  (~$0.0831))
+2026-11-16T21:41:39.768Z REJECTED #87 foundation-ja-ch14-l04 F-Grammar draft $0.0574 total $0.7186 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[2]: uses the particle を before it is taught, in "ごはん を たべます"; teach[4]: uses the particle を before it is taught, in "みず を のみます"; teach[5]: uses the particle を before it is taught, in "テレビ を みます"; teach[8]: uses the particle を before it is taught, in "にほんご を はなします"; check q2: uses the particle を before it is taught, in "テレビ を みます"; check q4: uses the partic
+2026-11-16T21:42:08.069Z DRAFTED #88 foundation-ja-ch14-l05 F-Grammar draft $0.0521 critic FAIL $0.0054 total $0.7761 :: example-feel  → Examples 3 and 4 lack particles or context (テレビ みません, がっこう いきません should  | learner-confusion  → Examples use particles (を, に, の) and verbs (みる, いく) not yet introdu
+2026-11-16T21:42:36.303Z DRAFTED #89 foundation-ja-ch14-l06 F-Grammar draft $0.0509 critic PASS $0.0050 total $0.8320
+2026-11-16T21:43:02.845Z DRAFTED #90 foundation-ja-ch14-l07 F-Grammar draft $0.0493 critic FAIL $0.0037 total $0.8850 :: learner-confusion  → Q1 asks learner to choose へ as correct answer, but teach section em
+2026-11-16T21:43:26.295Z DRAFTED #91 foundation-ja-ch14-l08 F-Grammar draft $0.0470 critic FAIL $0.0035 total $0.9355 :: learner-confusion  → The lesson assumes learners know を particle and verb conjugation (た
+2026-11-16T21:43:53.744Z DRAFTED #92 foundation-ja-ch14-l09 F-Grammar draft $0.0508 critic FAIL $0.0052 total $0.9915 :: learner-confusion  → Examples use particles and verbs within allowed grammar scope, but 
+2026-11-16T21:44:30.553Z DRAFTED #93 foundation-ja-ch14-l10 F-Kanji draft $0.0726 critic PASS $0.0060 total $1.0701
+2026-11-16T21:44:55.955Z REJECTED #94 foundation-ja-ch14-l11 F-Kanji draft $0.0680 total $1.1381 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[2]: uses kanji 目, which is not taught; teach[6]: uses kanji 耳, which is not taught; teach[6]: uses kanji 門, which is not taught  (tokens: 2863 in / 2146 out  (~$0.0680))
+2026-11-16T21:45:27.673Z REJECTED #95 foundation-ja-ch14-l12 I-Reading draft $0.0799 total $1.2180 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[2]: spells out "tabemasu" in rōmaji, and check q4 asks the learner to type it  (tokens: 3235 in / 2551 out  (~$0.0799))
+2026-11-16T21:45:55.215Z DRAFTED #97 foundation-ja-ch15-l01 F-Vocab draft $0.0674 critic FAIL $0.0044 total $1.2898 :: learner-confusion  → Example sentences use grammar not yet taught: ～を (object marker) an
+2026-11-16T21:46:32.556Z DRAFTED #98 foundation-ja-ch15-l02 F-Vocab draft $0.0702 critic FAIL $0.0061 total $1.3661 :: example-feel  → Examples are mostly isolated phrases (ごふん です, にじかん べんきょう) rather than na
+2026-11-16T21:46:52.158Z PARSE-FAILED #99 foundation-ja-ch15-l03 F-Grammar draft $0.0478 total $1.4139 :: reply saved to foundation-ja-ch15-l03.failed.json
+2026-11-16T21:47:16.800Z DRAFTED #100 foundation-ja-ch15-l04 F-Grammar draft $0.0523 critic FAIL $0.0037 total $1.4699 :: learner-confusion  → The mnemonic block uses the phrase 'flat no' which may confuse lear
+2026-11-16T21:47:39.771Z DRAFTED #101 foundation-ja-ch15-l05 F-Grammar draft $0.0504 critic PASS $0.0034 total $1.5237
+2026-11-16T21:48:07.594Z DRAFTED #102 foundation-ja-ch15-l06 F-Grammar draft $0.0516 critic PASS $0.0055 total $1.5808 :: example-feel  → Examples are verb conjugations only (たべる → たべて), not full sentences in d
+2026-11-16T21:48:37.805Z DRAFTED #103 foundation-ja-ch15-l07 F-Grammar draft $0.0531 critic PASS $0.0059 total $1.6398
+2026-11-16T21:49:04.011Z REJECTED #104 foundation-ja-ch15-l08 F-Kanji draft $0.0673 total $1.7071 exit 1 :: Exit status 1 |   [gate] REJECTED — teach[6]: uses kanji 門, which is not taught  (tokens: 2889 in / 2113 out  (~$0.0673))
+2026-11-16T21:49:40.859Z DRAFTED #107 foundation-ja-ch16-l01 F-Vocab draft $0.0779 critic PASS $0.0064 total $1.7914
+2026-11-16T21:50:17.515Z DRAFTED #108 foundation-ja-ch16-l02 F-Vocab draft $0.0800 critic PASS $0.0066 total $1.8780
+2026-11-16T21:50:42.806Z DRAFTED #109 foundation-ja-ch16-l03 F-Grammar draft $0.0503 critic FAIL $0.0040 total $1.9323 :: learner-confusion  → Question q3 asks learners to produce 'これ は おいしい ごはん です。' but the te
+2026-11-16T21:51:18.166Z DRAFTED #110 foundation-ja-ch16-l04 F-Vocab draft $0.0789 critic PASS $0.0063 total $2.0175
+2026-11-16T21:51:44.380Z DRAFTED #111 foundation-ja-ch16-l05 F-Grammar draft $0.0560 critic PASS $0.0036 total $2.0771
+2026-11-16T21:52:05.679Z DRAFTED #112 foundation-ja-ch16-l06 F-Grammar draft $0.0466 critic PASS $0.0032 total $2.1269
+2026-11-16T21:52:38.958Z DRAFTED #113 foundation-ja-ch16-l07 I-Reading draft $0.0661 critic PASS $0.0059 total $2.1989
+2026-11-16T21:53:18.282Z DRAFTED #114 foundation-ja-ch17-l01 F-Vocab draft $0.0794 critic FAIL $0.0069 total $2.2852 :: learner-confusion  → Rōmaji typing instructions contain inconsistencies and potential co
+2026-11-16T21:53:57.642Z DRAFTED #115 foundation-ja-ch17-l02 F-Vocab draft $0.0812 critic FAIL $0.0071 total $2.3735 :: example-feel  → Examples are mostly natural (music, movies, singing), but the third teac | learner-confusion  → The teach section mentions that these are な-adjectives and referenc
+2026-11-16T21:54:18.192Z DRAFTED #116 foundation-ja-ch17-l03 F-Grammar draft $0.0458 critic PASS $0.0032 total $2.4225
+2026-11-16T21:54:45.499Z DRAFTED #117 foundation-ja-ch17-l04 F-Grammar draft $0.0509 critic PASS $0.0048 total $2.4782
+2026-11-16T21:55:35.029Z PARSE-FAILED #120 foundation-ja-ch17-l07 I-Writing draft $0.1277 total $2.6059 :: reply saved to foundation-ja-ch17-l07.failed.json
+2026-11-16T21:55:35.029Z wave 78-120 done, total $2.6059
+2026-11-16T21:57:37.000Z RECOVERED foundation-ja-ch15-l03 (#99) from .failed.json at $0: Lead removed teach.blocks[1], a leaked self-correction ("しちじ に おきる... wait, let's use words you know:", empty reading/translation); block 2 is its replacement. critic FAIL (learner-confusion: "without に it sounds unfinished")
+2026-11-16T21:57:37.000Z RECOVERED foundation-ja-ch17-l07 (#120) from .failed.json at $0: Lead dropped grading "exact" (no rubric) on typed q3, q5, q7, q13; refused by design in the one open-check lesson (89722a5). critic PASS
