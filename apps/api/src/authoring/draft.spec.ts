@@ -344,6 +344,40 @@ describe('runDrafts (F.2.a)', () => {
     });
   });
 
+  describe('a check on an item the draft does not declare (F.2.h)', () => {
+    const garbled = (correctAnswer: string) => {
+      const reply = replyFor('l1', 'あ');
+      const [q1] = reply.check.questions;
+      return {
+        ...reply,
+        check: {
+          questions: [{ ...q1, targetItemId: 'ja:kana:aa', correctAnswer }],
+        },
+      };
+    };
+    const replying = (reply: unknown) =>
+      create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: JSON.stringify(reply) }],
+        usage: { input_tokens: 100_000, output_tokens: 20_000 },
+      });
+
+    it('is repointed when its answer is exactly one declared target', async () => {
+      replying(garbled('a'));
+      expect(await run([lesson(1)])).toMatchObject({ drafted: 1 });
+      const saved = read('l1.json') as unknown as LessonDraft;
+      expect(saved.check.questions[0].targetItemId).toBe('ja:kana:a');
+    });
+
+    it('is rejected, never saved as a draft, when its answer names none', async () => {
+      replying(garbled('b'));
+      expect(await run([lesson(1)])).toMatchObject({ rejected: 1, drafted: 0 });
+      expect(fs.existsSync(inDir('l1.json'))).toBe(false);
+      expect(read('l1.rejected.json').courseRuleErrors).toEqual([
+        'structure: check question "q1" references undeclared targetItemId "ja:kana:aa"',
+      ]);
+    });
+  });
+
   describe('a paid reply that is not a draft (F.2.f)', () => {
     /** Wave 2's crash: an answer type the schema doesn't know. */
     const broken = (id: string) => {

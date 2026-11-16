@@ -47,6 +47,7 @@ import { readCorrections } from './corrections-log';
 import { courseContextFor, type CourseContext } from './course-context';
 import { checkCourseRules } from './course-rules';
 import { addTypedReadingChecks } from './typed-reading';
+import { repointUndeclaredTargets } from './item-refs';
 import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import {
   AUTHORING_TIMEOUT_MS,
@@ -223,10 +224,11 @@ function readFailedReply(file: string): FailedReply {
 }
 
 /**
- * The one path every draft takes, fresh or rechecked (F.2.b): the typed-reading
- * transform, the structural validator, then the course rules. A draft that
- * breaks a rule goes to <id>.rejected.json, never <id>.json, so review can't
- * pick it up. Returns whether the draft was saved.
+ * The one path every draft takes, fresh or rechecked (F.2.b): the repoint of a
+ * check on an undeclared item (F.2.h), the typed-reading transform, the
+ * structural validator, then the course rules. A draft that fails the
+ * validator or breaks a rule goes to <id>.rejected.json, never <id>.json, so
+ * review can't pick it up. Returns whether the draft was saved.
  */
 async function gateAndSave(
   generated: LessonDraft,
@@ -236,7 +238,19 @@ async function gateAndSave(
   items: RawItem[] | undefined,
   spent: string,
 ): Promise<boolean> {
-  const draft = ctx ? addTypedReadingChecks(generated, ctx) : generated;
+  let draft = generated;
+  if (ctx) {
+    const { draft: repointed, repointed: moves } = repointUndeclaredTargets(
+      draft,
+      ctx,
+    );
+    for (const m of moves) {
+      console.log(
+        `  [item refs] check ${m.questionId}: ${m.from} is not declared; its answer is ${m.to}, so it now targets that`,
+      );
+    }
+    draft = addTypedReadingChecks(repointed, ctx);
+  }
 
   const validation = await validateStructure(draft, prisma, items);
   if (!validation.pass) {
@@ -249,15 +263,19 @@ async function gateAndSave(
   for (const w of rules?.warnings ?? []) {
     console.warn(`  [course rules] warning: ${w}`);
   }
-  if (rules && rules.errors.length > 0) {
+  // One list, so a --force redraft is told every reason (F.2.c) and
+  // --recheck can cure a structural failure as well as a rule.
+  const errors = [
+    ...validation.errors.map((e) => `structure: ${e}`),
+    ...(rules?.errors ?? []),
+  ];
+  if (errors.length > 0) {
     fs.writeFileSync(
       file('.rejected.json'),
-      JSON.stringify({ ...draft, courseRuleErrors: rules.errors }, null, 2),
+      JSON.stringify({ ...draft, courseRuleErrors: errors }, null, 2),
       'utf8',
     );
-    console.warn(
-      `  [course rules] REJECTED — ${rules.errors.join('; ')}  (${spent})`,
-    );
+    console.warn(`  [gate] REJECTED — ${errors.join('; ')}  (${spent})`);
     return false;
   }
 
