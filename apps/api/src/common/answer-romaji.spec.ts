@@ -3,6 +3,7 @@ import {
   answerWords,
   isRomajiAnswer,
   SPOKEN,
+  typedAnswersMatch,
 } from './answer-romaji';
 
 describe('answerRomaji (B.2.b)', () => {
@@ -92,6 +93,28 @@ describe('isRomajiAnswer', () => {
     'does not take %j for one',
     (answer) => {
       expect(isRomajiAnswer(answer)).toBe(false);
+    },
+  );
+});
+
+describe('a typed hyphen holds the vowel before it (H.2.e)', () => {
+  it.each([
+    ['oba-san', 'おばあさん'],
+    ['o-kii', 'おおきい'],
+    ['to-', 'とお'],
+    ['no-to', 'ノート'],
+  ])('accepts %s for %s, hiragana included', (typed, answer) => {
+    expect(typedAnswersMatch(typed, answer)).toBe(true);
+  });
+
+  it.each([
+    ['gakko-', 'がっこう'],
+    ['arigato-', 'ありがとう'],
+    ['e-ga', 'えいが'],
+  ])(
+    'still rejects %s for %s: おう and えい need every kana',
+    (typed, answer) => {
+      expect(typedAnswersMatch(typed, answer)).toBe(false);
     },
   );
 });

@@ -234,6 +234,14 @@ describe('buildDraftPrompt carries the rules for explanations (B.2.a, F.2.e)', (
   });
 });
 
+describe('buildDraftPrompt for an I-Reading lesson (F.2.g)', () => {
+  it('says Teach gives a typed word its meaning, never its rōmaji', () => {
+    expect(buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [])).toContain(
+      'Teach never writes in rōmaji a word that a typed check asks for: give its meaning only.',
+    );
+  });
+});
+
 describe('buildDraftPrompt after a rejection (F.2.c)', () => {
   const build = (previousErrors?: string[]) =>
     buildDraftPrompt(

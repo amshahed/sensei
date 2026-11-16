@@ -651,7 +651,7 @@ describe('explanations (F.2.e, P5, P6)', () => {
     it.each([
       ['In rōmaji, がっこう is gakkou.', 'gakkou'],
       ['がっこう (gakkō) is school.', 'gakkō'],
-      ['Spelled gakko, with a pause.', 'gakko'],
+      ['Spelled gakkoo, with a pause.', 'gakkoo'],
       ['GAKKOU is school.', 'GAKKOU'],
       ['Spelled gakkô in some books.', 'gakkô'],
     ])('rejects "%s" before the typed がっこう', (explanation) => {
@@ -771,6 +771,15 @@ describe('explanations (F.2.e, P5, P6)', () => {
       ).toEqual([]);
     });
 
+    it('allows gakko, which the grader marks wrong, so it gives nothing away (F.2.g)', () => {
+      expect(
+        giveaways(19, [
+          q('q1', { explanation: 'Not gakko: the vowel is held.' }),
+          school('q4'),
+        ]),
+      ).toEqual([]);
+    });
+
     it('does not take an English typed answer for rōmaji', () => {
       const meaning = typed('q2', {
         prompt: 'What does がっこう mean? Type it in English.',
@@ -780,6 +789,233 @@ describe('explanations (F.2.e, P5, P6)', () => {
         giveaways(19, [
           q('q1', { explanation: 'がっこう is a school.' }),
           meaning,
+        ]),
+      ).toEqual([]);
+    });
+  });
+});
+
+describe('the give-away matcher (F.2.g)', () => {
+  type Question = LessonDraft['check']['questions'][number];
+  const mc = (id: string, explanation: string): Question => ({
+    id,
+    targetItemId: 'ja:vocab:x',
+    prompt: 'Which is it?',
+    answerType: 'multiple-choice',
+    choices: ['a', 'b', 'c', 'd'],
+    correctAnswer: 'a',
+    explanation,
+  });
+  const typed = (id: string, over: Partial<Question>): Question => ({
+    id,
+    targetItemId: 'ja:vocab:x',
+    prompt: 'Type what you hear.',
+    answerType: 'typed',
+    correctAnswer: 'x',
+    explanation: 'x',
+    ...over,
+  });
+  /** Errors from the rules that spell out rōmaji, at lesson n. */
+  const spelled = (n: number, questions: Question[], text = '') =>
+    checkCourseRules(
+      draftWith(text, n, { check: { questions } }),
+      ctxAt(n),
+    ).errors.filter((e) => e.includes('spells out'));
+
+  describe('P5 stops rejecting English (test.md F1)', () => {
+    it.each([
+      ['I am a teacher.', 'いい'],
+      ['How do you say it?', 'どう'],
+      ['It is so.', 'そう'],
+      ['These are shoes.', 'あれ'],
+      ['It is made of wood.', 'まで'],
+      ['A man buys it.', 'まん'],
+      ['It is fun.', 'ふん'],
+    ])('allows "%s" before a typed %s', (explanation, answer) => {
+      expect(
+        spelled(120, [
+          mc('q1', explanation),
+          typed('q2', { correctAnswer: answer }),
+        ]),
+      ).toEqual([]);
+    });
+
+    it('passes lesson 67: ゼロ means zero, then a typed ゼロ', () => {
+      expect(
+        spelled(67, [
+          mc('q7', 'ゼロ means zero.'),
+          typed('q8', {
+            targetItemId: 'ja:vocab:ゼロ',
+            prompt: 'Type the Japanese (katakana) for zero.',
+            correctAnswer: 'ゼロ',
+          }),
+        ]),
+      ).toEqual([]);
+    });
+  });
+
+  describe('P5 still catches a word spelled out (test.md F2)', () => {
+    it.each([
+      ['きっぷ is kippu.', 'きっぷ', 'kippu'],
+      ['Kippu! A ticket.', 'きっぷ', 'kippu'],
+      ['がっこう is gakkō.', 'がっこう', 'gakkou'],
+      ['いい is ii.', 'いい', 'ii'],
+      ['どう is dō.', 'どう', 'dou'],
+      ['どう is dou.', 'どう', 'dou'],
+      ['ノート is nōto.', 'ノート', 'nooto'],
+      ['ノート is no-to on a keyboard.', 'ノート', 'nooto'],
+      ['なに is na-ni.', 'なに', 'nani'],
+      ['おかあさん is okāsan.', 'おかあさん', 'okaasan'],
+      [
+        'こんにちは is konnichiha, letter by letter.',
+        'こんにちは',
+        'konnichiha',
+      ],
+      ['きっぷ is kip-pu.', 'きっぷ', 'kippu'],
+      ['きんよう is kin’you.', 'きんよう', "kin'you"],
+    ])('rejects "%s" before a typed %s', (explanation, answer, romaji) => {
+      expect(
+        spelled(120, [
+          mc('q1', explanation),
+          typed('q2', { correctAnswer: answer }),
+        ]),
+      ).toEqual([
+        `check q1: the explanation spells out "${romaji}" before check q2 asks for it`,
+      ]);
+    });
+
+    it('rejects a sentence spelled with は as ha', () => {
+      expect(
+        spelled(43, [
+          mc('q1', 'It reads tomodachi ha isha desu.'),
+          typed('q4', {
+            targetItemId: 'ja:grammar:は',
+            correctAnswer: 'ともだち は いしゃ です',
+          }),
+        ]),
+      ).toEqual([
+        'check q1: the explanation spells out "tomodachi ha isha desu" before check q4 asks for it',
+      ]);
+    });
+
+    it('allows "ティ is tei" before a typed ティ: one sound, not a word (F5)', () => {
+      expect(
+        spelled(120, [
+          mc('q1', 'ティ is tei.'),
+          typed('q2', { correctAnswer: 'ティ' }),
+        ]),
+      ).toEqual([]);
+    });
+  });
+
+  describe('an I-Reading Teach beat gives no typed answer away (item 5)', () => {
+    const asks = [
+      typed('q1', {
+        targetItemId: 'ja:kana:ma',
+        prompt: 'Read this word and type how it sounds: やま',
+        correctAnswer: 'やま',
+      }),
+      typed('q2', {
+        targetItemId: 'ja:kana:na',
+        prompt: 'Read this word and type how it sounds: なに',
+        correctAnswer: 'なに',
+      }),
+    ];
+    const example = (reading: string) =>
+      draftWith('', 13, {
+        teach: {
+          blocks: [
+            { type: 'text', text: 'なに is na-ni.' },
+            {
+              type: 'example',
+              japanese: 'やま',
+              reading,
+              translation: 'mountain',
+            },
+          ],
+        },
+        check: { questions: asks },
+      });
+
+    it('rejects the pre-edit lesson 13 pattern: rōmaji in text and in a reading', () => {
+      expect(ctxAt(13).lessonType).toBe('I-Reading');
+      expect(
+        checkCourseRules(example('yama'), ctxAt(13)).errors.filter((e) =>
+          e.includes('spells out'),
+        ),
+      ).toEqual([
+        'teach[1]: spells out "yama" in rōmaji, and check q1 asks the learner to type it',
+        'teach[0]: spells out "nani" in rōmaji, and check q2 asks the learner to type it',
+      ]);
+    });
+
+    it("allows lesson 4's worked あさ, which no typed check asks for", () => {
+      const draft = draftWith('あさ is asa, morning. Now read on.', 4, {
+        check: {
+          questions: [
+            typed('q1', {
+              targetItemId: 'ja:kana:ka',
+              prompt: 'Read this word and type how it sounds: かさ',
+              correctAnswer: 'かさ',
+            }),
+          ],
+        },
+      });
+      expect(ctxAt(4).lessonType).toBe('I-Reading');
+      expect(
+        checkCourseRules(draft, ctxAt(4)).errors.filter((e) =>
+          e.includes('spells out'),
+        ),
+      ).toEqual([]);
+    });
+
+    it('leaves the same Teach alone outside I-Reading', () => {
+      const ctx = { ...ctxAt(13), lessonType: 'F-Vocab' as const };
+      expect(
+        checkCourseRules(example('yama'), ctx).errors.filter((e) =>
+          e.includes('spells out'),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('a typed check that answers itself (item 6.2)', () => {
+    it('rejects "Type the kana that reads \'ka\'": single sounds count here', () => {
+      expect(
+        spelled(14, [
+          typed('q3', {
+            targetItemId: 'ja:kana:ka',
+            prompt: "Type the kana that reads 'ka'.",
+            correctAnswer: 'か',
+          }),
+        ]),
+      ).toEqual([
+        'check q3: the prompt spells out "ka", the answer it asks for',
+      ]);
+    });
+
+    it('rejects "Type konnichiwa in kana"', () => {
+      expect(
+        spelled(21, [
+          typed('q2', {
+            targetItemId: 'ja:vocab:こんにちは',
+            prompt: 'Type konnichiwa in kana.',
+            correctAnswer: 'こんにちは',
+          }),
+        ]),
+      ).toEqual([
+        'check q2: the prompt spells out "konnichiwa", the answer it asks for',
+      ]);
+    });
+
+    it('lets a lookalike pass: "Type the Japanese (katakana) for zero."', () => {
+      expect(
+        spelled(67, [
+          typed('q8', {
+            targetItemId: 'ja:vocab:ゼロ',
+            prompt: 'Type the Japanese (katakana) for zero.',
+            correctAnswer: 'ゼロ',
+          }),
         ]),
       ).toEqual([]);
     });

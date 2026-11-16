@@ -268,7 +268,7 @@ Rules:
 - Explanations are shown before the later questions, so until a question has asked the learner to type a word, no explanation spells that word out in rōmaji. Pointing out one kana's sound is fine.
 - Audio src must be a relative placeholder path (e.g. "audio/kana/a.mp3")
 - All targetItemIds in questions/templates must be from the TARGET ITEMS list above
-- For I-Reading lessons: open with a "passage" block containing the reading text, then use "text" blocks for comprehension guidance; check questions test the passage content (multiple-choice or typed)
+- For I-Reading lessons: open with a "passage" block containing the reading text, then use "text" blocks for comprehension guidance; check questions test the passage content (multiple-choice or typed). Teach never writes in rōmaji a word that a typed check asks for: give its meaning only.
 - For F-Kana lessons: include one "kana" block per target kana character with its char, romaji, itemId, and an optional hint
 - A "kana" block in any other lesson is a sound card: it has no itemId
 - Available teach block types: text, kana, example, mnemonic, audio, passage`;
