@@ -426,12 +426,6 @@ function romajiOfAnswer(q: CheckQuestion): string[] {
 }
 
 /**
- * The PM's approved wording for a reading check, from lesson 20. It has no
- * rōmaji in it, so a short reading (いい, ii) can't be found in "this".
- */
-export const TYPED_READING_PROMPT = 'Read this word and type how it sounds:';
-
-/**
  * The rōmaji of its own answer that a closed typed check's prompt spells out,
  * single sounds included ("Type the kana that reads 'ka'"), or undefined. The
  * standard reading prompt is never read as rōmaji (F.2.g).
