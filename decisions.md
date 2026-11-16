@@ -1866,3 +1866,18 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 - Teaching the components as extra kanji items. That adds kanji beyond M.1's light set.
 
 **Reverse:** A new entry adding a component whitelist to `scriptProblems` in `course-rules.ts`.
+
+### F.1.d The verb lessons keep their order, ます before を, and earlier lessons write around を (confirms F.1.a) (decided by Project Manager, 2026-11-16)
+
+**Decision:** Lessons 86 (verbs), 87 (ます), 88 (ません) and 89 (を) keep their order. Until を is taught, sentences have no object (わたし も たべます, わかります, ともだち は きません), and the verb vocabulary lesson uses dictionary forms and noun phrases (にほんご の ほん).
+
+**Why:**
+- The pinch cost hand edits to three wave 3 drafts (86: one example; 87: five examples and three checks; 88: three examples and one check), all at $0. Reordering now would change four lesson IDs and need each draft rechecked or redrafted, for lessons that are already written.
+- ます first gives the learner whole sentences they can say at once (わかります, いきます, かえります), which serves "speak early". With を first, every を example would end in a plain dictionary form, which is casual speech the course hasn't taught.
+- The gate (F.2.c) catches every early を, so the drafter's habit can't slip through.
+
+**Rejected:**
+- Moving を before ます (an outline edit like F.1.c): four ID changes, and を sentences in plain form.
+- Merging ます and を into one lesson: two points in one lesson.
+
+**Reverse:** An outline edit like F.1.c, before these lessons are published.
