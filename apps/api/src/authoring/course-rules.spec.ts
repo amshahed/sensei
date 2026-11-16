@@ -387,9 +387,10 @@ describe('particles in a typed answer (H.2.a, test.md F3)', () => {
   });
 
   it('does not check an open typed question', () => {
+    // Lesson 43 may not have one at all (F.2.i), but that is another rule.
     expect(
-      typedCheck('わたしは がくせい です', 43, { grading: 'open' }),
-    ).toEqual([]);
+      typedCheck('わたしは がくせい です', 43, { grading: 'open' }).join(),
+    ).not.toMatch(/particle/);
   });
 
   it('does not check a multiple-choice answer', () => {
@@ -585,6 +586,39 @@ describe('open checks', () => {
     });
     expect(checkCourseRules(draft, ctxAt(120)).errors.join()).toMatch(
       /open check/,
+    );
+  });
+});
+
+describe('an open check only where the author note asks (F.2.i)', () => {
+  const openAt = (n: number) =>
+    draftWith('', n, {
+      check: {
+        questions: [
+          {
+            id: 'q4',
+            targetItemId: lessons[n - 1].itemIds[0],
+            prompt: 'Say it in Japanese: I am a student.',
+            answerType: 'typed',
+            correctAnswer: 'わたし は がくせい です',
+            explanation: 'は marks the topic.',
+            grading: 'open',
+            rubric: 'Any natural sentence saying they are a student.',
+          },
+        ],
+      },
+    });
+  const rule = /only allowed where the outline's author note asks/;
+
+  it('rejects an open check in a lesson whose note does not ask for one (lesson 47)', () => {
+    expect(checkCourseRules(openAt(47), ctxAt(47)).errors).toContain(
+      "check q4: an open check is only allowed where the outline's author note asks for one",
+    );
+  });
+
+  it('allows one in lesson 120, whose note asks for it', () => {
+    expect(checkCourseRules(openAt(120), ctxAt(120)).errors.join()).not.toMatch(
+      rule,
     );
   });
 });

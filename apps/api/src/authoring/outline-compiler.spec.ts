@@ -12,6 +12,7 @@ import {
   type OutlineSpec,
 } from './outline-compiler';
 import type { Lesson } from './skeleton-schema';
+import { openChecksAllowed } from './course-rules';
 
 const real = loadOutlineSpec();
 const clone = (): OutlineSpec =>
@@ -114,6 +115,14 @@ describe('the committed outline (F.1.b)', () => {
   it('opens lesson 120 as a free self-introduction (P10)', () => {
     expect(lesson(real, 120).type).toBe('I-Writing');
     expect(lesson(real, 120).authorNote).toMatch(/grading "open"/);
+  });
+
+  it('allows an open check in lesson 120 only, so a reworded note fails here (F.2.i)', () => {
+    expect(
+      lessonsOf(real)
+        .filter((l) => openChecksAllowed(l.authorNote))
+        .map((l) => l.id),
+    ).toEqual(['foundation-ja-ch17-l07']);
   });
 });
 

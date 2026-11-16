@@ -552,6 +552,16 @@ function selfAnsweringProblems(questions: CheckQuestion[]): string[] {
 }
 
 /**
+ * F.2.i: whether a lesson may have an open check, which only the AI grader can
+ * mark. Only where the outline's author note asks for one with grading
+ * "open" (lesson 120 today, pinned by a spec over the outline). The gate and
+ * the draft prompt both ask this.
+ */
+export function openChecksAllowed(authorNote?: string): boolean {
+  return authorNote?.includes('grading "open"') ?? false;
+}
+
+/**
  * The free deterministic gate (F.2.a), run after every draft and again at
  * publish. Errors reject the draft. A warning is a heuristic, left to review.
  */
@@ -597,6 +607,11 @@ export function checkCourseRules(
     }
     if (q.grading === 'open' && q.answerType === 'multiple-choice') {
       errors.add(`check ${q.id}: an open check can't be multiple-choice`);
+    }
+    if (q.grading === 'open' && !openChecksAllowed(ctx.authorNote)) {
+      errors.add(
+        `check ${q.id}: an open check is only allowed where the outline's author note asks for one`,
+      );
     }
     if (choicesAreWords) {
       const closed = q.grading === 'open' ? [] : [q.correctAnswer];

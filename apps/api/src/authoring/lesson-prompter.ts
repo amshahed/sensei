@@ -4,7 +4,11 @@ import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import type { Lesson } from './skeleton-schema';
 import type { CourseContext } from './course-context';
-import { scriptProblems, untaughtParticles } from './course-rules';
+import {
+  openChecksAllowed,
+  scriptProblems,
+  untaughtParticles,
+} from './course-rules';
 import {
   LessonDraftSchema,
   CritiqueSchema,
@@ -157,6 +161,11 @@ function courseContextBlock(ctx: CourseContext): string {
     ? `PARTICLES NOT TAUGHT YET: ${untaught.join(' ')}. Don't use them as particles in Japanese. A kana shown on its own is fine when punctuation or English sets it apart, as in "と: そと" or "In はな, は says ha."\n`
     : '';
   const note = ctx.authorNote ? `\nAUTHOR NOTE: ${ctx.authorNote}\n` : '';
+  // Only where the outline asks for one (F.2.i); elsewhere the model has no
+  // reason to write a grading field at all (F.2.f).
+  const open = openChecksAllowed(ctx.authorNote)
+    ? '- A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for'
+    : '- Every check has one right answer: write no open checks and no grading field.';
   // A reading lesson on kana comes before there are words to list.
   const kanaReading =
     ctx.hasKanaTargets && ctx.lessonType.startsWith('I-')
@@ -175,7 +184,7 @@ Course rules:
 - Every piece of Japanese you write (examples, passages, questions, choices, answers, hints) uses only the kana, grammar and words listed above
 - Write Japanese in kana, with a space between words. A typed correctAnswer is always the Japanese in kana, never rōmaji: the app shows the rōmaji and accepts either.
 - Kanji appear only in F-Kanji lessons${kanaReading}
-- A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for
+${open}
 `;
 }
 

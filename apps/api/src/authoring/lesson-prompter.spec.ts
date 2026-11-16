@@ -234,6 +234,28 @@ describe('buildDraftPrompt carries the rules for explanations (B.2.a, F.2.e)', (
   });
 });
 
+describe('buildDraftPrompt describes open checks only where asked (F.2.i)', () => {
+  const OPEN_LINE =
+    'A question with no single right answer has answerType "typed", grading "open"';
+  const ONE_ANSWER =
+    'Every check has one right answer: write no open checks and no grading field.';
+  const { lessons, ctxAt } = compiledOutline();
+  const promptAt = (n: number) =>
+    buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
+
+  it('tells lesson 120, whose note asks for one, how to write it', () => {
+    expect(promptAt(120)).toContain(OPEN_LINE);
+    expect(promptAt(120)).not.toContain(ONE_ANSWER);
+  });
+
+  it('tells every other lesson to write no open check and no grading', () => {
+    for (const n of [37, 47, 75]) {
+      expect(promptAt(n)).not.toContain(OPEN_LINE);
+      expect(promptAt(n)).toContain(ONE_ANSWER);
+    }
+  });
+});
+
 describe('buildDraftPrompt for an I-Reading lesson (F.2.g)', () => {
   it('says Teach gives a typed word its meaning, never its rōmaji', () => {
     expect(buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [])).toContain(
