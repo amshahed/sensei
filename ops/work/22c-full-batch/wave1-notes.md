@@ -1,6 +1,6 @@
 # Wave 1 notes (Lead)
 
-Lessons 1 to 40, drafted 2026-11-14. Per-lesson lines are in `run.log`.
+Lessons 1 to 40, drafted 2026-11-14. Per-lesson lines are in `run-log.txt`.
 
 ## Result of the first pass
 

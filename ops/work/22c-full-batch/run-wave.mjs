@@ -7,7 +7,7 @@
 // Skips I-Listening and I-Speaking unless --include-audio, and skips any lesson
 // that already has a draft or a rejected draft (the drafter never pays twice).
 // Stops before a lesson when the running total has reached the cap.
-// Appends one line per lesson to run.log beside this file. Run from the main
+// Appends one line per lesson to run-log.txt beside this file. Run from the main
 // checkout, which holds apps/api/.env.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', '..');
 const out = join(root, 'tools', 'authoring', 'output');
-const logPath = join(here, 'run.log');
+const logPath = join(here, 'run-log.txt');
 
 const [fromRaw, toRaw, capRaw] = process.argv.slice(2);
 const includeAudio = process.argv.includes('--include-audio');
