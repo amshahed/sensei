@@ -55,9 +55,10 @@ describe('sounds (P1)', () => {
     expect(errors('きって', 19).join()).not.toMatch(/uses/);
   });
 
-  it('fails ー before lesson 39 and allows it from there', () => {
-    expect(errors('コーヒー', 38).join()).toMatch(/uses ー/);
-    expect(errors('コーヒー', 39)).toEqual([]);
+  it('fails ー before lesson 38 and allows it from there (F.1.c)', () => {
+    expect(errors('コーヒー', 37).join()).toMatch(/uses ー/);
+    // A sound lesson now, so its draft also needs typed checks (P2).
+    expect(errors('コーヒー', 38).join()).not.toMatch(/uses/);
   });
 
   it('checks every field the learner reads, and ignores the middle dot', () => {

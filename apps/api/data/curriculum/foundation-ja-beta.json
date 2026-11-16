@@ -31,7 +31,7 @@
       "chars": "っ"
     },
     {
-      "lessonId": "foundation-ja-ch07-l07",
+      "lessonId": "foundation-ja-ch07-l06",
       "label": "katakana ー, ッ, ャ and voiced marks",
       "chars": "ーッャュョガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"
     }
@@ -1193,19 +1193,6 @@
         },
         {
           "id": "foundation-ja-ch07-l06",
-          "type": "I-Reading",
-          "title": "Reading katakana loanwords II",
-          "itemIds": [
-            "ja:kana:kata-ha",
-            "ja:kana:kata-ma",
-            "ja:kana:kata-ra",
-            "ja:kana:kata-n",
-            "ja:kana:kata-ru"
-          ],
-          "estimatedMinutes": 6
-        },
-        {
-          "id": "foundation-ja-ch07-l07",
           "type": "F-Vocab",
           "title": "Katakana sounds: ー, ッ, ャ and voiced marks",
           "itemIds": [
@@ -1250,7 +1237,21 @@
               "char": "パ",
               "romaji": "pa"
             }
-          ]
+          ],
+          "typedReading": true
+        },
+        {
+          "id": "foundation-ja-ch07-l07",
+          "type": "I-Reading",
+          "title": "Reading katakana loanwords II",
+          "itemIds": [
+            "ja:kana:kata-ha",
+            "ja:kana:kata-ma",
+            "ja:kana:kata-ra",
+            "ja:kana:kata-n",
+            "ja:kana:kata-ru"
+          ],
+          "estimatedMinutes": 6
         },
         {
           "id": "foundation-ja-ch07-l08",

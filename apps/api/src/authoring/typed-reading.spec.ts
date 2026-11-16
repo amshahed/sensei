@@ -370,11 +370,11 @@ describe('every typed-reading target accepts its rōmaji (P4, P5)', () => {
     ctxAt(n).targets.map((t) => [n, t.surface] as const),
   );
 
-  it('covers the six typed-reading lessons, 15 to 20', () => {
+  it('covers the seven typed-reading lessons, 15 to 20 and 38 (F.1.c)', () => {
     expect(typedReadingLessons.map(({ n }) => n)).toEqual([
-      15, 16, 17, 18, 19, 20,
+      15, 16, 17, 18, 19, 20, 38,
     ]);
-    expect(targets).toHaveLength(30);
+    expect(targets).toHaveLength(35);
   });
 
   // The gate calls a check fair only if a learner typing the word is marked
