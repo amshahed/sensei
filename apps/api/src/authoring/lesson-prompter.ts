@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { ZodError } from 'zod';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import type { Lesson } from './skeleton-schema';
@@ -320,34 +321,144 @@ export async function generateDraft(
     system: DRAFTER_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
   });
-  assertComplete(res, 'Drafter', DRAFT_MAX_TOKENS);
 
-  const inputTokens = res.usage?.input_tokens ?? 0;
-  const outputTokens = res.usage?.output_tokens ?? 0;
-
-  const raw = res.content
+  // Paid for from here on, so a failure keeps the reply (F.2.f).
+  const received: ReceivedReply = {
+    model,
+    inputTokens: res.usage?.input_tokens ?? 0,
+    outputTokens: res.usage?.output_tokens ?? 0,
+    stopReason: res.stop_reason ?? null,
+    receivedAt: new Date().toISOString(),
+  };
+  const { inputTokens, outputTokens } = received;
+  const text = res.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')
     .join('')
     .trim();
 
-  const parsed = parseLlmJson(raw, 'Drafter');
-
-  if (parsed && typeof parsed === 'object') {
-    const p = parsed as Record<string, unknown>;
-    p['meta'] = {
-      ...(typeof p['meta'] === 'object' && p['meta'] !== null ? p['meta'] : {}),
-      generatedAt: new Date().toISOString(),
-      model,
-      tokenUsage: {
-        inputTokens: inputTokens || 0,
-        outputTokens: outputTokens || 0,
-      },
-    };
+  let reply: unknown;
+  try {
+    assertComplete(res, 'Drafter', DRAFT_MAX_TOKENS);
+    reply = parseLlmJson(text, 'Drafter');
+  } catch (err) {
+    throw new DraftReplyError(replyErrorMessage(err), {
+      ...received,
+      raw: text,
+    });
   }
+  try {
+    const draft = parseDraftReply({ ...received, reply }, lesson);
+    return { draft, items, inputTokens, outputTokens };
+  } catch (err) {
+    throw new DraftReplyError(replyErrorMessage(err), { ...received, reply });
+  }
+}
 
-  const draft = LessonDraftSchema.parse(parsed);
-  return { draft, items, inputTokens, outputTokens };
+/** A paid drafter reply, before it is read as a draft (F.2.f). */
+export interface ReceivedReply {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  stopReason: string | null;
+  receivedAt: string;
+  /** The reply's JSON, exactly as the model wrote it. */
+  reply?: unknown;
+  /** The reply's text, only when it wasn't JSON. */
+  raw?: string;
+}
+
+/**
+ * A paid reply that couldn't be read as a draft: cut off, not JSON, or not a
+ * draft. It carries everything needed to save it and read it again later
+ * without a new call (F.2.f).
+ */
+export class DraftReplyError extends Error {
+  constructor(
+    message: string,
+    readonly received: ReceivedReply,
+  ) {
+    super(message);
+    this.name = 'DraftReplyError';
+  }
+}
+
+/** One line per schema problem, so a saved error reads like the gate's. */
+export function replyErrorMessage(err: unknown): string {
+  if (err instanceof ZodError) {
+    return err.issues
+      .map((i) => `${i.path.join('.') || '(reply)'}: ${i.message}`)
+      .join('; ');
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+const asRecord = (v: unknown): Record<string, unknown> | null =>
+  v && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : null;
+
+/**
+ * Slips that cost nothing to read past (F.2.f), on a copy of the reply:
+ *   - a check whose grading isn't "open" and that has no rubric is closed, so
+ *     the field goes; "Open" in any case or spacing is "open". A non-open
+ *     grading with a rubric might mean open, so the schema still refuses it;
+ *   - the lesson's id, type, title and targets are the skeleton's, which the
+ *     prompt tells the model to copy.
+ */
+export function normalizeDraftReply(reply: unknown, lesson: Lesson): unknown {
+  const draft = asRecord(reply);
+  if (!draft) return reply;
+  const copy = structuredClone(draft);
+  copy['lessonId'] = lesson.id;
+  copy['lessonType'] = lesson.type;
+  copy['title'] = lesson.title;
+  copy['targetItemIds'] = [...lesson.itemIds];
+
+  const questions = asRecord(copy['check'])?.['questions'];
+  for (const q of Array.isArray(questions) ? questions : []) {
+    const check = asRecord(q);
+    if (!check || !('grading' in check)) continue;
+    const grading = check['grading'];
+    if (
+      typeof grading === 'string' &&
+      grading.trim().toLowerCase() === 'open'
+    ) {
+      check['grading'] = 'open';
+    } else if (check['rubric'] == null) {
+      delete check['grading'];
+    }
+  }
+  return copy;
+}
+
+/**
+ * A received reply as a draft: its JSON (or its text, read as JSON), with the
+ * slips normalised and the meta stamped from the call. Pure, so --recheck reads
+ * a saved reply exactly as a fresh one is read. Throws when it isn't a draft.
+ */
+export function parseDraftReply(
+  received: ReceivedReply,
+  lesson: Lesson,
+): LessonDraft {
+  const json =
+    received.reply !== undefined
+      ? received.reply
+      : parseLlmJson(received.raw ?? '', 'Drafter');
+  const draft = asRecord(normalizeDraftReply(json, lesson));
+  if (!draft) return LessonDraftSchema.parse(json);
+  return LessonDraftSchema.parse({
+    ...draft,
+    meta: {
+      ...asRecord(draft['meta']),
+      generatedAt: received.receivedAt,
+      model: received.model,
+      tokenUsage: {
+        inputTokens: received.inputTokens,
+        outputTokens: received.outputTokens,
+      },
+    },
+  });
 }
 
 // ── Critic ────────────────────────────────────────────────────────────────────

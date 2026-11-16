@@ -344,6 +344,198 @@ describe('runDrafts (F.2.a)', () => {
     });
   });
 
+  describe('a paid reply that is not a draft (F.2.f)', () => {
+    /** Wave 2's crash: an answer type the schema doesn't know. */
+    const broken = (id: string) => {
+      const reply = replyFor(id, 'あ');
+      return {
+        ...reply,
+        meta: { ...reply.meta, generatedAt: '2026-11-15T10:00:00.000Z' },
+        check: {
+          questions: [{ ...reply.check.questions[0], answerType: 'drawn' }],
+        },
+      };
+    };
+    const replyWith = (text: string, stop_reason = 'end_turn') =>
+      Promise.resolve({
+        content: [{ type: 'text', text }],
+        stop_reason,
+        usage: { input_tokens: 100_000, output_tokens: 20_000 },
+      });
+
+    it('is saved with its tokens and cost, and the batch goes on', async () => {
+      create.mockImplementationOnce(() =>
+        replyWith(JSON.stringify(broken('l1'))),
+      );
+      const summary = await run([lesson(1), lesson(2)]);
+      expect(summary).toMatchObject({ drafted: 1, failed: 1, rejected: 0 });
+      expect(summary.costUsd).toBeCloseTo(2);
+      expect(fs.existsSync(inDir('l1.json'))).toBe(false);
+      const failed = read('l1.failed.json');
+      expect(failed).toMatchObject({
+        lessonId: 'l1',
+        model: 'claude-opus-4-8',
+        inputTokens: 100_000,
+        outputTokens: 20_000,
+        costUsd: 1,
+        stopReason: 'end_turn',
+        reply: broken('l1'),
+      });
+      expect(failed.error).toMatch(/check\.questions\.0\.answerType/);
+      expect(failed).not.toHaveProperty('raw');
+      expect(read('l2.json').lessonId).toBe('l2');
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /\[reply\] FAILED — .*\(tokens: 100000 in \/ 20000 out {2}\(~\$1\.0000\)\) → .*l1\.failed\.json$/,
+        ),
+      );
+    });
+
+    it('keeps a reply cut off at max_tokens as text, and counts it', async () => {
+      create.mockImplementationOnce(() =>
+        replyWith('{"lessonId": "l1", "teach":', 'max_tokens'),
+      );
+      const summary = await run([lesson(1)]);
+      expect(summary).toMatchObject({ failed: 1, drafted: 0 });
+      expect(summary.costUsd).toBeCloseTo(1);
+      const failed = read('l1.failed.json');
+      expect(failed).toMatchObject({
+        raw: '{"lessonId": "l1", "teach":',
+        stopReason: 'max_tokens',
+      });
+      expect(failed.error).toMatch(/cut off/);
+      expect(failed).not.toHaveProperty('reply');
+    });
+
+    it('counts against --max-cost, so the run stops before the next lesson', async () => {
+      create.mockImplementationOnce(() =>
+        replyWith(JSON.stringify(broken('l1'))),
+      );
+      const summary = await run([lesson(1), lesson(2)], { maxCostUsd: 1 });
+      expect(summary).toMatchObject({ failed: 1, stoppedBefore: 'l2' });
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+
+    it('is skipped on the next run, because it was paid for', async () => {
+      write('l1.failed.json', { lessonId: 'l1' });
+      expect(await run([lesson(1)])).toMatchObject({ skipped: 1 });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('--force keeps the older failed reply as .failed.prev.json', async () => {
+      write('l1.failed.json', { older: true });
+      create.mockImplementationOnce(() =>
+        replyWith(JSON.stringify(broken('l1'))),
+      );
+      await run([lesson(1)], { force: true });
+      expect(read('l1.failed.prev.json')).toEqual({ older: true });
+      expect(read('l1.failed.json').reply).toEqual(broken('l1'));
+    });
+
+    it('--force that drafts puts the older failed reply aside, so --recheck cannot restore it', async () => {
+      write('l1.failed.json', { older: true });
+      await run([lesson(1)], { force: true });
+      expect(read('l1.json').lessonId).toBe('l1');
+      expect(fs.existsSync(inDir('l1.failed.json'))).toBe(false);
+      expect(read('l1.failed.prev.json')).toEqual({ older: true });
+    });
+
+    it('is kept when saving fails for another reason, and the run stops', async () => {
+      // The old draft can't be moved aside: a directory is in the way.
+      write('l1.json', { old: true });
+      fs.mkdirSync(inDir('l1.prev.json/full'), { recursive: true });
+      await expect(
+        run([lesson(1), lesson(2)], { force: true }),
+      ).rejects.toThrow();
+      expect(create).toHaveBeenCalledTimes(1);
+      const failed = read('l1.failed.json');
+      expect(failed).toMatchObject({ inputTokens: 100_000, costUsd: 1 });
+      expect(failed.error).toBeTruthy();
+      expect((failed.reply as LessonDraft).lessonId).toBe('l1');
+      expect(read('l1.json')).toEqual({ old: true });
+    });
+
+    describe('--recheck', () => {
+      /** Saved by wave 2's code: closed, but with a grading the schema refused. */
+      const wave2 = (id: string) => {
+        const reply = replyFor(id, 'あ');
+        return {
+          lessonId: id,
+          receivedAt: '2026-11-15T10:00:00.000Z',
+          model: 'claude-opus-4-8',
+          inputTokens: 100_000,
+          outputTokens: 20_000,
+          costUsd: 1,
+          stopReason: 'end_turn',
+          error: 'check.questions.0.grading: Invalid literal value',
+          reply: {
+            ...reply,
+            check: {
+              questions: [{ ...reply.check.questions[0], grading: 'closed' }],
+            },
+          },
+        };
+      };
+
+      it('recovers a failed reply once the cause is fixed, with no model call', async () => {
+        write('l1.failed.json', wave2('l1'));
+        const summary = await run([lesson(1)], {
+          recheck: true,
+          anthropic: {
+            messages: {
+              create: () => Promise.reject(new Error('no model call')),
+            },
+          },
+        });
+        expect(summary).toMatchObject({ rechecked: 1, failed: 0, costUsd: 0 });
+        const saved = read('l1.json') as unknown as LessonDraft;
+        expect(saved.check.questions[0]).not.toHaveProperty('grading');
+        expect(saved.meta).toEqual({
+          generatedAt: '2026-11-15T10:00:00.000Z',
+          model: 'claude-opus-4-8',
+          tokenUsage: { inputTokens: 100_000, outputTokens: 20_000 },
+        });
+        expect(fs.existsSync(inDir('l1.failed.json'))).toBe(false);
+      });
+
+      it('reads it before a rejected draft, and rejects it like a fresh one', async () => {
+        const failed = wave2('l1');
+        failed.reply.teach.blocks = [{ type: 'text', text: 'か' }];
+        write('l1.failed.json', failed);
+        write('l1.rejected.json', { ...replyFor('l1', 'あ'), older: true });
+        const summary = await run([lesson(1)], { recheck: true });
+        expect(summary).toMatchObject({ rejected: 1, rechecked: 0 });
+        expect(read('l1.rejected.json')).not.toHaveProperty('older');
+        expect(read('l1.rejected.json').courseRuleErrors).toEqual([
+          'teach[0]: uses か before it is taught',
+        ]);
+        expect(fs.existsSync(inDir('l1.failed.json'))).toBe(false);
+      });
+
+      it('reads a reply saved as text, once it is fixed by hand', async () => {
+        const { reply, ...rest } = wave2('l1');
+        write('l1.failed.json', {
+          ...rest,
+          raw: `Here it is:\n${JSON.stringify(reply)}`,
+        });
+        expect(await run([lesson(1)], { recheck: true })).toMatchObject({
+          rechecked: 1,
+        });
+      });
+
+      it('keeps a reply that still fails, with its error brought up to date', async () => {
+        write('l1.failed.json', { ...wave2('l1'), reply: broken('l1') });
+        const summary = await run([lesson(1)], { recheck: true });
+        expect(summary).toMatchObject({ failed: 1, rechecked: 0, costUsd: 0 });
+        expect(create).not.toHaveBeenCalled();
+        const failed = read('l1.failed.json');
+        expect(failed.error).toMatch(/answerType/);
+        expect(failed.reply).toEqual(broken('l1'));
+        expect(fs.existsSync(inDir('l1.json'))).toBe(false);
+      });
+    });
+  });
+
   it('--max-cost stops before the next paid lesson and says where', async () => {
     const summary = await run([lesson(1), lesson(2), lesson(3)], {
       maxCostUsd: 1.5,
