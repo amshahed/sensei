@@ -411,7 +411,9 @@ const asRecord = (v: unknown): Record<string, unknown> | null =>
  * Slips that cost nothing to read past (F.2.f), on a copy of the reply:
  *   - a check whose grading isn't "open" and that has no rubric is closed, so
  *     the field goes; "Open" in any case or spacing is "open". A non-open
- *     grading with a rubric might mean open, so the schema still refuses it;
+ *     grading with a rubric might mean open, so the schema still refuses it.
+ *     So does any non-open grading in a lesson that may have an open check
+ *     (F.2.i), where dropping it could make a self-introduction exact-match;
  *   - the lesson's id, type, title and targets are the skeleton's, which the
  *     prompt tells the model to copy.
  */
@@ -424,6 +426,7 @@ export function normalizeDraftReply(reply: unknown, lesson: Lesson): unknown {
   copy['title'] = lesson.title;
   copy['targetItemIds'] = [...lesson.itemIds];
 
+  const openAllowed = openChecksAllowed(lesson.authorNote);
   const questions = asRecord(copy['check'])?.['questions'];
   for (const q of Array.isArray(questions) ? questions : []) {
     const check = asRecord(q);
@@ -434,7 +437,7 @@ export function normalizeDraftReply(reply: unknown, lesson: Lesson): unknown {
       grading.trim().toLowerCase() === 'open'
     ) {
       check['grading'] = 'open';
-    } else if (check['rubric'] == null) {
+    } else if (check['rubric'] == null && !openAllowed) {
       delete check['grading'];
     }
   }
@@ -444,12 +447,21 @@ export function normalizeDraftReply(reply: unknown, lesson: Lesson): unknown {
 /**
  * A received reply as a draft: its JSON (or its text, read as JSON), with the
  * slips normalised and the meta stamped from the call. Pure, so --recheck reads
- * a saved reply exactly as a fresh one is read. Throws when it isn't a draft.
+ * a saved reply exactly as a fresh one is read: text cut off at max_tokens is
+ * still refused, because its last whole object may be one the model was
+ * replacing. A hand fix goes in `reply`. Throws when it isn't a draft.
  */
 export function parseDraftReply(
   received: ReceivedReply,
   lesson: Lesson,
 ): LessonDraft {
+  if (received.reply === undefined) {
+    assertComplete(
+      { stop_reason: received.stopReason },
+      'Drafter',
+      DRAFT_MAX_TOKENS,
+    );
+  }
   const json =
     received.reply !== undefined
       ? received.reply

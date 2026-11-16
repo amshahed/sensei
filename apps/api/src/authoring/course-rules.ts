@@ -521,7 +521,8 @@ function readingTeachProblems(
   const teach = learnerFields(draft).filter((f) =>
     f.where.startsWith('teach['),
   );
-  const problems = new Set<string>();
+  const problems: string[] = [];
+  // One error per field and word, naming the first check that asks for it.
   const seen = new Set<string>();
   for (const q of draft.check.questions) {
     if (isOneSound(q)) continue;
@@ -530,13 +531,13 @@ function readingTeachProblems(
         const key = `${where}${asWords(romajiText(romaji))}`;
         if (seen.has(key) || !spellsOut(text, romaji)) continue;
         seen.add(key);
-        problems.add(
+        problems.push(
           `${where}: spells out "${romaji}" in rōmaji, and check ${q.id} asks the learner to type it`,
         );
       }
     }
   }
-  return [...problems];
+  return problems;
 }
 
 /** F.2.g: a typed check whose prompt spells out its own answer. */

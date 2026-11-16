@@ -466,6 +466,37 @@ describe('runDrafts (F.2.a)', () => {
       expect(read('l1.failed.json').reply).toEqual(broken('l1'));
     });
 
+    it('never overwrites an older failed reply, however many there are', async () => {
+      write('l1.failed.json', { a: true });
+      write('l1.failed.prev.json', { older: true });
+      create.mockImplementationOnce(() =>
+        replyWith(JSON.stringify(broken('l1'))),
+      );
+      await run([lesson(1)], { force: true });
+      expect(read('l1.failed.prev.json')).toEqual({ older: true });
+      expect(read('l1.failed.prev.2.json')).toEqual({ a: true });
+      expect(read('l1.failed.json').reply).toEqual(broken('l1'));
+    });
+
+    it('--force tells the redraft why the failed reply could not be read (F.2.c)', async () => {
+      write('l1.failed.json', {
+        lessonId: 'l1',
+        error: 'check.questions.0.answerType: Invalid enum value',
+      });
+      write('l1.rejected.json', {
+        ...replyFor('l1', 'か'),
+        courseRuleErrors: ['an older rejection'],
+      });
+      await run([lesson(1)], { force: true });
+      const [request] = create.mock.calls[0] as [
+        { messages: Array<{ content: string }> },
+      ];
+      expect(request.messages[0].content).toContain(
+        '  - the reply could not be read as a draft: check.questions.0.answerType: Invalid enum value\n',
+      );
+      expect(request.messages[0].content).not.toContain('an older rejection');
+    });
+
     it('--force that drafts puts the older failed reply aside, so --recheck cannot restore it', async () => {
       write('l1.failed.json', { older: true });
       await run([lesson(1)], { force: true });
@@ -555,6 +586,19 @@ describe('runDrafts (F.2.a)', () => {
         expect(await run([lesson(1)], { recheck: true })).toMatchObject({
           rechecked: 1,
         });
+      });
+
+      it('still refuses text cut off at max_tokens, though a whole object sits in it', async () => {
+        const { reply, ...rest } = wave2('l1');
+        write('l1.failed.json', {
+          ...rest,
+          stopReason: 'max_tokens',
+          raw: `${JSON.stringify(reply)}\nCorrection: {"lessonId": "l1", "teach":`,
+        });
+        const summary = await run([lesson(1)], { recheck: true });
+        expect(summary).toMatchObject({ failed: 1, rechecked: 0 });
+        expect(read('l1.failed.json').error).toMatch(/cut off/);
+        expect(fs.existsSync(inDir('l1.json'))).toBe(false);
       });
 
       it('keeps a reply that still fails, with its error brought up to date', async () => {

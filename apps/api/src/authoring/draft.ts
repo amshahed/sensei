@@ -178,7 +178,8 @@ type FailedReply = ReceivedReply & {
 
 /**
  * Saves a paid reply that couldn't be read as a draft. A paid reply is never
- * overwritten, so an older one is kept as <id>.failed.prev.json.
+ * overwritten, so an older one is kept as <id>.failed.prev.json (then
+ * .failed.prev.2.json and on).
  */
 function saveFailedReply(
   file: (suffix: string) => string,
@@ -199,7 +200,7 @@ function saveFailedReply(
     ...(received.reply !== undefined ? { reply: received.reply } : {}),
     ...(received.raw !== undefined ? { raw: received.raw } : {}),
   };
-  keepPrevious(file, '.failed.json', '.failed.prev.json');
+  keepFailedAside(file);
   fs.writeFileSync(
     file('.failed.json'),
     JSON.stringify(failed, null, 2),
@@ -210,13 +211,28 @@ function saveFailedReply(
   );
 }
 
-/** Moves a file aside before it is replaced, so nothing paid for is lost. */
-function keepPrevious(
-  file: (suffix: string) => string,
-  from: string,
-  to: string,
-): void {
-  if (fs.existsSync(file(from))) fs.renameSync(file(from), file(to));
+/**
+ * Moves <id>.failed.json aside to the first free .failed.prev[.N].json, so no
+ * failed reply, each one paid for, is ever overwritten (F.2.f).
+ */
+function keepFailedAside(file: (suffix: string) => string): void {
+  if (!fs.existsSync(file('.failed.json'))) return;
+  let to = '.failed.prev.json';
+  for (let n = 2; fs.existsSync(file(to)); n++) to = `.failed.prev.${n}.json`;
+  fs.renameSync(file('.failed.json'), file(to));
+}
+
+/**
+ * Why the last attempt failed, told to a --force redraft (F.2.c). A failed
+ * reply is always the newest attempt: a later draft or rejection moves it
+ * aside. Otherwise, the rejected draft's reasons.
+ */
+function previousAttemptErrors(file: (suffix: string) => string): string[] {
+  if (fs.existsSync(file('.failed.json'))) {
+    const { error } = readFailedReply(file('.failed.json'));
+    return [`the reply could not be read as a draft: ${error}`];
+  }
+  return rejectionReasons(file('.rejected.json'));
 }
 
 function readFailedReply(file: string): FailedReply {
@@ -377,8 +393,9 @@ export async function runDrafts(
       CORRECTIONS_N,
       options.correctionsPath,
     );
-    // Only a --force redraft gets here with a rejected draft on disk.
-    const previousErrors = rejectionReasons(file('.rejected.json'));
+    // Only a --force redraft gets here with a rejected draft or a failed
+    // reply on disk.
+    const previousErrors = previousAttemptErrors(file);
     console.log(
       `  drafting "${lesson.id}" (${lesson.type}, ${lesson.itemIds.length} items, ${corrections.length} corrections${previousErrors.length > 0 ? `, ${previousErrors.length} rejection reasons` : ''})`,
     );
@@ -419,7 +436,7 @@ export async function runDrafts(
       );
       // A redraft supersedes an older failed reply, which is kept aside so a
       // later --recheck can't put it back over this one.
-      keepPrevious(file, '.failed.json', '.failed.prev.json');
+      keepFailedAside(file);
       if (saved) summary.drafted++;
       else summary.rejected++;
     } catch (err) {

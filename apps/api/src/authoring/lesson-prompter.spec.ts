@@ -586,6 +586,26 @@ describe('generateDraft', () => {
       expect(err.received).not.toHaveProperty('raw');
     });
 
+    it('keeps a non-open grading where the outline allows open checks (F.2.i)', async () => {
+      const lesson120 = {
+        ...TEST_LESSON,
+        authorNote:
+          'End with one open check: answerType "typed", grading "open".',
+      };
+      const err = await generateDraft(
+        replyWith(withGrading('ai')),
+        makeVoyageFake(false).voyage,
+        makePrisma(),
+        lesson120,
+        [],
+      ).then(
+        () => null,
+        (e: unknown) => e as DraftReplyError,
+      );
+      expect(err).toBeInstanceOf(DraftReplyError);
+      expect(err!.message).toMatch(/grading/);
+    });
+
     it("takes the lesson's id, type, title and targets from the skeleton", async () => {
       const { draft } = await draftFrom({
         ...MINIMAL_DRAFT,
