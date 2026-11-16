@@ -18,25 +18,25 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
   - Drafts renamed. Lessons 38 to 40 published, so **40 lessons are live**.
   - Lesson 67 rechecked at $0.
   - `run-wave.mjs` now skips `.failed.json` and logs `PARSE-FAILED`.
-- **Wave 2 (41 to 77), drafted and waiting for PM review.** The six lost lessons were redrafted: 44, 53 and 74 drafted; 54, 55 and 77 rejected. Lesson 67 is a draft now.
+- **Wave 2 (41 to 77) is done.** The PM approved all 30 non-audio lessons after hand edits (`content-review-wave2.md`), and the Lead published them, so **70 lessons are live**. Ruling F.2.j: no exemption for kanji components, and every target kanji gets a reading in kana. Its 4 correction notes are merged (PR #85).
 - **Wave 3 (78 to 120, no audio), drafted for $2.62:**
   - 32 drafts. Two of them, 99 and 120, were recovered from `.failed.json` at $0.
   - 6 rejected: 83, 86, 87, 94, 95 and 104.
   - Details and patterns are in `ops/work/22c-full-batch/wave3-notes.md`.
-- **Still to fix, all saved and recoverable at $0 by PM hand edit plus `--recheck`:**
-  - Rejected drafts 54, 55, 76, 77, 83, 86, 87, 94, 95 and 104. For 86 and 87, a `--force` redraft (about $0.07) is the alternative to a hand edit.
-  - Open checks in 47 and 75, which publish refuses.
+- **Still to fix in wave 3, all recoverable at $0 by PM hand edit plus `--recheck`:** rejected drafts 83, 86, 87, 94, 95 and 104. For 86 and 87, a `--force` redraft (about $0.07, with the new correction notes) is the alternative to a hand edit.
 - Audio lessons (12) aren't drafted. They wait for Azure (Blocker 2).
 
 ## Next actions
 
-1. **PM: wave 2 review** (lessons 41 to 77), in `ops/work/22c-full-batch/content-review-wave2.md`:
-   - Inputs: `wave2-notes.md`, `wave3-notes.md` (the rejected-lesson table and patterns cover wave 2 lessons too) and `run-log.txt`.
-   - Read every F-Grammar, F-Kanji and I-Reading lesson in full. Skim the rest.
-   - Hand-fix rejected lessons 54, 55, 76 and 77, and the open checks in 47 and 75, then `--recheck` them.
-   - Rule on the kanji-components pattern (wave3-notes, pattern 2).
-2. Lead: approve and publish the wave 2 lessons the PM passes. Use `EDITOR=true pnpm --filter api authoring:review <id>`, then `authoring:publish <id>`, in course order. Log each in `run-log.txt`.
-3. PM: wave 3 review (78 to 120), the same way, including rejected lessons 83, 86, 87, 94, 95 and 104. Then the Lead publishes.
+1. **PM: wave 3 review now** (78 to 120, non-audio), written to `content-review-wave3.md`. It includes rejected lessons 83, 86, 87, 94, 95 and 104, and applies F.2.j to 94 and 104.
+2. Lead: publish what the PM approves. For each: `EDITOR=true pnpm --filter api authoring:review <id>`, then `authoring:publish <id>`, in course order, logged in `run-log.txt`.
+3. **Unit `authoring-polish`** (Tech Lead findings in `content-review-wave2.md` section 6):
+   - The prompt lists the lesson’s own words as known.
+   - The stored meaning of 校 is "exam". Check every beta kanji’s primary meaning.
+   - Gate rules for a kanji reading and for "in kana" prompts.
+   - An untaught-word warning.
+   - The player shows a reading line twice when it equals the Japanese.
+   PM triage first, then the Tech Lead. It must land before the audio wave and Alpha.
 4. Alpha run for the 22b and 22c lessons, in a session with the iOS simulator tool:
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Use `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
@@ -64,7 +64,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 ## Live facts
 
 - Anthropic credit: **about $10 left**. 22c has spent about $8.7 so far, including lost and redrafted drafts. Measured cost per lesson, draft plus critique: $0.05 to $0.09.
-- Neon default branch: migrations through `20261104230000_reminders`. 40 lessons, 1 user, 1,625 items.
+- Neon default branch: migrations through `20261104230000_reminders`. 70 lessons (612 checks), 1 user, 1,625 items.
 - `skeleton.json` is gitignored and was rebuilt on 2026-11-16 after the swap. Rebuild it with `authoring:outline --force` only when the outline spec changes, then diff it against a backup.
 - Drafts, critiques, `.failed.json` and `.prev.json` files live in the main checkout's `tools/authoring/output/`. Approved lessons live in `tools/authoring/published/`. Both are gitignored, so don't delete them.
 - Agent usage is heavy and has hit the founder's 5-hour limit several times. Run one agent at a time and scope re-tests to the diff.

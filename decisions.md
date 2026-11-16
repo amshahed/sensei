@@ -1841,3 +1841,28 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Why:** Tester F3 on PR #78 measured this behaviour. It only accepts spellings that sound right and match the kana, and it is the IME convention. Narrowing it to answers stored in katakana would need the grader to know the stored script, for no learner benefit.
 
 **Reverse:** Restrict `spellLongVowels` to ー present in the stored answer, with a new entry.
+
+---
+
+## Content review, 22c wave 2
+
+### F.2.j A kanji lesson describes an untaught part of a kanji in words, and every target kanji gets a reading (confirms F.2.a) (decided by Project Manager, 2026-11-16)
+
+**Decision:**
+1. F.2.a's kanji rule stands, with no exemption for a kanji lesson's Teach. A kanji that isn't taught may not appear anywhere, even as a part of the lesson's own target.
+2. A part that is itself a taught kanji may be named as one, such as 子 in 学 or 人 in 何.
+3. Any other part is described in words, by its shape or by a taught kana it looks like. For example: "The top of 男 is a rice field, a box split into four. The bottom looks like the katakana カ, and here it means strength."
+4. Every target kanji is given at least one reading in kana in the Teach beat, and the checks ask for it. Reviews ask "Type a reading for 「男」", so a kanji taught by meaning alone can't be answered in review.
+
+**Why:**
+- Five kanji drafts broke the rule with a component: 54 (田 and 力 in 男), 62's first draft (口 in 名), 76 (木 in 本 and 校), 94 (目, 耳, 門) and 104 (門). In each, words carry the mnemonic just as well. Lessons 54 and 76 were rewritten this way with nothing lost.
+- A component shown as a kanji is a new character with its own meaning, which the learner meets once and never reviews (G.4.d). It is also the AI's least checkable output: folk etymology is a known weak spot, and we can't verify it (hard constraint).
+- Allowing components would take a per-kanji whitelist from a new dataset (KRADFILE), with its own licence check, or a blanket exemption that would let any kanji into a mnemonic. Either costs more than the hand edits, and every kanji lesson in the beta is already drafted.
+- Point 4 comes from lesson 54. Its draft taught 子, 女 and 男 by meaning only, so reviews of them would ask for a reading nobody taught.
+
+**Rejected:**
+- Exempting the Teach beat of F-Kanji lessons. It's too broad.
+- A component whitelist from KRADFILE: a new data source for five lessons.
+- Teaching the components as extra kanji items. That adds kanji beyond M.1's light set.
+
+**Reverse:** A new entry adding a component whitelist to `scriptProblems` in `course-rules.ts`.
