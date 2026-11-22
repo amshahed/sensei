@@ -1881,3 +1881,34 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 - Merging ます and を into one lesson: two points in one lesson.
 
 **Reverse:** An outline edit like F.1.c, before these lessons are published.
+
+---
+
+## Briefs after 22c wave 3
+
+### B.2.c An open lesson check shows the grader's comment, an example instead of "Answer:", and an honest "couldn't grade" (amends B.2.a) (decided by Project Manager, 2026-11-22)
+
+**Decision:**
+1. After an open lesson check is graded, the result shows the verdict, then the grader's one-sentence comment, then on a miss the model answer labelled as one example (never "Answer:", kana only), then the check's explanation. The verdict and comment are in view without scrolling on an SE-size screen.
+2. The comment is in English, agrees with the verdict, writes any Japanese in kana or rōmaji, and never tells the learner to drop rōmaji when the prompt allowed it.
+3. When the grader couldn't judge (down, timed out, rate-limited, or no model answer), the lesson says so plainly and that it doesn't count. It shows no verdict, still shows the example and the explanation, and leaves the check out of the end-of-lesson score. The item still enters reviews unscored, as today.
+4. An open writing check passes when the learner did the task understandably (lesson 120: a Japanese self-introduction with a name). Missing parts and slips lower the rating and are named in the comment; they are not a miss. Lesson 120's rubric says so (amended 2026-11-22).
+5. An open check's answer box shows the whole answer while it is written.
+
+**Why:** Lesson 120 is held until this exists (F.2.i, `check-explanation` brief section 5). Today the lesson screen drops the grader's comment, frames someone else's introduction as "the answer", shows "Not quite." for every ungraded introduction and "Correct!" when there is no model answer, and counts both in the score. Free writing can't have reviewed feedback, so the grader's comment is the only feedback on what the learner wrote; reviews and practice already show it (J.1.d). B.2.a's rejection of runtime AI text covered checks that have a reviewed explanation, and those keep it. Full reasoning in `ops/work/open-check-followup/brief.md`.
+
+**Rejected:** Verdict only. Comment behind a tap. "Answer:" for the model answer. Rōmaji for the model answer. Counting an ungraded check as right, or in the total. A "Try again" button (backlog). Requiring all six parts of the introduction.
+
+**Reverse:** Show `Answer:` and drop the comment line for open checks; restore the rubric's last five sentences. No data change.
+
+### G.4.f A kanji shows the meaning its lesson teaches, and a verb kanji's reading is asked through its word (amends G.4.a and B.3.a) (decided by Project Manager, 2026-11-22)
+
+**Decision:**
+1. Wherever the app shows a kanji's meaning, it is the meaning its lesson teaches, not necessarily KANJIDIC2's first sense. On 2026-11-22 only 校 differs among the 41 beta kanji: stored "exam", taught "school". The correction must survive a re-import.
+2. Wherever the app asks for the reading of a kanji that its lesson taught as part of a verb (食 飲 読 書 行 来 見 聞, and any later one), it shows the whole word with its kana ending (「食べる」) and accepts that word's reading in kana or rōmaji. Other readings of the kanji are not accepted for that word.
+
+**Why:** The recap card shows "exam" for 校, which lesson 76 teaches as "school". Reviews ask "Type a reading for 「食」" and accept たべる or しょく, so a learner shown a bare character must guess which verb is meant. Lessons 93 and 94 patch this in Teach, which a learner forgets by the first review. A kanji's kun reading only exists inside its word, and showing the ending is how a reader knows the word. Full triage in `ops/work/authoring-polish/brief.md`.
+
+**Rejected:** Editing lesson 76 to teach "exam". Showing every KANJIDIC2 sense. A "a whole word is fine" hint on a bare kanji. Accepting the bare stem (た).
+
+**Reverse:** Restore the stored meaning and the bare-kanji prompt, with a new entry.

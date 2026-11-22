@@ -1,6 +1,6 @@
 # Checkpoint
 
-Last updated: 2026-11-16 by the Lead.
+Last updated: 2026-11-22 by the Lead.
 
 Resume point for any session. Overwritten, never appended. Details live in `ops/journal.md` and `ops/work/`.
 
@@ -26,9 +26,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **PM: write two briefs in one run.**
-   - `ops/work/open-check-followup/brief.md`: the grader's comment and an honest "couldn't grade" on lesson checks, which unblocks 120.
-   - `ops/work/authoring-polish/brief.md`: triage of the 12 Tech Lead findings in `content-review-wave2.md` section 6 and `content-review-wave3.md` section 6. Learner-facing first: 校's meaning "exam", the verb-kanji review prompt, and the reading shown twice.
+1. **Briefs done (G1)**, written 2026-11-22: `ops/work/open-check-followup/brief.md` (8 promises) and `ops/work/authoring-polish/brief.md` (7 promises, learner-facing P1 to P3 first). Decisions B.2.c and G.4.f. The PM added a pass rule to lesson 120’s rubric in its local draft (gitignored), and publish rechecks it. **Tech Lead writing both `tech.md` files now.**
 2. Tech Lead, Developer, Tester for `open-check-followup`, then the Lead publishes 120 with `EDITOR=true pnpm --filter api authoring:review foundation-ja-ch17-l07`, then `authoring:publish`.
 3. The same chain for `authoring-polish`. It must land before the audio wave and Alpha.
 4. Alpha run for the 22b and 22c lessons, in a session with the iOS simulator tool:
