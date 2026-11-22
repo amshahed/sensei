@@ -1,18 +1,80 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-/** A scrollable content area with an optional pinned footer (CTA). */
+/**
+ * A scrollable content area with an optional pinned footer (CTA).
+ *
+ * `avoidKeyboard` (opt-in, B.2.d) is for a screen whose last thing is a
+ * multi-line answer box: the footer, and so its button, rises above the
+ * keyboard, and while the keyboard is up the end of the content stays in
+ * view as the box grows. There is no header above a Screen, so no offset.
+ */
 export function Screen({
   children,
   footer,
+  avoidKeyboard = false,
 }: {
   children: React.ReactNode;
   footer?: React.ReactNode;
+  avoidKeyboard?: boolean;
 }) {
-  return (
-    <View style={ui.screen}>
-      <ScrollView contentContainerStyle={ui.scroll}>{children}</ScrollView>
+  const scroll = useRef<ScrollView>(null);
+  const keyboardUp = useRef(false);
+
+  useEffect(() => {
+    if (!avoidKeyboard) return;
+    const shown = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardUp.current = true;
+      scroll.current?.scrollToEnd({ animated: true });
+    });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardUp.current = false;
+    });
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, [avoidKeyboard]);
+
+  const content = (
+    <>
+      <ScrollView
+        ref={scroll}
+        contentContainerStyle={ui.scroll}
+        onContentSizeChange={
+          avoidKeyboard
+            ? () => {
+                if (keyboardUp.current) {
+                  scroll.current?.scrollToEnd({ animated: false });
+                }
+              }
+            : undefined
+        }
+      >
+        {children}
+      </ScrollView>
       {footer ? <View style={ui.footer}>{footer}</View> : null}
-    </View>
+    </>
+  );
+
+  return avoidKeyboard ? (
+    <KeyboardAvoidingView
+      style={ui.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {content}
+    </KeyboardAvoidingView>
+  ) : (
+    <View style={ui.screen}>{content}</View>
   );
 }
 
