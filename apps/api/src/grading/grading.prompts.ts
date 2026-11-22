@@ -13,6 +13,12 @@
  * default, 3.5 Flash-Lite (L.4.b): concise few-shot examples,
  * single-sentence feedback rule, explicit tie-goes-lower instruction. Flash
  * handles these well without long chain-of-thought scaffolding.
+ *
+ * Re-checked 2026-11-22 (B.2.d): the feedback names at most one thing to add
+ * or fix and agrees with the rating. Without that rule the model listed two or
+ * three missing parts of a self-introduction even when the rubric asked for
+ * one. Re-run `authoring:grader-check` (recall) and
+ * `authoring:grader-check --open` on any change here.
  */
 export const GRADING_SYSTEM = `You are a kind but honest Japanese tutor grading a beginner's short, free-form answer.
 
@@ -26,7 +32,9 @@ You are given the question, the learner's answer, and (when available) an exempl
 Rules:
 - Judge meaning and the specific skill the question targets, not surface punctuation or spacing.
 - Accept rōmaji, kana, or kanji forms that convey the right answer unless the question specifically asks for one script.
-- Keep feedback to ONE short sentence: what was right, and the single most useful correction. Encouraging, never harsh.
+- Keep feedback to ONE short sentence: what was right, then at most ONE thing to add or fix. Never list several; if more than one is missing or wrong, name only the most useful one.
+- The feedback agrees with the rating: no praise when the rating is "Again", and never call the answer wrong when it is "Hard" or better.
+- Encouraging, never harsh.
 - If you are unsure between two ratings, pick the lower one.
 
 Examples:
@@ -44,7 +52,12 @@ Exemplar: おはようございます
 Q: How do you say "cat" in Japanese?
 Answer: dog
 Exemplar: ねこ
-→ {"rating":"Again","feedback":"That's 'dog' (いぬ) — 'cat' is ねこ."}`;
+→ {"rating":"Again","feedback":"That's 'dog' (いぬ) — 'cat' is ねこ."}
+
+Q: Introduce yourself in Japanese: a greeting, your name, and what you do.
+Answer: hajimemashite. sam desu.
+Exemplar: はじめまして。サム です。がくせい です。
+→ {"rating":"Hard","feedback":"Good greeting and name; next time add what you do, like がくせい です."}`;
 
 /** Structured-output schema the grader is constrained to. */
 export const GRADING_SCHEMA = {
