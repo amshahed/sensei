@@ -1,12 +1,21 @@
 /**
  * authoring:grader-check CLI — the real AI grader against real exemplars.
  *
- * Usage: pnpm --filter api authoring:grader-check --source <jmdict.json>
+ * Usage:
+ *   pnpm --filter api authoring:grader-check --source <jmdict.json>
+ *   pnpm --filter api authoring:grader-check --open --draft <lesson.json>
  *
- * Builds the rows the supplement ingest will write, asks each case's recall
- * question, and grades the case's answer through the runtime Gemini path. No
- * database and no Anthropic spend. Run before the default-branch ingest: a
- * meaning rewritten after that step would never reach the live row.
+ * Recall (default): builds the rows the supplement ingest will write, asks
+ * each case's recall question, and grades the case's answer through the
+ * runtime Gemini path. Run before the default-branch ingest: a meaning
+ * rewritten after that step would never reach the live row.
+ *
+ * Open (`--open`, B.2.d): grades the labelled answers in
+ * open-check-cases.json against an open check in a lesson draft, with the
+ * draft's own prompt, model answer and rubric, so the eval can't drift from
+ * the lesson. Re-run it on any grading prompt, rubric or model change.
+ *
+ * No database and no Anthropic spend in either mode.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,6 +31,7 @@ import {
 } from '../ingest/supplement';
 import type { JmdictFile } from '../ingest/vocab';
 import { GeminiLlmClient } from '../llm/gemini-llm-client';
+import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import {
   recallQuestionFor,
   type RecallableItem,
@@ -40,6 +50,7 @@ const PAUSE_MS = 4_500;
 
 const DATA_DIR = path.resolve(__dirname, '../../data');
 const CASES_PATH = path.join(DATA_DIR, 'curriculum/grader-cases.json');
+const OPEN_CASES_PATH = path.join(DATA_DIR, 'curriculum/open-check-cases.json');
 const TANOS_GRAMMAR_PATH = path.join(DATA_DIR, 'jlpt/n5-grammar.json');
 
 export function loadGraderCases(file: string = CASES_PATH): GraderCase[] {
@@ -84,6 +95,7 @@ type Grader = {
     prompt: string;
     answer: string;
     exemplar?: string;
+    rubric?: string;
   }): Promise<OpenGradeResult>;
 };
 
@@ -145,16 +157,184 @@ export async function runGraderCheck(
   return outcomes;
 }
 
+/** A labelled answer to one open check in a lesson draft (B.2.d). */
+export interface OpenCheckCase {
+  lessonId: string;
+  /** The question's id in the draft, e.g. "q17". */
+  checkId: string;
+  name: string;
+  answer: string;
+  expect: 'accepted' | 'rejected';
+  /**
+   * Cases with the same pair are the same answer in different scripts (kana,
+   * rōmaji, a mix): every run of every one of them must get one verdict (P5).
+   */
+  pair?: string;
+  /** The comment may hold kana or rōmaji, never kanji (brief 3.2). */
+  kanaFeedback?: boolean;
+}
+
+export interface OpenCheckOutcome extends OpenCheckCase {
+  runs: GraderRun[];
+  pass: boolean;
+  /** Why the case failed, when it did. */
+  reason?: string;
+}
+
+/** The lesson draft fields the open eval reads. */
+export type OpenCheckDraft = Pick<LessonDraft, 'lessonId' | 'check'>;
+
+const KANJI = /\p{Script=Han}/u;
+
+export function loadOpenCheckCases(
+  file: string = OPEN_CASES_PATH,
+): OpenCheckCase[] {
+  return JSON.parse(fs.readFileSync(file, 'utf8')) as OpenCheckCase[];
+}
+
+/**
+ * Grades every case for the draft's lesson `RUNS_PER_CASE` times, against the
+ * draft's prompt, model answer (as exemplar) and rubric. A case passes when
+ * every run is the model's and agrees with `expect`, and, with
+ * `kanaFeedback`, no comment holds kanji. Then each pair must agree.
+ */
+export async function runOpenCheckCases(
+  cases: OpenCheckCase[],
+  draft: OpenCheckDraft,
+  grader: Grader,
+  pauseMs = 0,
+): Promise<OpenCheckOutcome[]> {
+  const outcomes: OpenCheckOutcome[] = [];
+  for (const testCase of cases.filter((c) => c.lessonId === draft.lessonId)) {
+    const question = draft.check.questions.find(
+      (q) => q.id === testCase.checkId,
+    );
+    if (!question || question.grading !== 'open') {
+      outcomes.push({
+        ...testCase,
+        runs: [],
+        pass: false,
+        reason: `no open check ${testCase.checkId} in the draft`,
+      });
+      continue;
+    }
+
+    const runs: GraderRun[] = [];
+    for (let i = 0; i < RUNS_PER_CASE; i++) {
+      const result = await grader.gradeOpen({
+        prompt: question.prompt,
+        answer: testCase.answer,
+        exemplar: question.correctAnswer,
+        ...(question.rubric ? { rubric: question.rubric } : {}),
+      });
+      runs.push({
+        rating: result.rating,
+        correct: result.correct,
+        gradedBy: result.gradedBy,
+        feedback: result.feedback,
+      });
+      if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
+    }
+
+    const wanted = testCase.expect === 'accepted';
+    const reason = runs.some((r) => r.gradedBy !== 'ai')
+      ? 'fell back: the check could not be evaluated'
+      : runs.some((r) => r.correct !== wanted)
+        ? `expected ${testCase.expect} in all runs`
+        : testCase.kanaFeedback && runs.some((r) => KANJI.test(r.feedback))
+          ? 'a comment contains kanji'
+          : undefined;
+    outcomes.push({
+      ...testCase,
+      runs,
+      pass: reason === undefined,
+      ...(reason ? { reason } : {}),
+    });
+  }
+
+  // The same introduction in another script gets the same verdict (P5).
+  const pairs = new Map<string, OpenCheckOutcome[]>();
+  for (const o of outcomes) {
+    if (o.pair) pairs.set(o.pair, [...(pairs.get(o.pair) ?? []), o]);
+  }
+  for (const [pair, members] of pairs) {
+    const verdicts = new Set(
+      members.flatMap((m) => m.runs.map((r) => r.correct)),
+    );
+    if (verdicts.size <= 1) continue;
+    for (const m of members) {
+      m.pass = false;
+      m.reason = m.reason ?? `pair "${pair}" got different verdicts`;
+    }
+  }
+  return outcomes;
+}
+
+function requireGeminiKey(): void {
+  if (!process.env['GEMINI_API_KEY']) {
+    throw new Error('GEMINI_API_KEY is required for authoring:grader-check.');
+  }
+}
+
+async function mainOpen(args: string[]): Promise<void> {
+  const draftIdx = args.indexOf('--draft');
+  const draftArg = draftIdx === -1 ? undefined : args[draftIdx + 1];
+  if (!draftArg) {
+    throw new Error(
+      'Usage: authoring:grader-check --open --draft <lesson-draft.json>',
+    );
+  }
+  requireGeminiKey();
+  // pnpm runs scripts from apps/api; resolve the path from where it was typed.
+  const draftPath = path.resolve(
+    process.env['INIT_CWD'] ?? process.cwd(),
+    draftArg,
+  );
+  const draft = LessonDraftSchema.parse(
+    JSON.parse(fs.readFileSync(draftPath, 'utf8')),
+  );
+  const cases = loadOpenCheckCases();
+  if (!cases.some((c) => c.lessonId === draft.lessonId)) {
+    throw new Error(`No open-check cases for ${draft.lessonId}.`);
+  }
+
+  const client = new GeminiLlmClient(new ConfigService(process.env));
+  const outcomes = await runOpenCheckCases(
+    cases,
+    draft,
+    new GradingService(client),
+    PAUSE_MS,
+  );
+
+  // Every comment is printed: "one thing" and "agrees with the verdict" are
+  // judged by reading, which no check here can do.
+  for (const o of outcomes) {
+    const ratings = o.runs.map((r) => r.rating).join('/');
+    console.log(
+      `${o.pass ? 'PASS' : 'FAIL'}  ${o.checkId}  ${o.name}  want ${o.expect}  ${ratings}`,
+    );
+    if (!o.pass) console.log(`      ${o.reason}.`);
+    for (const r of o.runs) {
+      console.log(`      ${r.rating} (${r.gradedBy}): ${r.feedback}`);
+    }
+  }
+  const failed = outcomes.filter((o) => !o.pass).length;
+  console.log(
+    `authoring:grader-check --open — ${outcomes.length - failed} of ${outcomes.length} cases passed`,
+  );
+  if (failed > 0) process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  if (args.includes('--open')) return mainOpen(args);
+
   const sourceIdx = args.indexOf('--source');
   const source = sourceIdx === -1 ? undefined : args[sourceIdx + 1];
   if (!source) {
     throw new Error('Usage: authoring:grader-check --source <jmdict.json>');
   }
-  if (!process.env['GEMINI_API_KEY']) {
-    throw new Error('GEMINI_API_KEY is required for authoring:grader-check.');
-  }
+  requireGeminiKey();
 
   const jmdict = JSON.parse(fs.readFileSync(source, 'utf8')) as JmdictFile;
   const client = new GeminiLlmClient(new ConfigService(process.env));
