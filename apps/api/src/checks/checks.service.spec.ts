@@ -127,6 +127,7 @@ describe('ChecksService', () => {
       checkId: 'chk-1',
       correct: true,
       correctAnswer: 'あ',
+      scored: true,
     });
   });
 
@@ -310,6 +311,7 @@ describe('ChecksService', () => {
         checkId: 'chk-1',
         correct: false,
         correctAnswer: 'あ',
+        scored: true,
       });
     });
   });
@@ -451,6 +453,7 @@ describe('ChecksService', () => {
         checkId: 'chk-open',
         correct: true,
         correctAnswer: 'おはようございます',
+        scored: true,
         feedback: 'Spot on.',
       });
       expect(recordCheckResult).toHaveBeenCalledWith({
@@ -618,6 +621,138 @@ describe('ChecksService', () => {
       expect(recordCheckResult).toHaveBeenCalledWith(
         expect.objectContaining({ rating: Rating.Again, correct: false }),
       );
+    });
+  });
+
+  describe('what an open check tells the learner (B.2.d, P1, P6)', () => {
+    it("sends the model's comment with a scored verdict", async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Hard',
+        correct: true,
+        feedback: 'Good greeting and name; next time add what you do.',
+        exemplar: 'おはようございます',
+        gradedBy: 'ai',
+        scored: true,
+      });
+
+      const result = await service.grade('chk-open', 'ohayou', 'dev-user');
+
+      expect(result).toMatchObject({
+        correct: true,
+        scored: true,
+        feedback: 'Good greeting and name; next time add what you do.',
+      });
+    });
+
+    it('sends a closed check scored, with no comment', async () => {
+      findUnique.mockResolvedValue(check);
+
+      for (const answer of ['あ', 'い']) {
+        const result = await service.grade('chk-1', answer, 'dev-user');
+        expect(result.scored).toBe(true);
+        expect(result).not.toHaveProperty('feedback');
+      }
+    });
+
+    it('never passes on a fallback line as if it were a comment', async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        feedback: 'Correct.',
+        exemplar: 'おはようございます',
+        gradedBy: 'fallback',
+        scored: true,
+      });
+
+      const result = await service.grade(
+        'chk-open',
+        'おはようございます',
+        'dev-user',
+      );
+
+      // An exact match the fallback could judge: a real verdict, no comment.
+      expect(result).toEqual({
+        checkId: 'chk-open',
+        correct: true,
+        correctAnswer: 'おはようございます',
+        scored: true,
+      });
+    });
+
+    describe('with the model unavailable, through the real grading service', () => {
+      function realService() {
+        const llm: LlmClient = {
+          enabled: false,
+          parseJson: () => Promise.reject(new Error('never called')),
+        };
+        return new ChecksService(
+          { check: { findUnique }, user: { upsert: userUpsert } } as never,
+          { recordCheckResult, seedInferred } as never,
+          new GradingService(llm),
+          {} as never,
+        );
+      }
+
+      it('says it was not scored, with no comment, when there is a model answer', async () => {
+        findUnique.mockResolvedValue(openCheck);
+
+        const result = await realService().grade(
+          'chk-open',
+          'ohayou gozaimasu',
+          'dev-user',
+        );
+
+        expect(result).toEqual({
+          checkId: 'chk-open',
+          correct: false,
+          correctAnswer: 'おはようございます',
+          scored: false,
+        });
+        // The item still reaches reviews, unscored.
+        expect(recordCheckResult).not.toHaveBeenCalled();
+        expect(seedInferred).toHaveBeenCalledWith('dev-user', [
+          'ja:phrase:ohayou',
+        ]);
+      });
+
+      it('says it was not scored, with no comment, when there is no model answer', async () => {
+        findUnique.mockResolvedValue({ ...openCheck, data: {} });
+
+        const result = await realService().grade(
+          'chk-open',
+          'anything',
+          'dev-user',
+        );
+
+        expect(result).toEqual({
+          checkId: 'chk-open',
+          correct: true,
+          correctAnswer: '',
+          scored: false,
+        });
+        expect(recordCheckResult).not.toHaveBeenCalled();
+        expect(seedInferred).toHaveBeenCalledWith('dev-user', [
+          'ja:phrase:ohayou',
+        ]);
+      });
+
+      it('still scores a blank answer as a miss, with no comment', async () => {
+        findUnique.mockResolvedValue(openCheck);
+
+        const result = await realService().grade('chk-open', '  ', 'dev-user');
+
+        expect(result).toEqual({
+          checkId: 'chk-open',
+          correct: false,
+          correctAnswer: 'おはようございます',
+          scored: true,
+        });
+        expect(recordCheckResult).toHaveBeenCalledWith(
+          expect.objectContaining({ rating: Rating.Again, correct: false }),
+        );
+      });
     });
   });
 

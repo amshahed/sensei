@@ -7,6 +7,7 @@ import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { Rating } from 'ts-fsrs';
 import { ratingFromLabel } from '../mastery/fsrs';
 import { exactMatch } from '../common/normalize-answer';
+import { isOpenCheck } from './check-kind';
 
 export interface GradeOptions {
   /** Learner's "I guessed" self-report (K.1). */
@@ -68,13 +69,9 @@ export class ChecksService {
     const data = (check.data ?? {}) as CheckData;
     const fixedAnswer = asString(data.answer);
 
-    // A MULTIPLE_CHOICE check is always closed (graded against its fixed
-    // answer) — even if that answer is mis-stored, it must never silently
-    // become AI-graded. Other formats are open only when no fixed answer is
-    // present. A misconfigured closed check thus grades wrong (surfacing the
-    // content bug) rather than quietly routing to the model.
-    const isClosed =
-      check.format === 'MULTIPLE_CHOICE' || fixedAnswer !== undefined;
+    // Which checks are open is decided in one place, shared with the lesson
+    // payload (check-kind.ts): a mis-stored multiple-choice answer stays closed.
+    const isClosed = !isOpenCheck(check.format, data);
 
     // A check on a kana item tests that kana's own sound, so は is ha, never wa.
     const kanaTarget = check.targetItemId.startsWith('ja:kana:');
@@ -128,6 +125,7 @@ export class ChecksService {
       checkId: check.id,
       correct: graded.correct,
       correctAnswer: graded.correctAnswer,
+      scored: graded.scored,
       ...(graded.feedback ? { feedback: graded.feedback } : {}),
       ...(explanation ? { explanation } : {}),
       ...(answerForms ? { answerForms } : {}),
@@ -187,7 +185,9 @@ export class ChecksService {
       correct: result.correct,
       correctAnswer: result.exemplar,
       rating: ratingFromLabel(result.rating),
-      feedback: result.feedback,
+      // Only the model's own comment on what the learner wrote is shown. The
+      // fallback's lines ("the expected answer was…") aren't one (B.2.d).
+      feedback: result.gradedBy === 'ai' ? result.feedback : undefined,
       scored: result.scored && !fallbackMiss,
     };
   }

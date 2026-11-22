@@ -76,6 +76,13 @@ export interface CheckDto {
   targetItemId: string;
   /** Present for MULTIPLE_CHOICE checks. */
   choices?: string[];
+  /**
+   * Present, and true, only on an open check (B.2.d): free writing the AI
+   * grader judges against a model answer, such as a self-introduction. The app
+   * gives it a multi-line answer box and the open-check result panel. Absent on
+   * every closed check.
+   */
+  open?: true;
 }
 
 export interface LessonDetailDto {
@@ -109,7 +116,19 @@ export interface CheckResultDto {
   correct: boolean;
   /** Revealed only after the learner has answered (the grading response). */
   correctAnswer: string;
-  /** One line of tutor feedback — present for AI-graded open responses (#8). */
+  /**
+   * False when the answer couldn't be judged (B.2.d): an open check whose AI
+   * grader was unavailable. Nothing was recorded as right or wrong, so the app
+   * shows neither verdict and leaves the check out of the lesson score. Read
+   * this before `correct`. Always true for closed checks. Same meaning as
+   * `ReviewResultDto.scored`.
+   */
+  scored: boolean;
+  /**
+   * The AI grader's one-sentence comment on what the learner wrote. Present
+   * only when the model graded an open check, never on a fallback grade or a
+   * closed check (B.2.d).
+   */
   feedback?: string;
   /**
    * The check's written explanation, on every result, right or wrong (B.2.a).

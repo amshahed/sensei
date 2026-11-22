@@ -725,6 +725,7 @@ describe('API (HTTP integration)', () => {
       checkId: 'chk-1',
       correct: true,
       correctAnswer: 'あ',
+      scored: true,
     });
   });
 

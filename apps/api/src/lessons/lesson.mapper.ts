@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { CheckDto, LessonDetailDto, LessonItemDto } from '@sensei/types';
 import { learnerSurface } from '../recall/learner-surface';
 import { recapBackFor } from '../recall/recall-question';
+import { isOpenCheck } from '../checks/check-kind';
 
 /**
  * Single source of truth for the relations a lesson detail needs. Used both for
@@ -62,7 +63,8 @@ function mapCheck(check: LessonWithRelations['checks'][number]): CheckDto {
     : undefined;
 
   // Note: the correct answer (check.data.answer) is deliberately NOT mapped —
-  // grading is server-side (#5), so the client never receives it.
+  // grading is server-side (#5), so the client never receives it. Nor are an
+  // open check's exemplar and rubric: only the fact that it is open (B.2.d).
   return {
     id: check.id,
     position: check.position,
@@ -70,5 +72,6 @@ function mapCheck(check: LessonWithRelations['checks'][number]): CheckDto {
     format: check.format,
     targetItemId: check.targetItemId,
     ...(choices ? { choices } : {}),
+    ...(isOpenCheck(check.format, check.data) ? { open: true as const } : {}),
   };
 }
