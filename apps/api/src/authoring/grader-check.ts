@@ -99,6 +99,46 @@ type Grader = {
   }): Promise<OpenGradeResult>;
 };
 
+type GradeInput = Parameters<Grader['gradeOpen']>[0];
+
+/** One answer graded `RUNS_PER_CASE` times, pausing after each call. */
+async function gradeRuns(
+  grader: Grader,
+  input: GradeInput,
+  pauseMs: number,
+): Promise<GraderRun[]> {
+  const runs: GraderRun[] = [];
+  for (let i = 0; i < RUNS_PER_CASE; i++) {
+    const result = await grader.gradeOpen(input);
+    runs.push({
+      rating: result.rating,
+      correct: result.correct,
+      gradedBy: result.gradedBy,
+      feedback: result.feedback,
+    });
+    if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
+  }
+  return runs;
+}
+
+/**
+ * Why the runs don't count as `expect`, or undefined when they do. A fallback
+ * can't count as a verdict, even one that agrees.
+ */
+function verdictReason(
+  runs: GraderRun[],
+  expect: GraderCase['expect'],
+): string | undefined {
+  if (runs.some((r) => r.gradedBy !== 'ai')) {
+    return 'fell back: the check could not be evaluated';
+  }
+  const wanted = expect === 'accepted';
+  if (runs.some((r) => r.correct !== wanted)) {
+    return `expected ${expect} in all runs`;
+  }
+  return undefined;
+}
+
 /** Grades every case `RUNS_PER_CASE` times. A fallback can't count as a verdict. */
 export async function runGraderCheck(
   cases: GraderCase[],
@@ -122,36 +162,23 @@ export async function runGraderCheck(
       continue;
     }
 
-    const runs: GraderRun[] = [];
-    for (let i = 0; i < RUNS_PER_CASE; i++) {
-      const result = await grader.gradeOpen({
+    const runs = await gradeRuns(
+      grader,
+      {
         prompt: question.prompt,
         answer: testCase.answer,
         exemplar: question.expected,
-      });
-      runs.push({
-        rating: result.rating,
-        correct: result.correct,
-        gradedBy: result.gradedBy,
-        feedback: result.feedback,
-      });
-      if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
-    }
-
-    const wanted = testCase.expect === 'accepted';
-    const unevaluated = runs.some((r) => r.gradedBy !== 'ai');
-    const disagrees = runs.some((r) => r.correct !== wanted);
+      },
+      pauseMs,
+    );
+    const reason = verdictReason(runs, testCase.expect);
     outcomes.push({
       ...testCase,
       prompt: question.prompt,
       exemplar: question.expected,
       runs,
-      pass: !unevaluated && !disagrees,
-      ...(unevaluated
-        ? { reason: 'fell back: the check could not be evaluated' }
-        : disagrees
-          ? { reason: `expected ${testCase.expect} in all runs` }
-          : {}),
+      pass: reason === undefined,
+      ...(reason ? { reason } : {}),
     });
   }
   return outcomes;
@@ -219,31 +246,21 @@ export async function runOpenCheckCases(
       continue;
     }
 
-    const runs: GraderRun[] = [];
-    for (let i = 0; i < RUNS_PER_CASE; i++) {
-      const result = await grader.gradeOpen({
+    const runs = await gradeRuns(
+      grader,
+      {
         prompt: question.prompt,
         answer: testCase.answer,
         exemplar: question.correctAnswer,
         ...(question.rubric ? { rubric: question.rubric } : {}),
-      });
-      runs.push({
-        rating: result.rating,
-        correct: result.correct,
-        gradedBy: result.gradedBy,
-        feedback: result.feedback,
-      });
-      if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
-    }
-
-    const wanted = testCase.expect === 'accepted';
-    const reason = runs.some((r) => r.gradedBy !== 'ai')
-      ? 'fell back: the check could not be evaluated'
-      : runs.some((r) => r.correct !== wanted)
-        ? `expected ${testCase.expect} in all runs`
-        : testCase.kanaFeedback && runs.some((r) => KANJI.test(r.feedback))
-          ? 'a comment contains kanji'
-          : undefined;
+      },
+      pauseMs,
+    );
+    const reason =
+      verdictReason(runs, testCase.expect) ??
+      (testCase.kanaFeedback && runs.some((r) => KANJI.test(r.feedback))
+        ? 'a comment contains kanji'
+        : undefined);
     outcomes.push({
       ...testCase,
       runs,

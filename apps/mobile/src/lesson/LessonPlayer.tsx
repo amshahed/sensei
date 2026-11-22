@@ -36,9 +36,18 @@ type Phase =
  */
 type CheckOutcome = 'right' | 'wrong' | 'ungraded';
 
+/** An absent `scored` (an API from before B.2.d) reads as judged, as it was. */
 function outcomeOf(result: CheckResultDto): CheckOutcome {
-  if (!result.scored) return 'ungraded';
+  if (result.scored === false) return 'ungraded';
   return result.correct ? 'right' : 'wrong';
+}
+
+/** The end-of-lesson score: an ungraded check counts neither way (P6). */
+function tally(outcomes: CheckOutcome[], checks: number) {
+  return {
+    correct: outcomes.filter((o) => o === 'right').length,
+    total: checks - outcomes.filter((o) => o === 'ungraded').length,
+  };
 }
 
 export function LessonPlayer({
@@ -49,8 +58,7 @@ export function LessonPlayer({
   onExit?: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
-  const [score, setScore] = useState(0);
-  const [ungraded, setUngraded] = useState(0);
+  const [outcomes, setOutcomes] = useState<CheckOutcome[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -96,8 +104,7 @@ export function LessonPlayer({
       <PracticeBeat
         lesson={phase.lesson}
         onContinue={() => {
-          setScore(0);
-          setUngraded(0);
+          setOutcomes([]);
           // A lesson with no checks (e.g. an authored stub) skips straight to
           // the summary instead of indexing into an empty array.
           setPhase(
@@ -119,8 +126,7 @@ export function LessonPlayer({
       return (
         <DoneScreen
           slug={lesson.slug}
-          correct={score}
-          total={lesson.checks.length - ungraded}
+          {...tally(outcomes, lesson.checks.length)}
           onExit={onExit}
         />
       );
@@ -132,10 +138,8 @@ export function LessonPlayer({
         index={index}
         total={lesson.checks.length}
         onNext={(outcome) => {
-          const nextScore = score + (outcome === 'right' ? 1 : 0);
-          const nextUngraded = ungraded + (outcome === 'ungraded' ? 1 : 0);
-          setScore(nextScore);
-          setUngraded(nextUngraded);
+          const nextOutcomes = [...outcomes, outcome];
+          setOutcomes(nextOutcomes);
           const next = index + 1;
           if (next < lesson.checks.length) {
             setPhase({ kind: 'check', lesson, index: next });
@@ -143,9 +147,8 @@ export function LessonPlayer({
             setPhase({
               kind: 'done',
               lesson,
-              correct: nextScore,
               // "X of 16" when one of 17 couldn't be graded (P6).
-              total: lesson.checks.length - nextUngraded,
+              ...tally(nextOutcomes, lesson.checks.length),
             });
           }
         }}
@@ -440,20 +443,21 @@ function ResultPanel({
 }) {
   const { height } = useWindowDimensions();
   const forms = result.correct ? undefined : result.answerForms;
-  const missedOrUngraded = !result.scored || !result.correct;
+  const ungraded = outcomeOf(result) === 'ungraded';
+  const missedOrUngraded = ungraded || !result.correct;
   return (
     <ScrollView
       style={{ maxHeight: height * RESULT_MAX_SHARE }}
       contentContainerStyle={styles.result}
       bounces={false}
     >
-      {result.scored ? (
-        <Text style={result.correct ? ui.ok : ui.err}>
-          {result.correct ? 'Correct!' : 'Not quite.'}
-        </Text>
-      ) : (
+      {ungraded ? (
         <Text style={styles.resultUngraded}>
           Couldn’t grade this right now, so it doesn’t count.
+        </Text>
+      ) : (
+        <Text style={result.correct ? ui.ok : ui.err}>
+          {result.correct ? 'Correct!' : 'Not quite.'}
         </Text>
       )}
       {result.feedback ? (
