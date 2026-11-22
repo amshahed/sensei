@@ -1912,3 +1912,49 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** Editing lesson 76 to teach "exam". Showing every KANJIDIC2 sense. A "a whole word is fine" hint on a bare kanji. Accepting the bare stem (た).
 
 **Reverse:** Restore the stored meaning and the bare-kanji prompt, with a new entry.
+
+---
+
+## Tech plans after 22c wave 3
+
+### B.2.d How B.2.c is built: an `open` flag on the check, `scored` on the result, and a one-fix grading rule (decided by Tech Lead, 2026-11-22)
+
+**Decision:**
+1. `CheckDto` carries `open: true` on an open check, from one helper (`isOpenCheck`) that grading also uses. `CheckResultDto` carries `scored`, as `ReviewResultDto` does. `feedback` is sent only when the model wrote it; fallback strings are dropped.
+2. The shared `GRADING_SYSTEM` names at most one thing to add or fix and must agree with the rating, with one few-shot example of a partial answer. The kana-only comment rule stays in lesson 120's rubric.
+3. Open-check answers are evaluated by `authoring:grader-check --open --draft <lesson.json>` against a committed case file (`open-check-cases.json`), 3 runs per case, with pair (same verdict across scripts) and no-kanji checks.
+4. An open check gets a multiline box that grows with the text, with keyboard avoidance opted in on its screen; Return is a newline, never a submit.
+
+**Why:** Spiked on the real grader at $0 (14 calls): the amended rubric gets 10 of 10 verdicts right, with kana, rōmaji and mix agreeing, no kanji, and 0.7 to 3.1 s latency. But 3 of 4 thin answers got a list of fixes despite the rubric. The sharpened shared rule got 4 of 4 to name one. "One fix" is the general rule brief 3.2 states, and reviews benefit. The app needs to know a check is open before answering to show the right box, and `scored` already exists for reviews. Full plan in `ops/work/open-check-followup/tech.md`.
+
+**Rejected:** Rubric-only wording (spiked, ignored). Separate praise and fix schema fields (a shared contract change for wording). Converting kanji in comments with kuromoji (a wrong reading is worse than a kanji). Inferring "open" from a missing `choices` key. Return submits an open answer.
+
+**Reverse:** Restore the old rule line and drop the few-shot example; the fields are additive and can be ignored.
+
+### G.4.g How G.4.f is built: a committed kanji supplement applied by the kanji ingest, and the question carries what the card shows (decided by Tech Lead, 2026-11-22)
+
+**Decision:**
+1. `apps/api/data/curriculum/kanji-supplement.json` holds taught meanings (校: school) and verb word readings (食: た.べる, and the other seven). The kanji ingest applies it: a meaning must be one of the character's KANJIDIC2 senses and a word reading one of its kun readings with okurigana, or the ingest throws. `--dry-run` prints the row diff without writing.
+2. The live fix is a re-run of the kanji ingest after a dry run that must list exactly nine rows. The 校 `meaning` update is a reversible content correction (old value kept in `data.meanings[0]`, KANJIDIC2 and a committed backup; no learner data or IDs touched), the same class as a lesson republish. The Lead confirms that classification before the apply.
+3. `RecallQuestion` gains `display`. A kanji with `data.word_reading` is asked as its word (「食べる」), shown as the word in reviews and practice, and accepts only that word's reading. `learnerSurface`, the recap card and placement are unchanged.
+
+**Why:** The kanji ingest is an upsert, so only a fix applied by the ingest survives a re-import. Live kanji rows hash identically to the current builder's output (checked 2026-11-22), so the dry run can prove the apply touches nothing else. Read-time overrides would need every meaning reader, including placement's distractor pools, to remember a helper. Full plan in `ops/work/authoring-polish/tech.md`.
+
+**Rejected:** A one-off SQL update (lost on re-import). A `taught_meaning` key read through a helper. Changing `learnerSurface` for verb kanji (it also drives the lesson recap card). Changing `Item.reading` for verb kanji (changes placement, outside the brief).
+
+**Reverse:** Revert the supplement entries and re-run the kanji ingest, or restore the nine rows from `ops/work/authoring-polish/kanji-rows-before.json`.
+
+### F.2.k The gate refuses "in kana" prompts and mismatched kana readings, warns on self-corrections, and the drafter is told which words are new; an identical example reading is hidden (amends F.2.a) (decided by Tech Lead, 2026-11-22)
+
+**Decision:**
+1. Error: a closed typed check's prompt asks for kana ("in kana", "using katakana", "(katakana)").
+2. Error: an example with no kanji whose reading doesn't say the same thing, compared as grading compares a typed answer (`typedAnswersMatch`), with ・ and … as spaces and a hyphen-free retry. A reading that mixes Latin letters and kana is a pronunciation guide and is skipped.
+3. Warning: self-correction phrases ("oops", "wait,", "you don't know … yet", "let's use words you know" and a few more). `authoring:review` now prints course-rule warnings before the editor.
+4. The drafter's context lists this lesson's targets on their own "new in this lesson" line, not among the words and grammar the learner knows.
+5. The lesson payload drops an example's `reading` when it equals the Japanese once whitespace and punctuation are ignored; the app renders a missing reading as nothing.
+
+**Why:** Each defect recurred across waves (W2.1, W2.4, W2.6, W3.3, W3.5). Spiked at $0 over 214 approved and current drafts: 0 hits for all three rules once ・ syllable splits and hyphenated rōmaji were allowed for (the first version of rule 2 had 20 false positives). They catch the real pre-edit cases still on disk (ch04-l06, ch08-l03, ch16-l03) and lesson 115's verbatim example. Hiding happens at read time because 299 of 386 drafted examples are identical and republishing every lesson isn't possible (lesson 20).
+
+**Rejected:** Folding katakana to hiragana for the display rule. A warning for "you already know" (the prompt is the cause). Rewriting stored teach JSON.
+
+**Reverse:** Remove the rules and the prompt line; `mapTeach` passes `teach` through again.
