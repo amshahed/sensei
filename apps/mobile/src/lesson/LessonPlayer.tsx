@@ -211,7 +211,9 @@ function TeachBlockView({ block }: { block: TeachBlock }) {
     return (
       <View style={styles.example}>
         <Text style={styles.exampleJP}>{block.japanese}</Text>
-        <Text style={styles.exampleReading}>{block.reading}</Text>
+        {block.reading ? (
+          <Text style={styles.exampleReading}>{block.reading}</Text>
+        ) : null}
         <Text style={styles.exampleTranslation}>{block.translation}</Text>
       </View>
     );

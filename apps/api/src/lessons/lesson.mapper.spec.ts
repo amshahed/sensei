@@ -1,5 +1,9 @@
 import { keepOrder, mulberry32, reversing } from '../testing/random';
-import { toLessonDetailDto, type LessonWithRelations } from './lesson.mapper';
+import {
+  mapTeach,
+  toLessonDetailDto,
+  type LessonWithRelations,
+} from './lesson.mapper';
 
 /** A lesson as Prisma returns it, with a check carrying everything it stores. */
 const lesson = {
@@ -169,5 +173,78 @@ describe('toLessonDetailDto: multiple-choice options come in a fresh order (B.2.
     expect(checks.find((c) => c.id === 'chk-open')).not.toHaveProperty(
       'choices',
     );
+  });
+});
+
+describe('mapTeach: an example reading that repeats the Japanese is left out (P3)', () => {
+  const example = (japanese: string, reading: unknown, key = 'kind') => ({
+    [key]: 'example',
+    japanese,
+    reading,
+    translation: 'x',
+  });
+  const shown = (block: Record<string, unknown>) =>
+    (mapTeach({ blocks: [block] }) as { blocks: unknown[] }).blocks[0];
+
+  it.each([
+    ['いただきます。', 'いただきます'],
+    ['わたし は がくせい です', 'わたし は がくせい です。'],
+    ['「はい」、そうです！', 'はい そうです'],
+    ['すこし…', 'すこし...'],
+    ['か・ぎ', 'かぎ'],
+  ])('drops the reading of %s / %s', (japanese, reading) => {
+    expect(shown(example(japanese, reading))).toEqual({
+      kind: 'example',
+      japanese,
+      translation: 'x',
+    });
+  });
+
+  it.each([
+    ['a kanji example', '学生です。', 'がくせい です。'],
+    ['katakana read in hiragana', 'コーヒー', 'こーひー'],
+    ['a rōmaji reading', 'わたし は いしゃ です。', 'watashi wa isha desu.'],
+    ['a pronunciation guide', 'コーヒー', 'say こ, hold one beat, then ひー'],
+    ['a long vowel the reading lacks (ー is content)', 'ラーメン', 'ラメン'],
+  ])('keeps the reading of %s', (_, japanese, reading) => {
+    const block = example(japanese, reading);
+    expect(shown(block)).toEqual(block);
+  });
+
+  it("handles the drafter's type discriminant as well as kind", () => {
+    expect(shown(example('いただきます', 'いただきます', 'type'))).toEqual({
+      type: 'example',
+      japanese: 'いただきます',
+      translation: 'x',
+    });
+  });
+
+  it('passes every other block and malformed shape through untouched', () => {
+    const blocks = [
+      { kind: 'text', text: 'いただきます', reading: 'いただきます' },
+      { kind: 'example', japanese: 'いただきます' },
+      { kind: 'example', japanese: 'いただきます', reading: 3 },
+      null,
+      'example',
+    ];
+    expect(mapTeach({ blocks, extra: 1 })).toEqual({ blocks, extra: 1 });
+    for (const teach of [null, {}, { blocks: 'x' }, [], 'teach']) {
+      expect(mapTeach(teach)).toBe(teach);
+    }
+  });
+
+  it('never changes the stored teach, and is what the lesson payload carries', () => {
+    const stored = { blocks: [example('いただきます。', 'いただきます')] };
+    const before = JSON.parse(JSON.stringify(stored)) as unknown;
+    const dto = toLessonDetailDto(
+      { ...lesson, teach: stored } as unknown as LessonWithRelations,
+      keepOrder,
+    );
+    expect(stored).toEqual(before);
+    expect(dto.teach).toEqual({
+      blocks: [
+        { kind: 'example', japanese: 'いただきます。', translation: 'x' },
+      ],
+    });
   });
 });

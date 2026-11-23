@@ -3,6 +3,7 @@ import type { CheckDto, LessonDetailDto, LessonItemDto } from '@sensei/types';
 import { learnerSurface } from '../recall/learner-surface';
 import { recapBackFor } from '../recall/recall-question';
 import { isOpenCheck } from '../checks/check-kind';
+import { ANSWER_PUNCTUATION } from '../common/japanese-script';
 import { shuffle } from '../common/shuffle';
 
 /**
@@ -43,10 +44,60 @@ export function toLessonDetailDto(
       title: lesson.chapter.module.title,
     },
     chapter: { id: lesson.chapter.id, title: lesson.chapter.title },
-    teach: lesson.teach,
+    teach: mapTeach(lesson.teach),
     items: lesson.items.map(mapLessonItem),
     checks: lesson.checks.map((check) => mapCheck(check, random)),
   };
+}
+
+/**
+ * What an example's reading line is compared without (brief 4.3): spaces,
+ * the grader's punctuation, and quote marks, ・ and …. ー is content and stays.
+ */
+const SAME_LINE_IGNORED = new RegExp(
+  `[\\s${ANSWER_PUNCTUATION}「」『』・…]`,
+  'gu',
+);
+
+/** Whether a reading line says exactly what the Japanese line above it says. */
+export function readingRepeatsJapanese(
+  reading: string,
+  japanese: string,
+): boolean {
+  const bare = (s: string) => s.replace(SAME_LINE_IGNORED, '');
+  return bare(reading) === bare(japanese);
+}
+
+/**
+ * The Teach beat as the app shows it: an example whose reading repeats its
+ * Japanese loses the reading, so an all-kana line isn't printed twice (P3).
+ * Display only; nothing stored changes. Every other block, and any shape this
+ * doesn't recognise, passes through untouched.
+ */
+export function mapTeach(teach: unknown): unknown {
+  if (!isRecord(teach) || !Array.isArray(teach.blocks)) return teach;
+  return { ...teach, blocks: teach.blocks.map(mapTeachBlock) };
+}
+
+function mapTeachBlock(block: unknown): unknown {
+  if (!isRecord(block)) return block;
+  // Either discriminant, as the app's parser accepts (teach.ts).
+  const kind = typeof block.kind === 'string' ? block.kind : block.type;
+  if (
+    kind !== 'example' ||
+    typeof block.japanese !== 'string' ||
+    typeof block.reading !== 'string' ||
+    !readingRepeatsJapanese(block.reading, block.japanese)
+  ) {
+    return block;
+  }
+  const shown = { ...block };
+  delete shown.reading;
+  return shown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function mapLessonItem(

@@ -14,8 +14,11 @@ export type TeachBlock =
   | { kind: 'kana'; itemId?: string; char: string; romaji: string; hint?: string }
   /** Reading passage displayed as a card before comprehension checks (H.4). */
   | { kind: 'passage'; text: string; title?: string }
-  /** Japanese example sentence with reading and translation (authoring output). */
-  | { kind: 'example'; japanese: string; reading: string; translation: string }
+  /**
+   * Japanese example sentence with translation (authoring output). The API
+   * leaves out a reading that would only repeat the Japanese (P3).
+   */
+  | { kind: 'example'; japanese: string; reading?: string; translation: string }
   /** Memory hook for a vocab/kana item (authoring output). */
   | { kind: 'mnemonic'; text: string };
 // `audio` blocks from the authoring schema are skipped here until Azure TTS
@@ -71,14 +74,12 @@ export function parseTeachBlocks(teach: unknown): TeachBlock[] {
       }
 
       case 'example':
-        return typeof r.japanese === 'string' &&
-          typeof r.reading === 'string' &&
-          typeof r.translation === 'string'
+        return typeof r.japanese === 'string' && typeof r.translation === 'string'
           ? [
               {
                 kind: 'example',
                 japanese: r.japanese,
-                reading: r.reading,
+                reading: typeof r.reading === 'string' ? r.reading : undefined,
                 translation: r.translation,
               },
             ]
