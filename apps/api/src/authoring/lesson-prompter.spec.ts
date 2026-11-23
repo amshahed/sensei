@@ -126,9 +126,11 @@ const COURSE_CONTEXT: CourseContext = {
   longVowelsTaught: false,
   grammar: [{ id: 'ja:grammar:です', surface: 'です' }],
   words: ['かぎ'],
+  earlierWords: [],
   kanji: [],
   targets: [{ id: 'ja:vocab:鍵', surface: 'かぎ' }],
   newTargetIds: ['ja:vocab:鍵'],
+  newKanji: [],
   hasKanaTargets: false,
   kanaCards: [{ char: 'ぎ', romaji: 'gi' }],
   typedReading: true,
@@ -252,9 +254,35 @@ describe('buildDraftPrompt says which words and grammar are new (P4, W2.1)', () 
     const prompt = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
       ...COURSE_CONTEXT,
       words: ['いぬ', 'かぎ'],
+      earlierWords: ['いぬ'],
     });
     expect(line(prompt, NEW)).toBe('かぎ');
     expect(line(prompt, KNOWN)).toBe('いぬ');
+  });
+
+  it('keeps an earlier word that is spelled like a new one (code review)', () => {
+    // はし the bridge, taught earlier, and はし the chopsticks, new here.
+    const prompt = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+      ...COURSE_CONTEXT,
+      words: ['はし'],
+      earlierWords: ['はし'],
+      targets: [{ id: 'ja:vocab:箸', surface: 'はし' }],
+      newTargetIds: ['ja:vocab:箸'],
+    });
+    expect(line(prompt, KNOWN)).toBe('はし');
+    expect(line(prompt, NEW)).toBe('はし');
+  });
+
+  it("lists an F-Kanji lesson's own kanji as new, not as met (code review)", () => {
+    const prompt = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+      ...COURSE_CONTEXT,
+      lessonType: 'F-Kanji',
+      kanji: ['日', '食'],
+      newKanji: ['食'],
+    });
+    expect(prompt).toContain(
+      'KANJI FROM EARLIER LESSONS: 日. NEW KANJI IN THIS LESSON (never say the learner already knows them): 食. Use no other kanji.',
+    );
   });
 
   it('lists a new target grammar point as new, not as taught', () => {
@@ -287,27 +315,34 @@ describe('buildDraftPrompt says which words and grammar are new (P4, W2.1)', () 
       expect(line(prompt, NEW).split(' ')).not.toContain('こんにちは');
     });
 
-    it('never lists a new word as known, or new grammar as taught, in any lesson', () => {
-      for (let n = 1; n <= lessons.length; n++) {
-        const ctx = ctxAt(n);
-        const fresh = new Set(ctx.newTargetIds);
-        const surfaces = (prefix: string) =>
-          ctx.targets
-            .filter((t) => fresh.has(t.id) && t.id.startsWith(prefix))
-            .map((t) => t.surface);
-        const prompt = promptAt(n);
-        const known = line(prompt, KNOWN).split(' ');
-        const taught = line(prompt, GRAMMAR).split(' ');
-        // Kinds are compared apart: に the word (two) and に the particle differ.
-        expect(known.filter((w) => surfaces('ja:vocab:').includes(w))).toEqual(
-          [],
+    it('lists, in every lesson, exactly the earlier words as known and the untaught targets as new', () => {
+      const { skeleton } = compiledOutline();
+      const surface = (id: string) => skeleton.surfaces![id] ?? '';
+      lessons.forEach((lesson, i) => {
+        const earlierIds = new Set(
+          lessons.slice(0, i).flatMap((l) => l.itemIds),
         );
-        expect(
-          ctx.grammar
-            .filter((g) => fresh.has(g.id))
-            .filter((g) => taught.includes(g.surface)),
-        ).toEqual([]);
-      }
+        const earlierWords = new Set(
+          [...earlierIds]
+            .filter((id) => id.startsWith('ja:vocab:'))
+            .map(surface),
+        );
+        const fresh = lesson.itemIds.filter(
+          (id) => !earlierIds.has(id) && /^ja:(vocab|grammar):/.test(id),
+        );
+        const prompt = promptAt(i + 1);
+        const known = line(prompt, KNOWN);
+        expect(new Set(known === '(none)' ? [] : known.split(' '))).toEqual(
+          earlierWords,
+        );
+        // さん after a name (earlier) and 三 read さん (new) can share a line.
+        const listed = line(prompt, NEW);
+        expect(listed === '(none)' ? [] : listed.split(' ')).toEqual(
+          expect.arrayContaining(
+            fresh.filter((id) => id.startsWith('ja:vocab:')).map(surface),
+          ),
+        );
+      });
     });
 
     it('gives every new target of an F- lesson its own line', () => {

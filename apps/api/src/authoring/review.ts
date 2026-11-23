@@ -16,7 +16,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { spawnSync } from 'child_process';
 import { courseContextFor } from './course-context';
-import { checkCourseRules } from './course-rules';
+import { checkCourseRules, type CourseRuleResult } from './course-rules';
 import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import { buildReviewTemplate, parseReviewFile } from './review-schema';
 import { appendCorrection } from './corrections-log';
@@ -82,32 +82,34 @@ export function rejectedDraftWarning(
 }
 
 /**
- * The course-rule warnings for a draft (P6), from the same context and gate
- * that publish runs, so the reviewer sees them before reading. Warnings only:
- * a draft in output/ already passed the gate's errors. Empty when the skeleton
- * gives the lesson no context.
+ * What the course rules say about a draft, from the same context and gate
+ * publish runs, so the reviewer sees it before reading: the warnings (P6), and
+ * any error, which a draft made before a rule existed can carry and publish
+ * would refuse. Empty when the skeleton gives the lesson no context.
  */
-export function courseRuleWarnings(
+export function courseRuleFindings(
   draft: LessonDraft,
   skeleton: Skeleton,
-): string[] {
+): CourseRuleResult {
   const ctx = courseContextFor(skeleton, draft.lessonId);
-  return ctx ? checkCourseRules(draft, ctx).warnings : [];
+  return ctx ? checkCourseRules(draft, ctx) : { errors: [], warnings: [] };
 }
 
-function printCourseRuleWarnings(draft: LessonDraft, skeletonPath: string) {
+function printCourseRuleFindings(draft: LessonDraft, skeletonPath: string) {
   if (!fs.existsSync(skeletonPath)) {
     console.warn(
-      `Warning: no skeleton at ${skeletonPath}, so course-rule warnings aren't shown.`,
+      `Warning: no skeleton at ${skeletonPath}, so the course rules aren't shown.`,
     );
     return;
   }
   const skeleton = SkeletonSchema.parse(
     JSON.parse(fs.readFileSync(skeletonPath, 'utf8')) as unknown,
   );
-  for (const w of courseRuleWarnings(draft, skeleton)) {
-    console.warn(`  [course rules] warning: ${w}`);
+  const { errors, warnings } = courseRuleFindings(draft, skeleton);
+  for (const e of errors) {
+    console.warn(`  [course rules] error (publish will refuse this): ${e}`);
   }
+  for (const w of warnings) console.warn(`  [course rules] warning: ${w}`);
 }
 
 function openEditor(filePath: string): void {
@@ -142,7 +144,7 @@ function main(): void {
   if (rejected) console.warn(`Warning: ${rejected}`);
 
   console.log(`authoring:review — opening "${lessonId}" (${draft.lessonType})`);
-  printCourseRuleWarnings(draft, skeletonPath);
+  printCourseRuleFindings(draft, skeletonPath);
 
   // Write review template to a temp file and open in editor
   const tmpFile = path.join(os.tmpdir(), `sensei-review-${lessonId}.md`);

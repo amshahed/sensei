@@ -55,6 +55,22 @@ describe('courseContextFor', () => {
     expect(at(49).targets).toEqual([]);
   });
 
+  it('tells new targets from ones practised again (P4)', () => {
+    // Lesson 26 (I-Speaking) only practises greetings taught earlier.
+    expect(at(26).newTargetIds).toEqual([]);
+    expect(at(26).earlierWords).toContain('こんにちは');
+    // Lesson 49 (F-Kanji) introduces its three kanji.
+    expect(at(49).newKanji).toEqual(['人', '大', '小']);
+    expect(at(50).newKanji).toEqual([]);
+    // An F-Vocab lesson's words are new, and not yet earlier words.
+    const n = lessons.findIndex((l) => l.type === 'F-Vocab') + 1;
+    expect(at(n).newTargetIds).toEqual(at(n).targets.map((t) => t.id));
+    for (const t of at(n).targets) {
+      expect(at(n).words).toContain(t.surface);
+      expect(at(n).earlierWords).not.toContain(t.surface);
+    }
+  });
+
   it('shows the たいです pattern as 〜たいです', () => {
     expect(at(117).targets[0].surface).toBe('〜たいです');
   });

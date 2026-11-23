@@ -1,7 +1,7 @@
 import { compiledOutline } from '../testing/compiled-outline';
 import { checkCourseRules, scriptProblems } from './course-rules';
 import type { LessonDraft, TeachBlock } from './lesson-schema';
-import { courseRuleWarnings } from './review';
+import { courseRuleFindings } from './review';
 
 const { spec, lessons, ctxAt } = compiledOutline();
 
@@ -1103,6 +1103,13 @@ describe('a typed check may not ask for kana (P5, W2.4)', () => {
 
   it('allows a word described as katakana, an open check and multiple choice', () => {
     expect(kanaErrors('Type the katakana word for coffee')).toEqual([]);
+    // Code review: describing the word is not asking for kana.
+    expect(
+      kanaErrors('Type the word written in katakana that means coffee'),
+    ).toEqual([]);
+    expect(kanaErrors('Type this word, spelled in hiragana: ともだち')).toEqual(
+      [],
+    );
     expect(
       kanaErrors('Write a sentence in kana about your friend', {
         grading: 'open',
@@ -1167,6 +1174,18 @@ describe("an example's reading says the same thing (P7, W3.5)", () => {
       ctxAt(115),
     ).errors.filter((e) => e.includes("the example's reading"));
 
+  it('still refuses a different rōmaji sentence, macrons and all', () => {
+    expect(
+      exampleErrors('おちゃ が すき です', 'mizu ga suki desu'),
+    ).toHaveLength(1);
+    expect(
+      exampleErrors('おちゃ が すき です', 'kōhī ga suki desu'),
+    ).toHaveLength(1);
+    expect(
+      exampleErrors('わたしは がくせい です', 'watashi wa sensei desu'),
+    ).toHaveLength(1);
+  });
+
   it("refuses lesson 115's example, read as a different sentence", () => {
     expect(
       exampleErrors(
@@ -1188,20 +1207,50 @@ describe("an example's reading says the same thing (P7, W3.5)", () => {
     ['いただきます。', 'いただきます'],
     ['すこし…', 'すこし'],
     ['学生 です', 'がくせい です'],
+    // Code review findings: quotes, macrons, a joined particle, mixed script.
+    ['「はい」 と いいます', 'hai to iimasu'],
+    ['「はい」 と いいます', 'はい と いいます'],
+    ['コーヒー', 'kōhī'],
+    ['おはよう ございます', 'ohayō gozaimasu'],
+    ['ラーメン', 'rāmen'],
+    ['わたしは がくせい です', 'watashi wa gakusei desu'],
+    ['わたしは がくせい です', 'わたし は がくせい です'],
+    ['Tシャツ', 'tii shatsu'],
   ])('allows %j read as %j', (japanese, reading) => {
     expect(exampleErrors(japanese, reading)).toEqual([]);
   });
 });
 
-describe('authoring:review shows the warnings (P6)', () => {
-  it('returns the course-rule warnings publish would print, and none without a context', () => {
+describe('authoring:review shows the course rules (P6)', () => {
+  const { skeleton } = compiledOutline();
+
+  it('returns the warnings publish would print, and nothing without a context', () => {
     const draft = draftWith('おんがち — oops — おんがく', 120);
-    const { skeleton } = compiledOutline();
-    expect(courseRuleWarnings(draft, skeleton)).toContain(
+    expect(courseRuleFindings(draft, skeleton).warnings).toContain(
       'teach[0]: may be the writer correcting itself: "oops"',
     );
     expect(
-      courseRuleWarnings({ ...draft, lessonId: 'not-in-outline' }, skeleton),
-    ).toEqual([]);
+      courseRuleFindings({ ...draft, lessonId: 'not-in-outline' }, skeleton),
+    ).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('returns an error a draft made before the rule carries (code review)', () => {
+    const draft = draftWith('', 20, {
+      check: {
+        questions: [
+          {
+            id: 'q2',
+            targetItemId: lessons[19].itemIds[0],
+            prompt: 'Type it using hiragana: ともだち',
+            answerType: 'typed',
+            correctAnswer: 'ともだち',
+            explanation: 'ともだち is a friend.',
+          },
+        ],
+      },
+    });
+    expect(courseRuleFindings(draft, skeleton).errors).toContain(
+      'check q2: the prompt asks for kana, but the app accepts rōmaji too; drop "using hiragana"',
+    );
   });
 });

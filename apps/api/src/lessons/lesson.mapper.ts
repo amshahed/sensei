@@ -3,7 +3,7 @@ import type { CheckDto, LessonDetailDto, LessonItemDto } from '@sensei/types';
 import { learnerSurface } from '../recall/learner-surface';
 import { recapBackFor } from '../recall/recall-question';
 import { isOpenCheck } from '../checks/check-kind';
-import { ANSWER_PUNCTUATION } from '../common/japanese-script';
+import { ANSWER_PUNCTUATION, READING_MARKS } from '../common/japanese-script';
 import { shuffle } from '../common/shuffle';
 
 /**
@@ -52,10 +52,10 @@ export function toLessonDetailDto(
 
 /**
  * What an example's reading line is compared without (brief 4.3): spaces,
- * the grader's punctuation, and quote marks, ・ and …. ー is content and stays.
+ * the grader's punctuation and READING_MARKS. ー is content and stays.
  */
 const SAME_LINE_IGNORED = new RegExp(
-  `[\\s${ANSWER_PUNCTUATION}「」『』・…]`,
+  `[\\s${ANSWER_PUNCTUATION}${READING_MARKS}]`,
   'gu',
 );
 

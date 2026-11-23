@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import type { AnthropicLike } from '../llm/anthropic-llm-client';
 import type { VoyageClient } from '../voyage/voyage-client';
 import type { Lesson } from './skeleton-schema';
-import type { CourseContext } from './course-context';
+import { kindOf, type CourseContext } from './course-context';
 import {
   openChecksAllowed,
   scriptProblems,
@@ -137,14 +137,20 @@ export function passagesFor(
 }
 
 /** The prompt section that holds a draft to what the learner has met (F.2.a). */
+/** The line that names what a lesson teaches for the first time (P4). */
+const NEW_LABEL =
+  'NEW IN THIS LESSON (the learner meets these here for the first time; never say they already know them):';
+
 function courseContextBlock(ctx: CourseContext): string {
   const list = (items: string[]) => (items.length ? items.join(' ') : '(none)');
   const longVowels = ctx.longVowelsTaught
     ? 'Long vowels: taught.'
     : 'Long vowels: NOT taught yet. Do not use a word with a held vowel.';
+  // An F-Kanji lesson's own kanji are listed as new, not as met (P4).
+  const earlierKanji = ctx.kanji.filter((k) => !ctx.newKanji.includes(k));
   const kanji =
     ctx.lessonType === 'F-Kanji'
-      ? `KANJI THE LEARNER HAS MET: ${list(ctx.kanji)}. Use no other kanji.`
+      ? `KANJI FROM EARLIER LESSONS: ${list(earlierKanji)}. NEW KANJI IN THIS LESSON (never say the learner already knows them): ${list(ctx.newKanji)}. Use no other kanji.`
       : 'KANJI: none. This is not a kanji lesson, so write everything in kana.';
   const cards =
     ctx.kanaCards.length > 0
@@ -171,11 +177,9 @@ function courseContextBlock(ctx: CourseContext): string {
   // gate still allows them: CourseContext.words and .grammar include them.
   const fresh = new Set(ctx.newTargetIds);
   const newWords = ctx.targets
-    .filter((t) => fresh.has(t.id) && t.id.startsWith('ja:vocab:'))
+    .filter((t) => fresh.has(t.id) && kindOf(t.id) === 'vocab')
     .map((t) => t.surface);
   const newGrammar = ctx.grammar.filter((g) => fresh.has(g.id));
-  const newSurfaces = new Set(newWords);
-  const earlierWords = ctx.words.filter((w) => !newSurfaces.has(w));
   const earlierGrammar = ctx.grammar.filter((g) => !fresh.has(g.id));
   // A reading lesson on kana comes before there are words to list.
   const kanaReading =
@@ -188,8 +192,8 @@ COURSE CONTEXT: this is lesson ${ctx.position} of ${ctx.totalLessons}. The learn
 KANA THE LEARNER CAN READ: ${list(ctx.kana)}
 ${longVowels}
 GRAMMAR TAUGHT IN EARLIER LESSONS: ${list(earlierGrammar.map((g) => g.surface))}
-${particles}WORDS THE LEARNER KNOWS (from earlier lessons): ${list(earlierWords)}
-NEW IN THIS LESSON (the learner meets these here for the first time; never say they already know them): ${list([...newWords, ...newGrammar.map((g) => g.surface)])}
+${particles}WORDS THE LEARNER KNOWS (from earlier lessons): ${list(ctx.earlierWords)}
+${NEW_LABEL} ${list([...newWords, ...newGrammar.map((g) => g.surface)])}
 ${kanji}
 ${note}${cards}${typed}
 Course rules:

@@ -7,6 +7,7 @@ import {
 } from '../common/answer-romaji';
 import {
   ANSWER_PUNCTUATION,
+  READING_MARKS,
   hasLongVowel,
   kanaChars,
   kanjiChars,
@@ -557,10 +558,11 @@ function selfAnsweringProblems(questions: CheckQuestion[]): string[] {
  * P5: a closed typed check may not tell the learner to answer in kana. The app
  * accepts rōmaji too, so the instruction is false and puts off a learner who
  * can't type kana yet. A word described as katakana ("the katakana word for
- * coffee") is fine; "in kana", "using hiragana" and "(katakana)" aren't.
+ * coffee", "the word written in katakana") is fine; "in kana", "using
+ * hiragana" and "(katakana)" aren't.
  */
 const ASKS_FOR_KANA =
-  /\b(?:in|using)\s+(?:hiragana|katakana|kana)\b|\(\s*(?:hiragana|katakana|kana)\s*\)/i;
+  /(?<!\b(?:written|spelled|spelt)\s+)\b(?:in|using)\s+(?:hiragana|katakana|kana)\b|\(\s*(?:hiragana|katakana|kana)\s*\)/i;
 
 function kanaInstructionProblems(questions: CheckQuestion[]): string[] {
   return questions.flatMap((q) => {
@@ -577,28 +579,62 @@ function kanaInstructionProblems(questions: CheckQuestion[]): string[] {
 /** A rōmaji letter and a kana in one line: a pronunciation guide, not a reading. */
 const LATIN = /[a-z]/i;
 const KANA = /[ぁ-ゖァ-ヺ]/;
-/** ・ splits syllables and … trails off; neither changes what is said. */
-const PAUSES = /[・…]/g;
+/** Latin letters or digits in the Japanese itself (Tシャツ, 3じ): not foldable. */
+const NOT_KANA_TEXT = /[a-z0-9Ａ-Ｚａ-ｚ０-９]/i;
+const MARKS = new RegExp(`[${READING_MARKS}]`, 'g');
+
+/** How a macron is typed without one: ā is aa, ō is oo (コーヒー) or ou (おはよう). */
+const MACRON_FORMS: Readonly<Record<string, string[]>> = {
+  ā: ['aa'],
+  ī: ['ii'],
+  ū: ['uu'],
+  ē: ['ee', 'ei'],
+  ō: ['oo', 'ou'],
+};
+
+/** Every way to write a rōmaji reading without its macrons (kōhī → koohii, kouhii). */
+export function macronSpellings(reading: string): string[] {
+  let out = [''];
+  for (const ch of reading.normalize('NFC').toLowerCase()) {
+    const forms = MACRON_FORMS[ch] ?? [ch];
+    out = out.flatMap((s) => forms.map((f) => s + f));
+    // Eight two-way macrons is 256 tries; past that, judge it as written.
+    if (out.length > 256) return [reading];
+  }
+  return out;
+}
+
+/** わたしは → わたし は, so a rōmaji reading may say the particle as spoken (wa). */
+const splitParticles = (s: string) =>
+  s.replace(/(\S)([はへを])(?=[\s、。,.!?！？]|$)/gu, '$1 $2');
+
+/** Whether a reading line says what a kana-only example says (P7). */
+export function readingSaysExample(reading: string, japanese: string): boolean {
+  const said = japanese.replace(MARKS, ' ');
+  const heard = reading.replace(MARKS, ' ');
+  const readings = [heard, heard.replace(/-/g, '')];
+  if (readings.some((r) => typedAnswersMatch(r, said))) return true;
+  if (!LATIN.test(heard)) return false;
+  const spoken = splitParticles(said);
+  return readings
+    .flatMap(macronSpellings)
+    .some((r) => typedAnswersMatch(r, said) || typedAnswersMatch(r, spoken));
+}
 
 /**
  * P7: an example with no kanji must have a reading that says the same thing,
  * judged as the grader judges a typed answer: kana, katakana and rōmaji fold
- * together and particles may be spelled as spoken. A hyphenated rōmaji
- * reading (ta-be-ma-su) is read without its hyphens.
+ * together and particles may be spelled as spoken. Quotes, ・ and … are read
+ * past; a rōmaji reading may use hyphens (ta-be-ma-su), macrons (kōhī) and
+ * spoken particles on a joined word (わたしは, watashi wa).
  */
 function exampleReadingProblems(draft: LessonDraft): string[] {
   const problems: string[] = [];
   draft.teach.blocks.forEach((b, i) => {
     if (b.type !== 'example' || kanjiChars(b.japanese).length > 0) return;
+    if (NOT_KANA_TEXT.test(b.japanese)) return;
     if (LATIN.test(b.reading) && KANA.test(b.reading)) return;
-    const japanese = b.japanese.replace(PAUSES, ' ');
-    const reading = b.reading.replace(PAUSES, ' ');
-    if (
-      typedAnswersMatch(reading, japanese) ||
-      typedAnswersMatch(reading.replace(/-/g, ''), japanese)
-    ) {
-      return;
-    }
+    if (readingSaysExample(b.reading, b.japanese)) return;
     problems.push(
       `teach[${i}]: the example's reading "${b.reading}" doesn't say "${b.japanese}"`,
     );
