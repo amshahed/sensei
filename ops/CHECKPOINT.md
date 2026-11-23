@@ -26,10 +26,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **Briefs done (G1)**, written 2026-11-22: `ops/work/open-check-followup/brief.md` (8 promises) and `ops/work/authoring-polish/brief.md` (7 promises, learner-facing P1 to P3 first). Decisions B.2.c and G.4.f. The PM added a pass rule to lesson 120’s rubric in its local draft (gitignored), and publish rechecks it. **Both `tech.md` files are done (G2)**, with decisions B.2.d, G.4.g and F.2.k. Lead ruling: the 校 live update is routine (authoring-polish tech.md 3.1). The Lead approved lesson 120 locally (`published/`) and created Neon branch `test-open-check-followup` (`br-winter-poetry-baq6sbs4`) for the Developer and Tester; delete it after merge. **PR #91 open-check-followup merged** (`cdc424b`, Tester PASS on `7d137ef`; real taps, Android and large text not verified). Lesson 120 is on the throwaway branch only. **PM run now:**
-   - rule on publishing 120, given the grader’s wrong correction 「わたし は なまえ は」 (2 of 10 runs) and the two-fix comments (test.md F1, F2);
-   - add Tester F4 to `authoring-polish/brief.md` as a new promise. The right multiple-choice answer is first in 652 of 668 checks, with no shuffle, so tapping the top option scores about 98%. It must land before Alpha.
-   Then the Tech Lead amends `authoring-polish/tech.md`, followed by the Developer and Tester.
+1. **Briefs done (G1)**, written 2026-11-22: `ops/work/open-check-followup/brief.md` (8 promises) and `ops/work/authoring-polish/brief.md` (7 promises, learner-facing P1 to P3 first). Decisions B.2.c and G.4.f. The PM added a pass rule to lesson 120’s rubric in its local draft (gitignored), and publish rechecks it. **Both `tech.md` files are done (G2)**, with decisions B.2.d, G.4.g and F.2.k. Lead ruling: the 校 live update is routine (authoring-polish tech.md 3.1). The Lead approved lesson 120 locally (`published/`) and created Neon branch `test-open-check-followup` (`br-winter-poetry-baq6sbs4`) for the Developer and Tester; delete it after merge. **PR #91 open-check-followup merged** (`cdc424b`). **Lesson 120 is published, so 108 lessons are live.** That is every lesson except the 12 audio ones. The PM ruled in `open-check-followup/triage.md`, accepting F1, F2 and F5 for closed beta. The PM also added **P8 to `authoring-polish/brief.md`**: multiple-choice options are shuffled (Tester F4, decision B.2.e). **Tech Lead amending `authoring-polish/tech.md` for P8 now**, then the Developer and Tester.
 2. Tech Lead, Developer, Tester for `open-check-followup`, then the Lead publishes 120 with `EDITOR=true pnpm --filter api authoring:review foundation-ja-ch17-l07`, then `authoring:publish`.
 3. The same chain for `authoring-polish`. It must land before the audio wave and Alpha.
 4. Alpha run for the 22b and 22c lessons, in a session with the iOS simulator tool:
@@ -46,6 +43,13 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## PM backlog
 
+- From `open-check-followup/triage.md`:
+  - **B1:** lesson 120’s rubric gets the name pattern and a one-fix line (already written). Apply it after a clean eval, before any real learner.
+  - **B3:** the eval’s pair rule (F3).
+  - **B4:** Android keyboard behaviour (I1), before any Android build.
+  - **B5:** a new unit, after `authoring-polish`, for an honest “couldn’t grade” in reviews and practice (I2).
+  - B2 is now part of Blocker 6.
+
 - Age confirmation at sign-up is needed before any real learner (M.5, beta is 18+). New small unit.
 - Lesson 20 is live, but publish refuses to republish it until its passage drops と and の (particle gate).
 - Lesson 39 doesn't require typed reading; one outline flag turns it on.
@@ -59,7 +63,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 ## Live facts
 
 - Anthropic credit: **about $10 left**. 22c has spent about $8.7 so far, including lost and redrafted drafts. Measured cost per lesson, draft plus critique: $0.05 to $0.09.
-- Neon default branch: migrations through `20261104230000_reminders`. 107 lessons (857 checks), 1 user, 1,625 items.
+- Neon default branch: migrations through `20261104230000_reminders`. 108 lessons (874 checks), 1 user, 1,625 items.
 - `skeleton.json` is gitignored and was rebuilt on 2026-11-16 after the swap. Rebuild it with `authoring:outline --force` only when the outline spec changes, then diff it against a backup.
 - Drafts, critiques, `.failed.json` and `.prev.json` files live in the main checkout's `tools/authoring/output/`. Approved lessons live in `tools/authoring/published/`. Both are gitignored, so don't delete them.
 - Agent usage is heavy and has hit the founder's 5-hour limit several times. Run one agent at a time and scope re-tests to the diff.

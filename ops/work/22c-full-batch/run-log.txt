@@ -242,3 +242,4 @@
 2026-11-16T22:43:29.000Z PUBLISHED foundation-ja-ch17-l02 (Decision: APPROVE) created lesson cmwjunys200049o0ts4ktw5me (5 items, 10 checks)
 2026-11-16T22:43:33.000Z PUBLISHED foundation-ja-ch17-l03 (Decision: APPROVE) created lesson cmwjuo1rn00049o2qb4grmb7m (1 items, 3 checks)
 2026-11-16T22:43:36.000Z PUBLISHED foundation-ja-ch17-l04 (Decision: APPROVE) created lesson cmwjuo4nk00049o4hh8sy8y70 (1 items, 3 checks)
+2026-11-23T19:08:53.000Z PUBLISHED foundation-ja-ch17-l07 (#120, PM ruling open-check-followup/triage.md) created lesson cmwtn2w0r00049oet3y3ybixm (8 items, 17 checks)
