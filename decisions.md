@@ -1977,3 +1977,17 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 - Telling the drafter to vary the position: it fixes nothing that's already live.
 
 **Reverse:** Show options in their authored order again. Before doing that, the stored order would need varying.
+
+### B.2.f How B.2.e is built: the API shuffles a lesson's options on every request (decided by Tech Lead, 2026-11-23)
+
+**Decision:**
+1. `toLessonDetailDto` returns each multiple-choice check's `choices` as a uniform Fisher-Yates shuffle of a copy of the stored options, on every `GET /lessons/:id`. The app fetches a lesson once per showing, so each showing (first try, redo, reopened later) gets a fresh order that holds still through submitting and the result.
+2. The shuffle is blind. It never looks at the answer, the authored order or an earlier order, and there is no "must move" rule, because any such rule is itself a positional cue.
+3. One helper, `apps/api/src/common/shuffle.ts`, with randomness injected per module (`LESSON_RANDOM`, like `PLACEMENT_RANDOM` and `ASSESSMENT_RANDOM`). Any future multiple-choice question uses it.
+4. Placement already puts the answer in a uniform random slot per attempt and is unchanged. Reviews, practice and chapter tests ask no multiple-choice questions.
+
+**Why:** Grading already goes by option text end to end (payload, tap, `exactMatch`, result colouring). The live data has every answer among its four options and no duplicate options (668 of 668, read-only check 2026-11-23), so order can't change a verdict. Doing it in the API covers all 108 live lessons with no republish and no stored change, and keeps the property unit-testable, which the app can't be. Full plan in `ops/work/authoring-polish/tech.md` 1.8.
+
+**Rejected:** Shuffling in the app (untestable there, and needed again in every client). A seed per check (one order forever, which B.2.e rejects). Storing an order per showing (needs a migration for no gain). `sort(() => random() - 0.5)` (biased).
+
+**Reverse:** Provide `LESSON_RANDOM` as a generator that keeps order, or revert the commit. There is no data to restore. As B.2.e says, the stored order would need varying first.
