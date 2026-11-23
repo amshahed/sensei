@@ -128,6 +128,7 @@ const COURSE_CONTEXT: CourseContext = {
   words: ['かぎ'],
   kanji: [],
   targets: [{ id: 'ja:vocab:鍵', surface: 'かぎ' }],
+  newTargetIds: ['ja:vocab:鍵'],
   hasKanaTargets: false,
   kanaCards: [{ char: 'ぎ', romaji: 'gi' }],
   typedReading: true,
@@ -161,8 +162,10 @@ describe('buildDraftPrompt with course context (F.2.a)', () => {
     expect(prompt).toContain('lesson 15 of 120');
     expect(prompt).toContain('KANA THE LEARNER CAN READ: か ぎ');
     expect(prompt).toContain('Long vowels: NOT taught yet');
-    expect(prompt).toContain('GRAMMAR TAUGHT SO FAR: です');
-    expect(prompt).toContain('WORDS THE LEARNER KNOWS: かぎ');
+    expect(prompt).toContain('GRAMMAR TAUGHT IN EARLIER LESSONS: です');
+    expect(prompt).toContain(
+      'WORDS THE LEARNER KNOWS (from earlier lessons): (none)',
+    );
     expect(prompt).toContain(
       'Write Japanese in kana, with a space between words.',
     );
@@ -231,6 +234,91 @@ describe('buildDraftPrompt carries the rules for explanations (B.2.a, F.2.e)', (
   ])('says %s, with or without course context', (_rule, text) => {
     expect(withContext).toContain(text);
     expect(plain).toContain(text);
+  });
+});
+
+describe('buildDraftPrompt says which words and grammar are new (P4, W2.1)', () => {
+  const NEW =
+    'NEW IN THIS LESSON (the learner meets these here for the first time; never say they already know them): ';
+  const KNOWN = 'WORDS THE LEARNER KNOWS (from earlier lessons): ';
+  const GRAMMAR = 'GRAMMAR TAUGHT IN EARLIER LESSONS: ';
+  const line = (prompt: string, head: string) =>
+    prompt
+      .split('\n')
+      .find((l) => l.startsWith(head))!
+      .slice(head.length);
+
+  it('lists a new target word as new, not as known', () => {
+    const prompt = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+      ...COURSE_CONTEXT,
+      words: ['いぬ', 'かぎ'],
+    });
+    expect(line(prompt, NEW)).toBe('かぎ');
+    expect(line(prompt, KNOWN)).toBe('いぬ');
+  });
+
+  it('lists a new target grammar point as new, not as taught', () => {
+    const prompt = buildDraftPrompt(VOCAB_LESSON, [VOCAB_ITEM], [], [], {
+      ...COURSE_CONTEXT,
+      grammar: [
+        { id: 'ja:grammar:です', surface: 'です' },
+        { id: 'ja:grammar:か', surface: 'か' },
+      ],
+      targets: [
+        ...COURSE_CONTEXT.targets,
+        { id: 'ja:grammar:か', surface: 'か' },
+      ],
+      newTargetIds: ['ja:vocab:鍵', 'ja:grammar:か'],
+    });
+    expect(line(prompt, NEW)).toBe('かぎ か');
+    expect(line(prompt, GRAMMAR)).toBe('です');
+  });
+
+  describe('on the real outline', () => {
+    const { lessons, ctxAt } = compiledOutline();
+    const promptAt = (n: number) =>
+      buildDraftPrompt(lessons[n - 1], [], [], [], ctxAt(n));
+
+    it('keeps a word practised again as known: lesson 26 (I-Speaking) re-uses greetings', () => {
+      const prompt = promptAt(26);
+      expect(line(prompt, KNOWN).split(' ')).toEqual(
+        expect.arrayContaining(['こんにちは', 'ありがとうございます']),
+      );
+      expect(line(prompt, NEW).split(' ')).not.toContain('こんにちは');
+    });
+
+    it('never lists a new word as known, or new grammar as taught, in any lesson', () => {
+      for (let n = 1; n <= lessons.length; n++) {
+        const ctx = ctxAt(n);
+        const fresh = new Set(ctx.newTargetIds);
+        const surfaces = (prefix: string) =>
+          ctx.targets
+            .filter((t) => fresh.has(t.id) && t.id.startsWith(prefix))
+            .map((t) => t.surface);
+        const prompt = promptAt(n);
+        const known = line(prompt, KNOWN).split(' ');
+        const taught = line(prompt, GRAMMAR).split(' ');
+        // Kinds are compared apart: に the word (two) and に the particle differ.
+        expect(known.filter((w) => surfaces('ja:vocab:').includes(w))).toEqual(
+          [],
+        );
+        expect(
+          ctx.grammar
+            .filter((g) => fresh.has(g.id))
+            .filter((g) => taught.includes(g.surface)),
+        ).toEqual([]);
+      }
+    });
+
+    it('gives every new target of an F- lesson its own line', () => {
+      const n = lessons.findIndex((l) => l.type === 'F-Vocab') + 1;
+      const ctx = ctxAt(n);
+      expect(ctx.newTargetIds.length).toBeGreaterThan(0);
+      const fresh = line(promptAt(n), NEW).split(' ');
+      for (const t of ctx.targets.filter((t) => t.id.startsWith('ja:vocab:'))) {
+        expect(fresh).toContain(t.surface);
+      }
+    });
   });
 });
 

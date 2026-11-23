@@ -166,6 +166,17 @@ function courseContextBlock(ctx: CourseContext): string {
   const open = openChecksAllowed(ctx.authorNote)
     ? '- A question with no single right answer has answerType "typed", grading "open", a model answer as correctAnswer, and a rubric saying what to look for'
     : '- Every check has one right answer: write no open checks and no grading field.';
+  // Known lists hold only earlier lessons, and this lesson's new words and
+  // grammar get their own line, so a draft never calls them known (P4). The
+  // gate still allows them: CourseContext.words and .grammar include them.
+  const fresh = new Set(ctx.newTargetIds);
+  const newWords = ctx.targets
+    .filter((t) => fresh.has(t.id) && t.id.startsWith('ja:vocab:'))
+    .map((t) => t.surface);
+  const newGrammar = ctx.grammar.filter((g) => fresh.has(g.id));
+  const newSurfaces = new Set(newWords);
+  const earlierWords = ctx.words.filter((w) => !newSurfaces.has(w));
+  const earlierGrammar = ctx.grammar.filter((g) => !fresh.has(g.id));
   // A reading lesson on kana comes before there are words to list.
   const kanaReading =
     ctx.hasKanaTargets && ctx.lessonType.startsWith('I-')
@@ -176,8 +187,9 @@ function courseContextBlock(ctx: CourseContext): string {
 COURSE CONTEXT: this is lesson ${ctx.position} of ${ctx.totalLessons}. The learner knows ONLY what is listed here.
 KANA THE LEARNER CAN READ: ${list(ctx.kana)}
 ${longVowels}
-GRAMMAR TAUGHT SO FAR: ${list(ctx.grammar.map((g) => g.surface))}
-${particles}WORDS THE LEARNER KNOWS: ${list(ctx.words)}
+GRAMMAR TAUGHT IN EARLIER LESSONS: ${list(earlierGrammar.map((g) => g.surface))}
+${particles}WORDS THE LEARNER KNOWS (from earlier lessons): ${list(earlierWords)}
+NEW IN THIS LESSON (the learner meets these here for the first time; never say they already know them): ${list([...newWords, ...newGrammar.map((g) => g.surface)])}
 ${kanji}
 ${note}${cards}${typed}
 Course rules:

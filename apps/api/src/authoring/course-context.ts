@@ -19,6 +19,11 @@ export interface CourseContext {
   kanji: string[];
   /** This lesson's targets (kanji targets excluded). */
   targets: Array<{ id: string; surface: string }>;
+  /**
+   * The targets no earlier lesson taught: what the learner meets here for the
+   * first time (P4). A target practised again, as I- lessons do, isn't new.
+   */
+  newTargetIds: string[];
   hasKanaTargets: boolean;
   kanaCards: KanaCard[];
   typedReading: boolean;
@@ -44,6 +49,12 @@ export function courseContextFor(
   const lesson = lessons[index];
 
   const reached = new Set(lessons.slice(0, index + 1).map((l) => l.id));
+  const taughtEarlier = new Set(
+    lessons.slice(0, index).flatMap((l) => l.itemIds),
+  );
+  const targets = lesson.itemIds
+    .filter((id) => kindOf(id) !== 'kanji')
+    .map((id) => ({ id, surface: surfaces[id] ?? '' }));
   const stages = (skeleton.soundStages ?? []).filter((s) =>
     reached.has(s.lessonId),
   );
@@ -76,9 +87,10 @@ export function courseContextFor(
     grammar: [...grammar].map(([id, surface]) => ({ id, surface })),
     words: [...words],
     kanji: [...kanji],
-    targets: lesson.itemIds
-      .filter((id) => kindOf(id) !== 'kanji')
-      .map((id) => ({ id, surface: surfaces[id] ?? '' })),
+    targets,
+    newTargetIds: targets
+      .map((t) => t.id)
+      .filter((id) => !taughtEarlier.has(id)),
     hasKanaTargets: lesson.itemIds.some((id) => kindOf(id) === 'kana'),
     kanaCards: lesson.kanaCards ?? [],
     typedReading: lesson.typedReading === true,
