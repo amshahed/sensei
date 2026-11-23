@@ -30,6 +30,26 @@ type Phase =
   | { kind: 'check'; lesson: LessonDetailDto; index: number }
   | { kind: 'done'; lesson: LessonDetailDto; correct: number; total: number };
 
+/**
+ * How one check ended. "ungraded" is an open check the grader couldn't judge:
+ * it counts neither way, so it is left out of the score (B.2.d, P6).
+ */
+type CheckOutcome = 'right' | 'wrong' | 'ungraded';
+
+/** An absent `scored` (an API from before B.2.d) reads as judged, as it was. */
+function outcomeOf(result: CheckResultDto): CheckOutcome {
+  if (result.scored === false) return 'ungraded';
+  return result.correct ? 'right' : 'wrong';
+}
+
+/** The end-of-lesson score: an ungraded check counts neither way (P6). */
+function tally(outcomes: CheckOutcome[], checks: number) {
+  return {
+    correct: outcomes.filter((o) => o === 'right').length,
+    total: checks - outcomes.filter((o) => o === 'ungraded').length,
+  };
+}
+
 export function LessonPlayer({
   slug,
   onExit,
@@ -38,7 +58,7 @@ export function LessonPlayer({
   onExit?: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
-  const [score, setScore] = useState(0);
+  const [outcomes, setOutcomes] = useState<CheckOutcome[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -84,7 +104,7 @@ export function LessonPlayer({
       <PracticeBeat
         lesson={phase.lesson}
         onContinue={() => {
-          setScore(0);
+          setOutcomes([]);
           // A lesson with no checks (e.g. an authored stub) skips straight to
           // the summary instead of indexing into an empty array.
           setPhase(
@@ -106,8 +126,7 @@ export function LessonPlayer({
       return (
         <DoneScreen
           slug={lesson.slug}
-          correct={score}
-          total={lesson.checks.length}
+          {...tally(outcomes, lesson.checks.length)}
           onExit={onExit}
         />
       );
@@ -118,9 +137,9 @@ export function LessonPlayer({
         check={check}
         index={index}
         total={lesson.checks.length}
-        onNext={(correct) => {
-          const nextScore = score + (correct ? 1 : 0);
-          setScore(nextScore);
+        onNext={(outcome) => {
+          const nextOutcomes = [...outcomes, outcome];
+          setOutcomes(nextOutcomes);
           const next = index + 1;
           if (next < lesson.checks.length) {
             setPhase({ kind: 'check', lesson, index: next });
@@ -128,8 +147,8 @@ export function LessonPlayer({
             setPhase({
               kind: 'done',
               lesson,
-              correct: nextScore,
-              total: lesson.checks.length,
+              // "X of 16" when one of 17 couldn't be graded (P6).
+              ...tally(nextOutcomes, lesson.checks.length),
             });
           }
         }}
@@ -264,7 +283,7 @@ function CheckBeat({
   check: CheckDto;
   index: number;
   total: number;
-  onNext: (correct: boolean) => void;
+  onNext: (outcome: CheckOutcome) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
@@ -275,6 +294,9 @@ function CheckBeat({
 
   const choices = check.choices ?? [];
   const isMultipleChoice = choices.length > 0;
+  // Free writing, such as a self-introduction (B.2.d): a box that shows the
+  // whole answer, and a result that frames the model answer as an example.
+  const isOpen = check.open === true && !isMultipleChoice;
 
   async function submit(answer: string) {
     if (result || grading || answer.trim().length === 0) return;
@@ -305,10 +327,10 @@ function CheckBeat({
   // scrolling however long the question is (B.2.b).
   const footer = result ? (
     <View style={styles.resultFooter}>
-      <ResultPanel result={result} />
+      <ResultPanel result={result} open={isOpen} />
       <PrimaryButton
         label={index + 1 < total ? 'Next →' : 'Finish'}
-        onPress={() => onNext(result.correct)}
+        onPress={() => onNext(outcomeOf(result))}
       />
     </View>
   ) : failed ? (
@@ -322,7 +344,7 @@ function CheckBeat({
   ) : null;
 
   return (
-    <Screen footer={footer}>
+    <Screen footer={footer} avoidKeyboard={isOpen}>
       <Text style={ui.kicker}>
         Check {index + 1} of {total}
       </Text>
@@ -362,6 +384,21 @@ function CheckBeat({
             </Pressable>
           );
         })
+      ) : isOpen ? (
+        // Grows with the text, so the screen scrolls rather than the box, and
+        // Return is a new line: only Check sends it, never half an answer.
+        <TextInput
+          style={[styles.input, styles.inputOpen]}
+          value={typed}
+          editable={!result && !grading}
+          onChangeText={setTyped}
+          multiline
+          scrollEnabled={false}
+          textAlignVertical="top"
+          placeholder="Type your answer"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
       ) : (
         <TextInput
           style={styles.input}
@@ -390,25 +427,61 @@ function CheckBeat({
  * than about half the screen, so Next stays on screen and the question keeps
  * room: real results fit well inside that, and only an extreme one (a long
  * model answer at a large text size) scrolls within the panel.
+ *
+ * An open check (B.2.d) shows the verdict, then the grader's comment on what
+ * the learner wrote, so both are the first lines in view. On a miss the model
+ * answer follows as one example, never "Answer:". When the grader couldn't
+ * judge, a plain notice replaces the verdict, with no red or green, and the
+ * example still follows so the check still teaches.
  */
-function ResultPanel({ result }: { result: CheckResultDto }) {
+function ResultPanel({
+  result,
+  open,
+}: {
+  result: CheckResultDto;
+  open: boolean;
+}) {
   const { height } = useWindowDimensions();
   const forms = result.correct ? undefined : result.answerForms;
+  const ungraded = outcomeOf(result) === 'ungraded';
+  const missedOrUngraded = ungraded || !result.correct;
   return (
     <ScrollView
       style={{ maxHeight: height * RESULT_MAX_SHARE }}
       contentContainerStyle={styles.result}
       bounces={false}
     >
-      <Text style={result.correct ? ui.ok : ui.err}>
-        {result.correct ? 'Correct!' : 'Not quite.'}
-      </Text>
-      {result.correct ? null : (
-        <Text style={styles.resultAnswer}>
-          Answer: {forms?.kana ?? (result.correctAnswer || '—')}
+      {ungraded ? (
+        <Text style={styles.resultUngraded}>
+          Couldn’t grade this right now, so it doesn’t count.
+        </Text>
+      ) : (
+        <Text style={result.correct ? ui.ok : ui.err}>
+          {result.correct ? 'Correct!' : 'Not quite.'}
         </Text>
       )}
-      {forms ? <Text style={styles.resultRomaji}>{forms.romaji}</Text> : null}
+      {result.feedback ? (
+        <Text style={styles.resultComment}>{result.feedback}</Text>
+      ) : null}
+      {open ? (
+        missedOrUngraded && result.correctAnswer ? (
+          <>
+            <Text style={styles.exampleLabel}>One way to write it:</Text>
+            <Text style={styles.resultExample}>{result.correctAnswer}</Text>
+          </>
+        ) : null
+      ) : (
+        <>
+          {result.correct ? null : (
+            <Text style={styles.resultAnswer}>
+              Answer: {forms?.kana ?? (result.correctAnswer || '—')}
+            </Text>
+          )}
+          {forms ? (
+            <Text style={styles.resultRomaji}>{forms.romaji}</Text>
+          ) : null}
+        </>
+      )}
       {result.explanation ? (
         <Text style={ui.body}>{result.explanation}</Text>
       ) : null}
@@ -527,6 +600,15 @@ const styles = StyleSheet.create({
   result: { gap: 4 },
   resultAnswer: { fontSize: 17, fontWeight: '600', color: '#111' },
   resultRomaji: { fontSize: 16, color: '#555' },
+  resultUngraded: { fontSize: 16, color: '#555', fontWeight: '600' },
+  resultComment: { fontSize: 16, lineHeight: 22, color: '#111' },
+  exampleLabel: {
+    fontSize: 13,
+    color: '#555',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  resultExample: { fontSize: 16, lineHeight: 24, color: '#111' },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -535,6 +617,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 18,
   },
+  // About six short lines of writing before it grows (P7).
+  inputOpen: { minHeight: 150, paddingTop: 14 },
   passage: {
     backgroundColor: '#F7F7FA',
     borderLeftWidth: 3,

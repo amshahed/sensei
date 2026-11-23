@@ -1,0 +1,87 @@
+[
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "full, kana",
+    "answer": "はじめまして。わたし の なまえ は サム です。わたし は カナダじん です。わたし は がくせい です。ねこ が すき です。よろしくおねがいします。",
+    "expect": "accepted",
+    "pair": "full",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "full, rōmaji",
+    "answer": "hajimemashite. watashi no namae wa samu desu. watashi wa kanadajin desu. watashi wa gakusei desu. neko ga suki desu. yoroshiku onegaishimasu.",
+    "expect": "accepted",
+    "pair": "full",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "full, mix",
+    "answer": "hajimemashite. わたし の なまえ は samu です。watashi wa kanadajin desu. わたし は がくせい です。neko ga suki desu. よろしくおねがいします。",
+    "expect": "accepted",
+    "pair": "full",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "missing where from and what I do",
+    "answer": "はじめまして。わたし の なまえ は サム です。ねこ が すき です。よろしくおねがいします。",
+    "expect": "accepted",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "wrong particles (を twice)",
+    "answer": "はじめまして。わたし を なまえ は サム です。わたし は カナダじん です。わたし は がくせい です。ねこ を すき です。よろしくおねがいします。",
+    "expect": "accepted",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "greeting, name, closing, rōmaji",
+    "answer": "hajimemashite. samu desu. yoroshiku onegaishimasu.",
+    "expect": "accepted",
+    "pair": "thin",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "greeting, name, closing, kana",
+    "answer": "はじめまして。サム です。よろしくおねがいします。",
+    "expect": "accepted",
+    "pair": "thin",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "English only",
+    "answer": "Hello, my name is Sam. I am from Canada. I am a student. I like cats. Nice to meet you.",
+    "expect": "rejected",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "single word",
+    "answer": "sushi",
+    "expect": "rejected",
+    "kanaFeedback": true
+  },
+  {
+    "lessonId": "foundation-ja-ch17-l07",
+    "checkId": "q17",
+    "name": "gibberish",
+    "answer": "asdf qwer zxcv",
+    "expect": "rejected",
+    "kanaFeedback": true
+  }
+]
