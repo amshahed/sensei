@@ -19,7 +19,6 @@ import {
   RecallGraderService,
   recallResult,
 } from '../recall/recall-grader.service';
-import { learnerSurface } from '../recall/learner-surface';
 import {
   RECALLABLE_ITEM_SELECT,
   recallQuestionFor,
@@ -155,12 +154,15 @@ export class PracticeService {
 
     if (ranked.length === 0) return { sessionId: null, items: [] };
 
-    const items = ranked.map(({ state: { item } }) => ({
-      itemId: item.id,
-      type: item.type,
-      display: learnerSurface(item),
-      prompt: recallQuestionFor(item)!.prompt,
-    }));
+    const items = ranked.map(({ state: { item } }) => {
+      const question = recallQuestionFor(item)!;
+      return {
+        itemId: item.id,
+        type: item.type,
+        display: question.display,
+        prompt: question.prompt,
+      };
+    });
     const session = await this.prisma.practiceSession.create({
       data: {
         userId,

@@ -33,6 +33,11 @@ export interface RecallableItem {
 export type AnswerCheck = 'romaji' | 'reading' | 'meaning';
 
 export interface RecallQuestion {
+  /**
+   * What the card shows as the item: `learnerSurface(item)`, except a verb
+   * kanji, which is shown in its word (食べる, G.4.f).
+   */
+  display: string;
   prompt: string;
   /** Shown as the correct answer afterwards. Server-only until then. */
   expected: string;
@@ -101,6 +106,23 @@ export function kanjiReadings(item: RecallableItem): {
   return { accepted: [...accepted], shown: shown.join('・') };
 }
 
+/**
+ * The verb a kanji is taught in (G.4.f), from `data.word_reading`, the
+ * KANJIDIC2 kun reading the kanji supplement names (た.べる): shown as the
+ * kanji with its kana ending (食べる) and read as the whole word (たべる).
+ * Null for any kanji without one.
+ */
+export function kanjiWord(
+  item: RecallableItem,
+): { display: string; answer: string } | null {
+  const raw = dataString(item.data, 'word_reading');
+  if (!raw) return null;
+  const reading = kanjiReading(raw);
+  const okurigana = raw.replace(/-/g, '').split('.')[1]?.trim();
+  if (!reading || !okurigana) return null;
+  return { display: item.display + okurigana, answer: reading.answer };
+}
+
 /** The back of the lesson recap card (B.3.a). A word never gets rōmaji. */
 export function recapBackFor(item: RecallableItem): string | null {
   const meaning = item.meaning?.trim() || null;
@@ -135,6 +157,7 @@ function meaningQuestion(item: RecallableItem): RecallQuestion | null {
   const asked = context ? ` mean ${context}?` : ' mean?';
   return meaning
     ? {
+        display: learnerSurface(item),
         prompt: `What does 「${learnerSurface(item)}」${asked}`,
         expected: meaning,
         accepted: [meaning],
@@ -146,7 +169,7 @@ function meaningQuestion(item: RecallableItem): RecallQuestion | null {
 /**
  * The typed-recall question for one item — shared by Reviews (G.4), chapter
  * Assessments (I.4.d.a) and Practice (J.1.c), so every surface asks and grades
- * the same way. No question may answer itself: a word is shown in kana, so it
+ * the same way, and shows the item as `display`. No question may answer itself: a word is shown in kana, so it
  * asks for its meaning (G.4.c), and an item without a usable answer (e.g. a
  * grammar shell with no meaning yet) is not quizzable (null).
  */
@@ -156,6 +179,7 @@ export function recallQuestionFor(item: RecallableItem): RecallQuestion | null {
       const romaji = dataString(item.data, 'romaji')?.trim();
       return romaji
         ? {
+            display: learnerSurface(item),
             prompt: `Type the rōmaji for 「${item.display}」`,
             expected: romaji,
             accepted: [romaji],
@@ -166,9 +190,22 @@ export function recallQuestionFor(item: RecallableItem): RecallQuestion | null {
     case 'VOCAB':
       return meaningQuestion(item);
     case 'KANJI': {
+      // A verb kanji is read through its verb, and only as that verb is read:
+      // しょく is not a reading of 食べる (G.4.f).
+      const word = kanjiWord(item);
+      if (word) {
+        return {
+          display: word.display,
+          prompt: `Type the reading of 「${word.display}」`,
+          expected: word.answer,
+          accepted: [word.answer],
+          check: 'reading',
+        };
+      }
       const { accepted, shown } = kanjiReadings(item);
       return accepted.length > 0
         ? {
+            display: learnerSurface(item),
             prompt: `Type a reading for 「${item.display}」`,
             expected: shown,
             accepted,

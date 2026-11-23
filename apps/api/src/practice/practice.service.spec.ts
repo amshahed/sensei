@@ -36,6 +36,19 @@ const vocab = {
   meaning: 'sushi',
   data: {},
 };
+/** A verb kanji, asked through its verb (G.4.f). */
+const taberu = {
+  id: 'ja:kanji:食',
+  type: 'KANJI' as const,
+  display: '食',
+  reading: 'く.う',
+  meaning: 'eat',
+  data: {
+    on_readings: ['ショク'],
+    kun_readings: ['く.う', 'た.べる'],
+    word_reading: 'た.べる',
+  },
+};
 /** KANA with no rōmaji: nothing to check against, never drillable. */
 const unquizzable = {
   id: 'ja:kana:broken',
@@ -216,6 +229,19 @@ describe('PracticeService', () => {
       });
     });
 
+    it('shows a verb kanji in its word (G.4.f, P2)', async () => {
+      statesFindMany.mockResolvedValue([state(taberu, 1)]);
+      const session = await service.start(
+        'u1',
+        { scope: { kind: 'weakest' } },
+        NOW,
+      );
+      expect(session.items[0]).toMatchObject({
+        display: '食べる',
+        prompt: 'Type the reading of 「食べる」',
+      });
+    });
+
     it('weakest: lowest retention first, then weakest modality; answers never leak', async () => {
       statesFindMany.mockResolvedValue([
         state(kana('a'), 1),
@@ -392,6 +418,24 @@ describe('PracticeService', () => {
         },
         prisma,
       );
+    });
+
+    it('grades a verb kanji by its word: たべる right, しょく wrong (G.4.f, P2)', async () => {
+      sessionFindUnique.mockResolvedValue({
+        userId: 'u1',
+        itemIds: [taberu.id],
+      });
+      itemFindUnique.mockResolvedValue(taberu);
+      const right = await service.answer('u1', 'ps-1', {
+        itemId: taberu.id,
+        answer: 'たべる',
+      });
+      expect(right).toMatchObject({ correct: true, correctAnswer: 'たべる' });
+      const wrong = await service.answer('u1', 'ps-1', {
+        itemId: taberu.id,
+        answer: 'しょく',
+      });
+      expect(wrong).toMatchObject({ correct: false, correctAnswer: 'たべる' });
     });
 
     it('every answer counts as effort toward the daily target, repeats included (K.3.b)', async () => {
