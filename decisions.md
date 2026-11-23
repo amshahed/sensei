@@ -2005,3 +2005,34 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** A checkbox on the sign-up form. A date of birth. Asking again on every open. Deleting the account on "under 18".
 
 **Reverse:** Remove the screen once M.5 is reversed (grading on a provider whose terms allow under-18s). To return to M.5's single button, drop the "under 18" choice and its message.
+
+---
+
+### B.2.g How "couldn't grade" stays honest beyond lessons: one rule for the model's comment, and `scored` on chapter-test results (extends B.2.d) (decided by Tech Lead, 2026-11-23)
+
+**Decision:**
+1. One helper, `modelComment()` beside `GradingService`, decides whether a grade carries a comment: only text the model wrote (`gradedBy === 'ai'`). `ChecksService` and `RecallGraderService` both use it, so reviews, practice and chapter tests never put the fallback's "Not quite — the expected answer was…" or "Correct." on the wire. `RecallCard` renders a comment only under a verdict (`scored`).
+2. `AssessmentItemResultDto` carries `scored`, which is stored in `AssessmentAttempt.results`. A stored item without it replays as `scored: true`. The result screen lists unscored answers on their own, outside "To review".
+3. The review end screen's total is the number of graded cards. A card skipped after a 4xx counts as ungraded.
+
+**Why:** The fallback strings are a word-for-word comparison, not a judgement (G.4.a, J.1.f), and lessons already drop them (B.2.d). Reviews, practice and assessments share one grader, so one rule in one place fixes all three, as `isOpenCheck` did for open checks. The assessment score already excludes unscored answers; only the per-item flag was missing. Full plan in `ops/work/grading-fallback-honesty/tech.md`.
+
+**Rejected:** Blanking the strings inside `GradingService.fallback` (changes the shared contract and its specs, with no learner-visible gain). Filtering only in the app (the text still goes out on the wire). Counting ungraded cards in the review total.
+
+**Reverse:** Revert the commit. The `scored` key in stored attempt JSON is ignored by older code.
+
+---
+
+### M.5.b How M.5.a is built: the answer on the `User` row, and a global age guard that fails closed (decided by Tech Lead, 2026-11-23)
+
+**Decision:**
+1. `User.ageAnswer` (enum `ADULT | UNDER_18`, nullable) and `User.ageAnsweredAt`, added by an additive migration. Null means "not asked". `POST /onboarding/age` sets them only while null, so the app can never overwrite an answer. `GET /onboarding` returns `ageAnswer`, and `OnboardingGate` shows the question or the adults-only message before intake.
+2. A second global guard, `AgeGuard`, runs after `AuthGuard` and refuses with 403 every authenticated route unless the account answered `ADULT`. The only exemptions are `@Public()` and three `@AgeExempt()` routes: `GET /me`, `GET /onboarding` and `POST /onboarding/age`.
+3. A mis-tap reset is a one-row SQL update by the Lead, approved by the founder in chat, with the old value logged in `ops/journal.md` first.
+4. Sign-out is exposed to onboarding through a `SignOutContext` from `AuthGate`, and is absent in dev-stub mode.
+
+**Why:** The grader is reached from four routes in four modules today, and more are coming (spoken checks, "Try again", tracks). Deny-by-default keeps any future route from reaching it for an unconfirmed or under-18 account, and makes M.5.a's "nothing else" true at the API, not just in the app. Its cost is one primary-key read per request. Columns on `User` answer "did this account confirm, and when" with one query. Full plan in `ops/work/age-confirmation/tech.md`.
+
+**Rejected:** Guarding only the four grading routes (fails open for the next route). A check inside `GradingService` (no user id there; a refusal would look like an outage). Folding the check into `AuthGuard` (mixes identity and policy). Two timestamps instead of an enum (allows both to be set). A history table (no audit need yet; the journal line covers resets).
+
+**Reverse:** Revert the code and leave the columns, which old code ignores. Dropping them destroys recorded answers and is on the stop list. Once M.5 is reversed, remove `AgeGuard` and the screen.
