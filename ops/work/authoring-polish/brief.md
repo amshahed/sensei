@@ -2,6 +2,10 @@
 
 Unit `authoring-polish`. Written by the Project Manager, 2026-11-22. This triages the 12 findings in `22c-full-batch/content-review-wave2.md` section 6 (W2.1 to W2.7) and `content-review-wave3.md` section 6 (W3.1 to W3.5). Decision logged in `decisions.md` as G.4.f.
 
+**Amended 2026-11-23 by the PM: P8 added.** It comes from Tester finding F4 in `ops/work/open-check-followup/test.md`, and it's logged as B.2.e.
+- This brief had already passed G2 on P1 to P7. The Tech Lead amends `tech.md` for P8, and G2 must be met again for P8 before the Developer starts on it. The plan for P1 to P7 stands.
+- **P8 must land before the Alpha run scores any lesson.**
+
 ---
 
 # 1. Problem
@@ -13,6 +17,10 @@ Unit `authoring-polish`. Written by the Project Manager, 2026-11-22. This triage
   - Lessons 93 and 94 patch this in Teach ("type the whole verb"), which helps only a learner who remembers the note days later.
   - This affects all eight verb kanji: 食 飲 読 書 行 来 見 聞.
 - **Examples print the same line twice.** When an example is all kana, its reading line repeats it (`いただきます。 / いただきます`). That's most example blocks in the live course.
+- **The top option of a multiple-choice question is almost always right** (added 2026-11-23).
+  - The right answer is listed first in 652 of the 668 multiple-choice checks in the course, and nothing changes the order (`open-check-followup/test.md` F4).
+  - The Tester tapped the top option on every multiple-choice check in lesson 120 and got 12 of 12 right.
+  - A learner who notices can pass every lesson without reading a word. Lesson scores, and the mastery that checks feed, then measure nothing.
 
 **The rest are pipeline gaps.** A pipeline rule is only worth its build and test cost for the drafting that's left:
 - **The 12 audio lessons** (Blocker 2). They are all I-Speaking (26, 48, 56, 64, 71, 96, 106, 119) or I-Listening (50, 63, 105, 118).
@@ -25,6 +33,7 @@ Unit `authoring-polish`. Written by the Project Manager, 2026-11-22. This triage
 
 - **Absolute beginner, in reviews and practice.** Sees 「食」 a few days after lesson 93 and has to produce an answer from a bare character. Looks at the recap card for 校 and is told "exam".
 - **Absolute beginner, in Teach.** Reads `いただきます。` twice in a row on a small screen, and wonders whether the second line is different.
+- **Absolute beginner, tired, at the end of a lesson.** After a few lessons they notice that the top option is always right, and they tap through the checks without reading. The app says "You got 12 of 12 right" and schedules reviews as if they'd learned the words. The first time they meet those words for real, they can't read them.
 - **The PM reviewing the audio wave.** Needs the gate to catch the defects that recurred across every wave, so review time goes on what no rule can see.
 
 ---
@@ -45,11 +54,12 @@ Unit `authoring-polish`. Written by the Project Manager, 2026-11-22. This triage
 | W3.3 | The drafter's self-corrections reach learner text ("oops", "wait,") | **Take** as a warning (P6) | Three drafts in one wave. A pattern list is tiny, and a warning can't block fair text |
 | W3.4 | Verb kanji in review | **Take** (P2), logged as G.4.f | Live and learner-facing (section 1) |
 | W3.5 | An example's reading says a different sentence from the example | **Take** as a gate error (P7) | Two cases (98, 115), and the review only caught them by reading closely. When an example has no kanji its reading must equal it, which is fully mechanical. It pairs with W2.6: once identical lines are hidden, a mismatched one is the only reading line left on an all-kana example, and it shows the wrong sentence |
+| F4 | The right multiple-choice answer is listed first in 652 of 668 checks (`open-check-followup/test.md`, added 2026-11-23) | **Take** (P8), the highest priority in this unit | Live in every lesson, and it makes every check score meaningless, including the ones the Alpha run would record |
 
-**Totals:** 7 taken, 4 deferred, 1 dropped.
+**Totals:** 8 taken, 4 deferred, 1 dropped.
 
-**If the Tech Lead judges seven items too much for one PR,** split them in this order:
-1. Learner-facing (P1 to P3) first, as this unit.
+**If the Tech Lead judges eight items too much for one PR,** split them in this order:
+1. Learner-facing (P1 to P3, and P8) first, as this unit. If that half is still too big, P8 lands first on its own.
 2. Pipeline (P4 to P7) as a second unit, which must land before the audio wave is drafted.
 
 Don't trim inside either half.
@@ -104,11 +114,31 @@ Don't trim inside either half.
 - **Rules that guard only fully drafted lesson types are deferred** (W2.3, W3.2), and so is one that would touch fragile particle logic for little remaining risk (W3.1).
 - **A new gate error must not stop lessons that are already live from passing,** unless it finds a real defect. In that case the Tech Lead reports the lesson to the PM for a hand fix, rather than exempting it.
 
+## 4.5 A multiple-choice question shows its options in a fresh order each time (F4, added 2026-11-23)
+
+**Chosen**
+- Each time a multiple-choice question is shown, its options come in a new order: in a lesson, a redone lesson, a chapter test, or anywhere else the app asks one.
+- While a question is on screen, its options stay where they are, through submitting and the result.
+- Nothing about the order hints at which option is right.
+- The authored order stops mattering. An option must never refer to the other options or to its own position, such as "all of the above" or "the first two".
+
+**Audit, 2026-11-23, $0.** I checked every multiple-choice option list in the 108 approved drafts (671 lists). None depends on its position. Two options contain "both" or "either" inside a stand-alone sentence ("far from both of you", "I'm not going either."), and those are fine shuffled.
+
+**Why**
+- A position that never changes is a cue the learner learns instead of the Japanese.
+- A fresh order on every showing also stops a learner from remembering "it was the third one" when the same question comes back.
+- Fixing it where the question is shown covers all 108 live lessons at once. No lesson needs republishing, and nothing in the drafting pipeline has to change.
+
+**Rejected**
+- **Reordering the stored options once.** It means republishing almost every lesson, and lesson 20 can't be republished. A fixed order is also memorised when the question comes back, and every future draft would need the same care.
+- **One random order per question, kept forever.** The second time I meet the question, its position is the cue again.
+- **Telling the drafter to vary where the answer goes.** It fixes nothing that's already live.
+
 ---
 
 # 5. Promises
 
-P1 to P3 are scored in the app on `Sensei 22a SE3`. P4 to P7 are scored by the person reviewing drafts, which is the PM, on the Tester's evidence now and on the audio wave later.
+P1 to P3 and P8 are scored in the app on `Sensei 22a SE3`. P4 to P7 are scored by the person reviewing drafts, which is the PM, on the Tester's evidence now and on the audio wave later.
 
 - **P1.** Everywhere the app shows what 校 means, it says "school", the meaning lesson 76 taught. Every other beta kanji still shows the meaning its lesson taught.
 - **P2.** When a review, practice question or chapter test asks me to read a verb kanji, it shows me the whole word, such as 食べる. Typing the whole verb's reading (たべる or taberu) is accepted.
@@ -117,6 +147,10 @@ P1 to P3 are scored in the app on `Sensei 22a SE3`. P4 to P7 are scored by the p
 - **P5.** A draft with a typed check that tells me to answer "in kana" or "(katakana)" is refused before it reaches review.
 - **P6.** When a draft's learner text contains the writer correcting itself, the reviewer is warned and shown where. Examples: "oops", "wait,", "you don't know … yet", "let's use words you know".
 - **P7.** A draft is refused when an example with no kanji has a reading line that says a different sentence from the example.
+- **P8.** Wherever the app asks me a multiple-choice question, the right answer isn't always in the same place.
+  - If I tap the top option on every multiple-choice question in a lesson, I get about as many right as blind guessing would, not nearly all of them.
+  - When the same question comes back, its options can be in a different order.
+  - While a question is on screen, its options don't move, including when the result appears.
 
 **Scoring notes**
 - **P2:** after a walker has done lesson 93, the Tester can make a verb kanji due on a throwaway Neon branch, or by whatever means the Tech Lead plans.
@@ -127,7 +161,11 @@ P1 to P3 are scored in the app on `Sensei 22a SE3`. P4 to P7 are scored by the p
     - self-corrections: 99, 109, 120;
     - mismatched readings: 98, 115.
   - And by running the gate over every approved draft, to show nothing fair is refused.
-- **The Alpha User scores P1 to P3.**
+- **P8 is proved at $0, by the Tester and then in the app:**
+  - Lesson 120 has 12 multiple-choice checks. Tapping the top option on each should no longer score 12 of 12, as it did in `open-check-followup/test.md` (u2d).
+  - Across several showings of the same lesson, the right answer should turn up in every position.
+  - A question's options should be in the same place before and after submitting.
+- **The Alpha User scores P1 to P3 and P8.** P8 is part of the Alpha run's first pass, before any lesson score is trusted.
 
 ---
 
@@ -144,6 +182,7 @@ P1 to P3 are scored in the app on `Sensei 22a SE3`. P4 to P7 are scored by the p
 - に used as a particle before lesson 81.
 - Untaught words in listening scripts.
 - Teach translating the lines a listening check asks about.
+- A multiple-choice option that refers to the other options or to its own position ("all of the above"). Once P8 lands, options are shuffled, so such an option breaks (4.5). None exist today.
 
 **Not here**
 - Open checks: `open-check-followup`.

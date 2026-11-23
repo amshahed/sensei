@@ -1958,3 +1958,22 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** Folding katakana to hiragana for the display rule. A warning for "you already know" (the prompt is the cause). Rewriting stored teach JSON.
 
 **Reverse:** Remove the rules and the prompt line; `mapTeach` passes `teach` through again.
+
+## Triage after open-check-followup
+
+### B.2.e A multiple-choice question shows its options in a fresh order each time it's shown (amends B.2) (decided by Project Manager, 2026-11-23)
+
+**Decision:**
+- Each time a multiple-choice question is shown, in a lesson, a redone lesson, a chapter test or anywhere else, its options come in a new order.
+- The options stay put while the question is on screen, through submitting and the result.
+- Nothing about the order hints at the right option.
+- An option must never refer to other options or to its own position ("all of the above").
+
+**Why:** The right answer is listed first in 652 of 668 live multiple-choice checks, and nothing reorders them (`ops/work/open-check-followup/test.md` F4). Tapping the top option scored 12 of 12 in lesson 120, which makes lesson scores and the mastery they feed meaningless. A fresh order on every showing also stops position being remembered when a question comes back. Audit, $0: none of the 671 option lists in the 108 approved drafts depends on its position. Promise P8 in `ops/work/authoring-polish/brief.md` (section 4.5). The Tech Lead decides how.
+
+**Rejected:**
+- Reordering the stored options once: it means republishing almost every lesson (lesson 20 can't be republished), and a fixed order is still memorised.
+- One random order per question, kept forever.
+- Telling the drafter to vary the position: it fixes nothing that's already live.
+
+**Reverse:** Show options in their authored order again. Before doing that, the stored order would need varying.
