@@ -8,14 +8,17 @@ import { ingestSupplement } from './supplement';
 const KIND = process.argv[2];
 const sourceIdx = process.argv.indexOf('--source');
 const SOURCE = sourceIdx !== -1 ? process.argv[sourceIdx + 1] : undefined;
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const USAGE = `
-Usage: pnpm --filter api ingest:items <kind> [--source <path>]
+Usage: pnpm --filter api ingest:items <kind> [--source <path>] [--dry-run]
 
   kind:
     kana              ingest all hiragana + katakana (no --source needed)
     vocab             ingest JLPT N5–N4 vocab from jmdict-simplified JSON
-    kanji             ingest JLPT N5 kanji from kanjidic2-simplified JSON
+    kanji             ingest JLPT N5 kanji from kanjidic2-simplified JSON, with
+                      data/curriculum/kanji-supplement.json applied. --dry-run
+                      prints each field that would change and writes nothing
     grammar           ingest N5 grammar shells from JSON or TSV
     supplement        insert the beta's set phrases and prerequisite grammar,
                       and fill empty grammar meanings (--source is jmdict-simplified JSON)
@@ -24,6 +27,7 @@ Usage: pnpm --filter api ingest:items <kind> [--source <path>]
     pnpm --filter api ingest:items kana
     pnpm --filter api ingest:items vocab --source ./data/jmdict-eng.json
     pnpm --filter api ingest:items kanji --source ./data/kanjidic2.json
+    pnpm --filter api ingest:items kanji --source ./data/kanjidic2.json --dry-run
     pnpm --filter api ingest:items grammar --source ./data/tanos-n5-grammar.json
     pnpm --filter api ingest:items supplement --source ./data/jmdict-eng.json
 `.trim();
@@ -32,6 +36,11 @@ async function main() {
   if (!KIND || KIND === '--help' || KIND === '-h') {
     console.log(USAGE);
     process.exit(0);
+  }
+
+  if (DRY_RUN && KIND !== 'kanji') {
+    // Fail before connecting: a dry run that silently wrote would be worse.
+    throw new Error(`--dry-run is only supported for kanji\n\n` + USAGE);
   }
 
   const prisma = new PrismaClient();
@@ -53,7 +62,7 @@ async function main() {
           throw new Error(
             '--source <path> is required for kanji ingestion\n\n' + USAGE,
           );
-        await ingestKanji(prisma, SOURCE);
+        await ingestKanji(prisma, SOURCE, { dryRun: DRY_RUN });
         break;
       case 'grammar':
         if (!SOURCE)

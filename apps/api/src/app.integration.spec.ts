@@ -23,6 +23,8 @@ import type {
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { DEV_USER_HEADER } from './auth/dev-user';
+import { LESSON_RANDOM } from './lessons/lessons.service';
+import { keepOrder, reversing } from './testing/random';
 
 /**
  * HTTP-level integration test: boots the real AppModule (controllers, pipes,
@@ -674,6 +676,8 @@ describe('kanji evidence over HTTP (G.4.d)', () => {
 
 describe('API (HTTP integration)', () => {
   let app: INestApplication<App>;
+  /** What LESSON_RANDOM draws from: authored order unless a test swaps it. */
+  let lessonRandom: () => number = keepOrder;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -681,6 +685,8 @@ describe('API (HTTP integration)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(fakePrisma())
+      .overrideProvider(LESSON_RANDOM)
+      .useValue(() => lessonRandom())
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -712,6 +718,22 @@ describe('API (HTTP integration)', () => {
     // The correct answer must not cross the wire.
     expect(body.checks[0]).not.toHaveProperty('answer');
     expect(JSON.stringify(body)).not.toContain('"answer"');
+  });
+
+  it('GET /lessons/:slug orders the options with LESSON_RANDOM on every request (B.2.e, P8)', async () => {
+    lessonRandom = reversing(3);
+    try {
+      const res = await request(app.getHttpServer())
+        .get('/lessons/the-five-vowels')
+        .expect(200);
+      expect((res.body as LessonDetailDto).checks[0].choices).toEqual([
+        'う',
+        'い',
+        'あ',
+      ]);
+    } finally {
+      lessonRandom = keepOrder;
+    }
   });
 
   it('POST /checks/:id/answer grades a correct multiple-choice answer', async () => {

@@ -1,5 +1,6 @@
 import {
   kanjiReadings,
+  kanjiWord,
   recapBackFor,
   type RecallableItem,
   recallQuestionFor,
@@ -26,6 +27,7 @@ describe('recallQuestionFor', () => {
         }),
       ),
     ).toEqual({
+      display: 'あ',
       prompt: 'Type the rōmaji for 「あ」',
       expected: 'a',
       accepted: ['a'],
@@ -45,6 +47,7 @@ describe('recallQuestionFor', () => {
         item({ display: '猫', reading: 'ねこ', meaning: 'cat' }),
       ),
     ).toEqual({
+      display: 'ねこ',
       prompt: 'What does 「ねこ」 mean?',
       expected: 'cat',
       accepted: ['cat'],
@@ -86,6 +89,7 @@ describe('recallQuestionFor', () => {
         item({ display: 'すし', reading: 'すし', meaning: 'sushi' }),
       ),
     ).toEqual({
+      display: 'すし',
       prompt: 'What does 「すし」 mean?',
       expected: 'sushi',
       accepted: ['sushi'],
@@ -211,6 +215,7 @@ describe('kanji readings (KANJIDIC2 markers)', () => {
 
   it('asks for "a reading" and accepts any of them', () => {
     expect(recallQuestionFor(ichi)).toEqual({
+      display: '一',
       prompt: 'Type a reading for 「一」',
       expected: 'イチ・イツ・ひと・ひと(つ)',
       accepted: ['イチ', 'イツ', 'ひと', 'ひとつ'],
@@ -225,5 +230,89 @@ describe('kanji readings (KANJIDIC2 markers)', () => {
     expect(
       recallQuestionFor(item({ type: 'KANJI', display: '日' })),
     ).toBeNull();
+  });
+});
+
+describe('a verb kanji is asked through its verb (G.4.f, P2)', () => {
+  const taberu = item({
+    type: 'KANJI',
+    display: '食',
+    reading: 'く.う',
+    meaning: 'eat',
+    data: {
+      on_readings: ['ショク', 'ジキ'],
+      kun_readings: ['く.う', 'く.らう', 'た.べる', 'は.む'],
+      word_reading: 'た.べる',
+    },
+  });
+  const kuru = item({
+    type: 'KANJI',
+    display: '来',
+    reading: 'く.る',
+    meaning: 'come',
+    data: {
+      on_readings: ['ライ', 'タイ'],
+      kun_readings: ['く.る', 'きた.る', 'きた.す'],
+      word_reading: 'く.る',
+    },
+  });
+
+  it('shows the whole word and accepts only its reading', () => {
+    expect(recallQuestionFor(taberu)).toEqual({
+      display: '食べる',
+      prompt: 'Type the reading of 「食べる」',
+      expected: 'たべる',
+      accepted: ['たべる'],
+      check: 'reading',
+    });
+    expect(recallQuestionFor(kuru)).toMatchObject({
+      display: '来る',
+      prompt: 'Type the reading of 「来る」',
+      accepted: ['くる'],
+    });
+  });
+
+  it('kanjiWord splits the word reading into the shown word and its answer', () => {
+    expect(kanjiWord(taberu)).toEqual({ display: '食べる', answer: 'たべる' });
+    expect(
+      kanjiWord(item({ type: 'KANJI', display: '日', data: {} })),
+    ).toBeNull();
+    // A reading without okurigana makes no word (the ingest refuses one too).
+    expect(
+      kanjiWord(
+        item({ type: 'KANJI', display: '日', data: { word_reading: 'ひ' } }),
+      ),
+    ).toBeNull();
+  });
+
+  it('leaves every other kanji as it was, including the bare-stem rule', () => {
+    const kou = item({
+      type: 'KANJI',
+      display: '校',
+      reading: 'コウ',
+      meaning: 'school',
+      data: { on_readings: ['コウ', 'キョウ'], kun_readings: [] },
+    });
+    expect(recallQuestionFor(kou)).toEqual({
+      display: '校',
+      prompt: 'Type a reading for 「校」',
+      expected: 'コウ・キョウ',
+      accepted: ['コウ', 'キョウ'],
+      check: 'reading',
+    });
+    const sei = item({
+      type: 'KANJI',
+      display: '生',
+      reading: 'い.きる',
+      data: { on_readings: ['セイ'], kun_readings: ['い.きる', 'う.まれる'] },
+    });
+    expect(recallQuestionFor(sei)).toMatchObject({ display: '生' });
+    expect(recallQuestionFor(sei)!.accepted).not.toContain('い');
+  });
+
+  it('keeps the recap card teaching the kanji itself', () => {
+    expect(recapBackFor(taberu)).toBe(
+      'eat\nショク・ジキ・く(う)・く(らう)・た(べる)・は(む)',
+    );
   });
 });

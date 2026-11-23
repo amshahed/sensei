@@ -248,6 +248,34 @@ describe('MasteryService', () => {
       expect(due.prompt).toBe('What does 「はは」 mean?');
     });
 
+    it("shows a verb kanji in its word and asks that word's reading (G.4.f, P2)", async () => {
+      stateFindMany.mockResolvedValue([
+        {
+          itemId: 'ja:kanji:食',
+          mastery: 0.2,
+          recognition: 0,
+          recall: 0,
+          production: 0,
+          fsrs: null,
+          due: NOW,
+          item: {
+            type: 'KANJI',
+            display: '食',
+            reading: 'く.う',
+            meaning: 'eat',
+            data: {
+              on_readings: ['ショク'],
+              kun_readings: ['く.う', 'た.べる'],
+              word_reading: 'た.べる',
+            },
+          },
+        },
+      ]);
+      const [due] = await service.getDue('dev-user', NOW);
+      expect(due.display).toBe('食べる');
+      expect(due.prompt).toBe('Type the reading of 「食べる」');
+    });
+
     it('keeps meaning-less grammar shells out of the query itself', async () => {
       stateFindMany.mockResolvedValue([]);
       await service.getDue('dev-user', NOW);

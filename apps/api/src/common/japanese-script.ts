@@ -24,6 +24,13 @@ export const kanaChars = (s: string): string[] =>
  */
 export const ANSWER_PUNCTUATION = '、。,.!?！？';
 
+/**
+ * Marks that change nothing a reading says: quotes, the syllable dot ・ and
+ * the trailing …. The lesson mapper (P3) and the gate (P7) both read an
+ * example's reading line past them, so the two agree on what "the same" is.
+ */
+export const READING_MARKS = '「」『』・…';
+
 /** Every kanji character in the text. */
 export const kanjiChars = (s: string): string[] =>
   [...s].filter((ch) => KANJI_CHAR.test(ch));

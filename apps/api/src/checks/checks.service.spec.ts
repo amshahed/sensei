@@ -8,6 +8,11 @@ import { GradingService } from '../grading/grading.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { LlmCallError, type LlmClient } from '../llm/llm-client';
 import { applyRating, emptyCard } from '../mastery/fsrs';
+import {
+  toLessonDetailDto,
+  type LessonWithRelations,
+} from '../lessons/lesson.mapper';
+import { reversing } from '../testing/random';
 
 const check = {
   id: 'chk-1',
@@ -129,6 +134,31 @@ describe('ChecksService', () => {
       correctAnswer: 'あ',
       scored: true,
     });
+  });
+
+  it('grades the shuffled options by text, wherever the answer sits (B.2.e, P8)', async () => {
+    const stored = {
+      ...check,
+      data: {
+        choices: ['ticket', 'stamp', 'school', 'magazine'],
+        answer: 'ticket',
+      },
+    };
+    findUnique.mockResolvedValue(stored);
+    const lesson = {
+      id: 'lesson-1',
+      chapter: { module: {} },
+      items: [],
+      checks: [stored],
+    } as unknown as LessonWithRelations;
+    const { choices } = toLessonDetailDto(lesson, reversing(4)).checks[0];
+    expect(choices).toEqual(['magazine', 'school', 'stamp', 'ticket']);
+
+    const verdicts: boolean[] = [];
+    for (const choice of choices!) {
+      verdicts.push((await service.grade('chk-1', choice, 'dev-user')).correct);
+    }
+    expect(verdicts).toEqual([false, false, false, true]);
   });
 
   it('grades a wrong answer as incorrect', async () => {

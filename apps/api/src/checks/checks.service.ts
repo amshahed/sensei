@@ -154,7 +154,8 @@ export class ChecksService {
   ) {
     // TYPED checks use Japanese normalization (wanakana + kuromoji, H.2) so that
     // romaji input and spacing differences don't cause false negatives.
-    // MULTIPLE_CHOICE answers are option IDs — ASCII exact-match is correct there.
+    // MULTIPLE_CHOICE answers are option text, compared exactly; their position
+    // never matters, since the options are shuffled on every showing (B.2.e).
     const correct =
       format === 'TYPED'
         ? this.writingEval.exactMatch(answer, fixedAnswer, { kanaTarget })

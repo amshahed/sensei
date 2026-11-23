@@ -3,9 +3,10 @@ import { Rating } from 'ts-fsrs';
 import { GradingService } from '../grading/grading.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { RecallGraderService } from './recall-grader.service';
-import type { RecallQuestion } from './recall-question';
+import { recallQuestionFor, type RecallQuestion } from './recall-question';
 
 const q = (over: Partial<RecallQuestion>): RecallQuestion => ({
+  display: 'd',
   prompt: 'p',
   expected: 'x',
   accepted: ['x'],
@@ -110,4 +111,33 @@ describe('RecallGraderService', () => {
       scored: true,
     });
   });
+});
+
+describe('a verb kanji graded on real normalisation (G.4.f, P2)', () => {
+  const grader = new RecallGraderService(
+    {} as GradingService,
+    new WritingEvalService(),
+  );
+  const question = recallQuestionFor({
+    type: 'KANJI',
+    display: '食',
+    reading: 'く.う',
+    meaning: 'eat',
+    data: {
+      on_readings: ['ショク', 'ジキ'],
+      kun_readings: ['く.う', 'く.らう', 'た.べる', 'は.む'],
+      word_reading: 'た.べる',
+    },
+  })!;
+
+  it.each(['たべる', 'taberu', 'タベル'])('accepts %s', async (answer) => {
+    expect((await grader.grade(question, answer)).correct).toBe(true);
+  });
+
+  it.each(['しょく', 'shoku', 'くう', 'た', 'たべ'])(
+    'rejects %s, which is not how 食べる is read',
+    async (answer) => {
+      expect((await grader.grade(question, answer)).correct).toBe(false);
+    },
+  );
 });

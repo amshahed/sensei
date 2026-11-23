@@ -8,7 +8,6 @@ import type {
 } from '@sensei/types';
 import { type Grade, Rating } from 'ts-fsrs';
 import { PrismaService } from '../prisma/prisma.service';
-import { learnerSurface } from '../recall/learner-surface';
 import {
   RECALLABLE_ITEM_SELECT,
   recallQuestionFor,
@@ -318,12 +317,14 @@ export class MasteryService {
     // meaning) stay scheduled but aren't surfaced until their content exists.
     const quizzable = states.flatMap((s) => {
       const question = recallQuestionFor(s.item);
-      return question ? { ...s, prompt: question.prompt } : [];
+      return question
+        ? { ...s, prompt: question.prompt, display: question.display }
+        : [];
     });
     return rankWeakest(quizzable, now).map(({ state: s, retrievability }) => ({
       itemId: s.itemId,
       type: s.item.type,
-      display: learnerSurface(s.item),
+      display: s.display,
       mastery: s.mastery,
       retrievability,
       due: (s.due ?? now).toISOString(),

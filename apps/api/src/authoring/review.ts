@@ -15,9 +15,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawnSync } from 'child_process';
-import { LessonDraftSchema } from './lesson-schema';
+import { courseContextFor } from './course-context';
+import { checkCourseRules, type CourseRuleResult } from './course-rules';
+import { LessonDraftSchema, type LessonDraft } from './lesson-schema';
 import { buildReviewTemplate, parseReviewFile } from './review-schema';
 import { appendCorrection } from './corrections-log';
+import { SkeletonSchema, type Skeleton } from './skeleton-schema';
 
 function parseArgs(): {
   lessonId: string;
@@ -78,6 +81,37 @@ export function rejectedDraftWarning(
     : null;
 }
 
+/**
+ * What the course rules say about a draft, from the same context and gate
+ * publish runs, so the reviewer sees it before reading: the warnings (P6), and
+ * any error, which a draft made before a rule existed can carry and publish
+ * would refuse. Empty when the skeleton gives the lesson no context.
+ */
+export function courseRuleFindings(
+  draft: LessonDraft,
+  skeleton: Skeleton,
+): CourseRuleResult {
+  const ctx = courseContextFor(skeleton, draft.lessonId);
+  return ctx ? checkCourseRules(draft, ctx) : { errors: [], warnings: [] };
+}
+
+function printCourseRuleFindings(draft: LessonDraft, skeletonPath: string) {
+  if (!fs.existsSync(skeletonPath)) {
+    console.warn(
+      `Warning: no skeleton at ${skeletonPath}, so the course rules aren't shown.`,
+    );
+    return;
+  }
+  const skeleton = SkeletonSchema.parse(
+    JSON.parse(fs.readFileSync(skeletonPath, 'utf8')) as unknown,
+  );
+  const { errors, warnings } = courseRuleFindings(draft, skeleton);
+  for (const e of errors) {
+    console.warn(`  [course rules] error (publish will refuse this): ${e}`);
+  }
+  for (const w of warnings) console.warn(`  [course rules] warning: ${w}`);
+}
+
 function openEditor(filePath: string): void {
   const editor = process.env['EDITOR'] ?? process.env['VISUAL'] ?? 'vi';
   const result = spawnSync(editor, [filePath], { stdio: 'inherit' });
@@ -110,6 +144,7 @@ function main(): void {
   if (rejected) console.warn(`Warning: ${rejected}`);
 
   console.log(`authoring:review — opening "${lessonId}" (${draft.lessonType})`);
+  printCourseRuleFindings(draft, skeletonPath);
 
   // Write review template to a temp file and open in editor
   const tmpFile = path.join(os.tmpdir(), `sensei-review-${lessonId}.md`);

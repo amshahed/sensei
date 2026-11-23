@@ -85,5 +85,200 @@
         }
       ]
     }
+  },
+  {
+    "literal": "校",
+    "misc": {
+      "grade": 1,
+      "strokeCounts": [10],
+      "frequency": 294,
+      "jlptLevel": 4
+    },
+    "readingMeaning": {
+      "groups": [
+        {
+          "readings": [
+            {
+              "type": "pinyin",
+              "onType": null,
+              "status": null,
+              "value": "xiao4"
+            },
+            {
+              "type": "pinyin",
+              "onType": null,
+              "status": null,
+              "value": "jiao4"
+            },
+            {
+              "type": "korean_r",
+              "onType": null,
+              "status": null,
+              "value": "gyo"
+            },
+            {
+              "type": "korean_r",
+              "onType": null,
+              "status": null,
+              "value": "hyo"
+            },
+            {
+              "type": "korean_h",
+              "onType": null,
+              "status": null,
+              "value": "교"
+            },
+            {
+              "type": "korean_h",
+              "onType": null,
+              "status": null,
+              "value": "효"
+            },
+            {
+              "type": "vietnam",
+              "onType": null,
+              "status": null,
+              "value": "Giáo"
+            },
+            {
+              "type": "vietnam",
+              "onType": null,
+              "status": null,
+              "value": "Hiệu"
+            },
+            {
+              "type": "vietnam",
+              "onType": null,
+              "status": null,
+              "value": "Hào"
+            },
+            {
+              "type": "ja_on",
+              "onType": null,
+              "status": null,
+              "value": "コウ"
+            },
+            {
+              "type": "ja_on",
+              "onType": null,
+              "status": null,
+              "value": "キョウ"
+            }
+          ],
+          "meanings": [
+            { "lang": "en", "value": "exam" },
+            { "lang": "en", "value": "school" },
+            { "lang": "en", "value": "printing" },
+            { "lang": "en", "value": "proof" },
+            { "lang": "en", "value": "correction" }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "literal": "食",
+    "misc": {
+      "grade": 2,
+      "strokeCounts": [9],
+      "frequency": 328,
+      "jlptLevel": 4
+    },
+    "readingMeaning": {
+      "groups": [
+        {
+          "readings": [
+            {
+              "type": "pinyin",
+              "onType": null,
+              "status": null,
+              "value": "shi2"
+            },
+            {
+              "type": "pinyin",
+              "onType": null,
+              "status": null,
+              "value": "si4"
+            },
+            {
+              "type": "korean_r",
+              "onType": null,
+              "status": null,
+              "value": "sig"
+            },
+            {
+              "type": "korean_r",
+              "onType": null,
+              "status": null,
+              "value": "sa"
+            },
+            {
+              "type": "korean_h",
+              "onType": null,
+              "status": null,
+              "value": "식"
+            },
+            {
+              "type": "korean_h",
+              "onType": null,
+              "status": null,
+              "value": "사"
+            },
+            {
+              "type": "vietnam",
+              "onType": null,
+              "status": null,
+              "value": "Thực"
+            },
+            {
+              "type": "vietnam",
+              "onType": null,
+              "status": null,
+              "value": "Tự"
+            },
+            {
+              "type": "ja_on",
+              "onType": null,
+              "status": null,
+              "value": "ショク"
+            },
+            {
+              "type": "ja_on",
+              "onType": null,
+              "status": null,
+              "value": "ジキ"
+            },
+            {
+              "type": "ja_kun",
+              "onType": null,
+              "status": null,
+              "value": "く.う"
+            },
+            {
+              "type": "ja_kun",
+              "onType": null,
+              "status": null,
+              "value": "く.らう"
+            },
+            {
+              "type": "ja_kun",
+              "onType": null,
+              "status": null,
+              "value": "た.べる"
+            },
+            {
+              "type": "ja_kun",
+              "onType": null,
+              "status": null,
+              "value": "は.む"
+            }
+          ],
+          "meanings": [
+            { "lang": "en", "value": "eat" },
+            { "lang": "en", "value": "food" }
+          ]
+        }
+      ]
+    }
   }
 ]

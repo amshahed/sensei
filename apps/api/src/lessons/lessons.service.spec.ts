@@ -1,8 +1,9 @@
 import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { LessonsService } from './lessons.service';
+import { LESSON_RANDOM, LessonsService } from './lessons.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { keepOrder, reversing } from '../testing/random';
 
 // Shaped like the Prisma payload the service queries (only fields the mapper reads).
 const lessonFixture = {
@@ -52,8 +53,11 @@ describe('LessonsService', () => {
   let completionFind: jest.Mock;
   let completionUpdate: jest.Mock;
   let streakRecord: jest.Mock;
+  /** What LESSON_RANDOM draws from; authored order unless a test swaps it. */
+  let random: () => number;
 
   beforeEach(async () => {
+    random = keepOrder;
     findFirst = jest.fn();
     userUpsert = jest.fn();
     completionCreateMany = jest.fn().mockResolvedValue({ count: 1 });
@@ -77,6 +81,7 @@ describe('LessonsService', () => {
           },
         },
         { provide: StreakService, useValue: { record: streakRecord } },
+        { provide: LESSON_RANDOM, useValue: () => random() },
       ],
     }).compile();
     service = moduleRef.get(LessonsService);
@@ -98,6 +103,16 @@ describe('LessonsService', () => {
       role: 'TARGET',
     });
     expect(dto.checks[0].choices).toEqual(['あ', 'い', 'う']);
+  });
+
+  it('orders the options with the injected LESSON_RANDOM (B.2.f, P8)', async () => {
+    findFirst.mockResolvedValue(lessonFixture);
+    random = reversing(3);
+
+    const dto = await service.getByIdOrSlug('the-five-vowels');
+
+    expect(dto.checks[0].choices).toEqual(['う', 'い', 'あ']);
+    expect(lessonFixture.checks[0].data.choices).toEqual(['あ', 'い', 'う']);
   });
 
   it('serves a word spelled with kanji in kana (G.4.c)', async () => {

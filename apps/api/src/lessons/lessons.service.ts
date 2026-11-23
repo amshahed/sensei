@@ -1,15 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { LessonCompletionDto, LessonDetailDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { StreakService } from '../streak/streak.service';
 import { lessonDetailArgs, toLessonDetailDto } from './lesson.mapper';
 
+/**
+ * Injection token for the randomness that orders a lesson's multiple-choice
+ * options (B.2.f): `Math.random` in the app, deterministic in tests.
+ */
+export const LESSON_RANDOM = Symbol('LESSON_RANDOM');
+
 @Injectable()
 export class LessonsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly streak: StreakService,
+    @Inject(LESSON_RANDOM) private readonly random: () => number,
   ) {}
 
   /** Match a lesson by primary id or by slug (slug eases manual/testing access). */
@@ -27,7 +34,7 @@ export class LessonsService {
       throw new NotFoundException(`Lesson not found: ${idOrSlug}`);
     }
 
-    return toLessonDetailDto(lesson);
+    return toLessonDetailDto(lesson, this.random);
   }
 
   /**

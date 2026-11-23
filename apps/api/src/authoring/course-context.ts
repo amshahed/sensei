@@ -15,17 +15,27 @@ export interface CourseContext {
   grammar: Array<{ id: string; surface: string }>;
   /** Surfaces of words taught so far, this lesson's included. */
   words: string[];
+  /** Surfaces of words taught in earlier lessons only (P4). */
+  earlierWords: string[];
   /** Kanji taught so far, this lesson's targets included. */
   kanji: string[];
   /** This lesson's targets (kanji targets excluded). */
   targets: Array<{ id: string; surface: string }>;
+  /**
+   * The targets no earlier lesson taught: what the learner meets here for the
+   * first time (P4). A target practised again, as I- lessons do, isn't new.
+   */
+  newTargetIds: string[];
+  /** This lesson's kanji that no earlier lesson taught (P4). */
+  newKanji: string[];
   hasKanaTargets: boolean;
   kanaCards: KanaCard[];
   typedReading: boolean;
   authorNote?: string;
 }
 
-const kindOf = (itemId: string) => itemId.split(':')[1];
+/** An item id's kind: ja:vocab:猫 is vocab. */
+export const kindOf = (itemId: string) => itemId.split(':')[1];
 
 /**
  * The context of one lesson, computed from a compiled outline. Null for a
@@ -44,6 +54,12 @@ export function courseContextFor(
   const lesson = lessons[index];
 
   const reached = new Set(lessons.slice(0, index + 1).map((l) => l.id));
+  const taughtEarlier = new Set(
+    lessons.slice(0, index).flatMap((l) => l.itemIds),
+  );
+  const targets = lesson.itemIds
+    .filter((id) => kindOf(id) !== 'kanji')
+    .map((id) => ({ id, surface: surfaces[id] ?? '' }));
   const stages = (skeleton.soundStages ?? []).filter((s) =>
     reached.has(s.lessonId),
   );
@@ -51,14 +67,17 @@ export function courseContextFor(
   const kana = new Set<string>();
   const grammar = new Map<string, string>();
   const words = new Set<string>();
+  const earlierWords = new Set<string>();
   const kanji = new Set<string>();
-  for (const l of lessons.slice(0, index + 1)) {
+  for (const [i, l] of lessons.slice(0, index + 1).entries()) {
     for (const id of l.itemIds) {
       const surface = surfaces[id] ?? '';
       const kind = kindOf(id);
       if (kind === 'kana') for (const c of kanaChars(surface)) kana.add(c);
-      else if (kind === 'vocab') words.add(surface);
-      else if (kind === 'grammar') grammar.set(id, surface);
+      else if (kind === 'vocab') {
+        words.add(surface);
+        if (i < index) earlierWords.add(surface);
+      } else if (kind === 'grammar') grammar.set(id, surface);
       else if (kind === 'kanji') kanji.add(id.split(':')[2]);
     }
   }
@@ -75,10 +94,15 @@ export function courseContextFor(
     longVowelsTaught: stages.some((s) => s.longVowels),
     grammar: [...grammar].map(([id, surface]) => ({ id, surface })),
     words: [...words],
+    earlierWords: [...earlierWords],
     kanji: [...kanji],
-    targets: lesson.itemIds
-      .filter((id) => kindOf(id) !== 'kanji')
-      .map((id) => ({ id, surface: surfaces[id] ?? '' })),
+    targets,
+    newTargetIds: targets
+      .map((t) => t.id)
+      .filter((id) => !taughtEarlier.has(id)),
+    newKanji: lesson.itemIds
+      .filter((id) => kindOf(id) === 'kanji' && !taughtEarlier.has(id))
+      .map((id) => id.split(':')[2]),
     hasKanaTargets: lesson.itemIds.some((id) => kindOf(id) === 'kana'),
     kanaCards: lesson.kanaCards ?? [],
     typedReading: lesson.typedReading === true,

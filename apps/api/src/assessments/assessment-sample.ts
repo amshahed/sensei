@@ -1,3 +1,5 @@
+import { shuffle } from '../common/shuffle';
+
 /**
  * Sample up to `size` entries spread across groups (one per lesson): lessons
  * are visited in a shuffled order, taking one random entry from each per
@@ -21,12 +23,4 @@ export function sampleAcrossGroups<T>(
     }
   }
   return out;
-}
-
-function shuffle<T>(arr: T[], random: () => number): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
 }
