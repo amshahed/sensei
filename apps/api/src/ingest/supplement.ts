@@ -30,6 +30,24 @@ export type GrammarSupplement = {
   meanings: Record<string, string>;
 };
 
+/**
+ * Corrections the kanji ingest applies to KANJIDIC2 rows (G.4.g), so a
+ * re-import keeps them. Each can only choose among the character's own
+ * KANJIDIC2 data, never invent a value (buildKanjiItem guards both).
+ */
+export type KanjiSupplement = {
+  /** Kanji to the English sense its lesson teaches, where that isn't the first. */
+  meanings: Record<string, string>;
+  /** Verb kanji to the kun reading of the verb its lesson teaches (G.4.f). */
+  words: Record<string, string>;
+};
+
+/** No corrections: the ingest as it was before the supplement. */
+export const EMPTY_KANJI_SUPPLEMENT: KanjiSupplement = {
+  meanings: {},
+  words: {},
+};
+
 const DEFAULT_DATA_DIR = path.resolve(__dirname, '../../data/curriculum');
 
 export function loadVocabSupplement(
@@ -38,6 +56,15 @@ export function loadVocabSupplement(
   return JSON.parse(
     fs.readFileSync(path.join(dataDir, 'vocab-supplement.json'), 'utf-8'),
   ) as VocabSupplementEntry[];
+}
+
+export function loadKanjiSupplement(
+  dataDir: string = DEFAULT_DATA_DIR,
+): KanjiSupplement {
+  const raw = JSON.parse(
+    fs.readFileSync(path.join(dataDir, 'kanji-supplement.json'), 'utf-8'),
+  ) as Partial<KanjiSupplement>;
+  return { meanings: raw.meanings ?? {}, words: raw.words ?? {} };
 }
 
 export function loadGrammarSupplement(
