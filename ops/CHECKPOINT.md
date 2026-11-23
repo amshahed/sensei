@@ -1,6 +1,6 @@
 # Checkpoint
 
-Last updated: 2026-11-22 by the Lead.
+Last updated: 2026-11-23 by the Lead.
 
 Resume point for any session. Overwritten, never appended. Details live in `ops/journal.md` and `ops/work/`.
 
@@ -26,7 +26,10 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **Briefs done (G1)**, written 2026-11-22: `ops/work/open-check-followup/brief.md` (8 promises) and `ops/work/authoring-polish/brief.md` (7 promises, learner-facing P1 to P3 first). Decisions B.2.c and G.4.f. The PM added a pass rule to lesson 120’s rubric in its local draft (gitignored), and publish rechecks it. **Both `tech.md` files are done (G2)**, with decisions B.2.d, G.4.g and F.2.k. Lead ruling: the 校 live update is routine (authoring-polish tech.md 3.1). The Lead approved lesson 120 locally (`published/`) and created Neon branch `test-open-check-followup` (`br-winter-poetry-baq6sbs4`) for the Developer and Tester; delete it after merge. **Developer implementing open-check-followup now.**
+1. **Briefs done (G1)**, written 2026-11-22: `ops/work/open-check-followup/brief.md` (8 promises) and `ops/work/authoring-polish/brief.md` (7 promises, learner-facing P1 to P3 first). Decisions B.2.c and G.4.f. The PM added a pass rule to lesson 120’s rubric in its local draft (gitignored), and publish rechecks it. **Both `tech.md` files are done (G2)**, with decisions B.2.d, G.4.g and F.2.k. Lead ruling: the 校 live update is routine (authoring-polish tech.md 3.1). The Lead approved lesson 120 locally (`published/`) and created Neon branch `test-open-check-followup` (`br-winter-poetry-baq6sbs4`) for the Developer and Tester; delete it after merge. **PR #91 open-check-followup merged** (`cdc424b`, Tester PASS on `7d137ef`; real taps, Android and large text not verified). Lesson 120 is on the throwaway branch only. **PM run now:**
+   - rule on publishing 120, given the grader’s wrong correction 「わたし は なまえ は」 (2 of 10 runs) and the two-fix comments (test.md F1, F2);
+   - add Tester F4 to `authoring-polish/brief.md` as a new promise. The right multiple-choice answer is first in 652 of 668 checks, with no shuffle, so tapping the top option scores about 98%. It must land before Alpha.
+   Then the Tech Lead amends `authoring-polish/tech.md`, followed by the Developer and Tester.
 2. Tech Lead, Developer, Tester for `open-check-followup`, then the Lead publishes 120 with `EDITOR=true pnpm --filter api authoring:review foundation-ja-ch17-l07`, then `authoring:publish`.
 3. The same chain for `authoring-polish`. It must land before the audio wave and Alpha.
 4. Alpha run for the 22b and 22c lessons, in a session with the iOS simulator tool:
