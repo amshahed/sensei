@@ -3,6 +3,7 @@ import {
   answerFormsOf,
   answerWords,
   normalizeJapanese,
+  typedAnswersMatch,
 } from '../common/answer-romaji';
 import {
   ANSWER_PUNCTUATION,
@@ -553,6 +554,77 @@ function selfAnsweringProblems(questions: CheckQuestion[]): string[] {
 }
 
 /**
+ * P5: a closed typed check may not tell the learner to answer in kana. The app
+ * accepts rōmaji too, so the instruction is false and puts off a learner who
+ * can't type kana yet. A word described as katakana ("the katakana word for
+ * coffee") is fine; "in kana", "using hiragana" and "(katakana)" aren't.
+ */
+const ASKS_FOR_KANA =
+  /\b(?:in|using)\s+(?:hiragana|katakana|kana)\b|\(\s*(?:hiragana|katakana|kana)\s*\)/i;
+
+function kanaInstructionProblems(questions: CheckQuestion[]): string[] {
+  return questions.flatMap((q) => {
+    if (q.answerType !== 'typed' || q.grading === 'open') return [];
+    const asked = q.prompt.match(ASKS_FOR_KANA)?.[0];
+    return asked
+      ? [
+          `check ${q.id}: the prompt asks for kana, but the app accepts rōmaji too; drop "${asked}"`,
+        ]
+      : [];
+  });
+}
+
+/** A rōmaji letter and a kana in one line: a pronunciation guide, not a reading. */
+const LATIN = /[a-z]/i;
+const KANA = /[ぁ-ゖァ-ヺ]/;
+/** ・ splits syllables and … trails off; neither changes what is said. */
+const PAUSES = /[・…]/g;
+
+/**
+ * P7: an example with no kanji must have a reading that says the same thing,
+ * judged as the grader judges a typed answer: kana, katakana and rōmaji fold
+ * together and particles may be spelled as spoken. A hyphenated rōmaji
+ * reading (ta-be-ma-su) is read without its hyphens.
+ */
+function exampleReadingProblems(draft: LessonDraft): string[] {
+  const problems: string[] = [];
+  draft.teach.blocks.forEach((b, i) => {
+    if (b.type !== 'example' || kanjiChars(b.japanese).length > 0) return;
+    if (LATIN.test(b.reading) && KANA.test(b.reading)) return;
+    const japanese = b.japanese.replace(PAUSES, ' ');
+    const reading = b.reading.replace(PAUSES, ' ');
+    if (
+      typedAnswersMatch(reading, japanese) ||
+      typedAnswersMatch(reading.replace(/-/g, ''), japanese)
+    ) {
+      return;
+    }
+    problems.push(
+      `teach[${i}]: the example's reading "${b.reading}" doesn't say "${b.japanese}"`,
+    );
+  });
+  return problems;
+}
+
+/**
+ * P6: the drafter's own corrections that reach learner text (W3.3). A warning
+ * only, because each pattern also has fair uses.
+ */
+const SELF_CORRECTIONS = [
+  /\boops\b/i,
+  /\bwait,/i,
+  /\byou don['’]t know\b[^.。]{0,40}?\byet\b/i,
+  /\blet['’]s use words you know\b/i,
+  /\bscratch that\b/i,
+  /\bI mean,/i,
+  /\bactually,\s*(?:no|wait)\b/i,
+];
+
+function selfCorrections(text: string): string[] {
+  return SELF_CORRECTIONS.flatMap((pattern) => text.match(pattern)?.[0] ?? []);
+}
+
+/**
  * F.2.i: whether a lesson may have an open check, which only the AI grader can
  * mark. Only where the outline's author note asks for one with grading
  * "open" (lesson 120 today, pinned by a spec over the outline). The gate and
@@ -575,6 +647,9 @@ export function checkCourseRules(
   const pc = particleContext(ctx);
 
   for (const { where, text } of learnerFields(draft)) {
+    for (const said of selfCorrections(text)) {
+      warnings.add(`${where}: may be the writer correcting itself: "${said}"`);
+    }
     for (const p of scriptProblems(text, ctx)) errors.add(`${where}: ${p}`);
     for (const p of markerProblems(text, ctx)) errors.add(`${where}: ${p}`);
     for (const p of particleProblems(text, pc)) errors.add(`${where}: ${p}`);
@@ -641,6 +716,8 @@ export function checkCourseRules(
   for (const p of giveawayProblems(draft.check.questions)) errors.add(p);
   for (const p of readingTeachProblems(draft, ctx)) errors.add(p);
   for (const p of selfAnsweringProblems(draft.check.questions)) errors.add(p);
+  for (const p of kanaInstructionProblems(draft.check.questions)) errors.add(p);
+  for (const p of exampleReadingProblems(draft)) errors.add(p);
 
   if (ctx.typedReading) {
     for (const p of typedReadingProblems(draft, ctx)) errors.add(p);

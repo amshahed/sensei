@@ -1,6 +1,7 @@
 import { compiledOutline } from '../testing/compiled-outline';
 import { checkCourseRules, scriptProblems } from './course-rules';
 import type { LessonDraft, TeachBlock } from './lesson-schema';
+import { courseRuleWarnings } from './review';
 
 const { spec, lessons, ctxAt } = compiledOutline();
 
@@ -1054,5 +1055,153 @@ describe('the give-away matcher (F.2.g)', () => {
         ]),
       ).toEqual([]);
     });
+  });
+});
+
+describe('a typed check may not ask for kana (P5, W2.4)', () => {
+  const kanaErrors = (
+    prompt: string,
+    over: Partial<LessonDraft['check']['questions'][number]> = {},
+  ) => {
+    const draft = draftWith('', 20, {
+      check: {
+        questions: [
+          {
+            id: 'q2',
+            targetItemId: lessons[19].itemIds[0],
+            prompt,
+            answerType: 'typed',
+            correctAnswer: 'ともだち',
+            explanation: 'ともだち is a friend.',
+            ...over,
+          },
+        ],
+      },
+    });
+    return checkCourseRules(draft, ctxAt(20)).errors.filter((e) =>
+      e.includes('asks for kana'),
+    );
+  };
+
+  it.each([
+    // Verbatim, ch04-l06 q2 and ch08-l03 q4 in corrections.jsonl.
+    [
+      'Read the word and type exactly how it sounds in kana: ともだち',
+      'in kana',
+    ],
+    [
+      "Type this sentence in kana: 'My friend is a doctor.' (friend = ともだち, doctor = いしゃ)",
+      'in kana',
+    ],
+    ['Type the word for coffee (katakana)', '(katakana)'],
+    ['Type it using hiragana: ともだち', 'using hiragana'],
+  ])('refuses %j', (prompt, asked) => {
+    expect(kanaErrors(prompt)).toEqual([
+      `check q2: the prompt asks for kana, but the app accepts rōmaji too; drop "${asked}"`,
+    ]);
+  });
+
+  it('allows a word described as katakana, an open check and multiple choice', () => {
+    expect(kanaErrors('Type the katakana word for coffee')).toEqual([]);
+    expect(
+      kanaErrors('Write a sentence in kana about your friend', {
+        grading: 'open',
+      }),
+    ).toEqual([]);
+    expect(
+      kanaErrors('Which is ともだち in kana?', {
+        answerType: 'multiple-choice',
+        choices: ['ともだち', 'がっこう', 'しゃしん', 'ちょっと'],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the writer correcting itself (P6, W3.3)', () => {
+  const result = (text: string) =>
+    checkCourseRules(draftWith(text, 109), ctxAt(109));
+
+  it.each([
+    // Verbatim from lessons 109, 120 and 99 (content-review-wave3.md).
+    [
+      "あたらしい くるま... well, you don't know くるま yet",
+      "you don't know くるま yet",
+    ],
+    ['おんがち — oops — おんがく', 'oops'],
+    ["しちじ に おきる... wait, let's use words you know", 'wait,'],
+    ['Let’s use words you know instead.', 'Let’s use words you know'],
+    ['Scratch that: try this one.', 'Scratch that'],
+    ['I mean, the other one.', 'I mean,'],
+    ['Actually, no: it is がっこう.', 'Actually, no'],
+  ])('warns on %j, quoting %j', (text, said) => {
+    const { warnings } = result(text);
+    expect(warnings).toContain(
+      `teach[0]: may be the writer correcting itself: "${said}"`,
+    );
+  });
+
+  it('only warns, never refuses', () => {
+    const plain = result('Listen.').errors;
+    expect(result("well, you don't know くるま yet").errors).toEqual(plain);
+  });
+
+  it.each([
+    'Wait for the beep, then say it.',
+    "You don't know it. Not yet, anyway.", // a full stop ends the match
+    'You already know words like がっこう.',
+  ])('stays quiet on fair text: %j', (text) => {
+    expect(
+      result(text).warnings.filter((w) => w.includes('correcting itself')),
+    ).toEqual([]);
+  });
+});
+
+describe("an example's reading says the same thing (P7, W3.5)", () => {
+  const exampleErrors = (japanese: string, reading: string) =>
+    checkCourseRules(
+      draftWith('', 115, {
+        teach: {
+          blocks: [{ type: 'example', japanese, reading, translation: 'x' }],
+        },
+      }),
+      ctxAt(115),
+    ).errors.filter((e) => e.includes("the example's reading"));
+
+  it("refuses lesson 115's example, read as a different sentence", () => {
+    expect(
+      exampleErrors(
+        'すこし... いいえ、やさい が きらい です',
+        'いいえ、おちゃ が きらい です',
+      ),
+    ).toEqual([
+      'teach[0]: the example\'s reading "いいえ、おちゃ が きらい です" doesn\'t say "すこし... いいえ、やさい が きらい です"',
+    ]);
+  });
+
+  it.each([
+    ['かぎ', 'か・ぎ'],
+    ['たべます', 'ta-be-ma-su'],
+    ['わたし は いしゃ です。', 'watashi wa isha desu.'],
+    ['ラーメン', 'raamen'],
+    ['コーヒー', 'say こ, hold one beat, then ひー'],
+    ['コーヒー', 'こーひー'],
+    ['いただきます。', 'いただきます'],
+    ['すこし…', 'すこし'],
+    ['学生 です', 'がくせい です'],
+  ])('allows %j read as %j', (japanese, reading) => {
+    expect(exampleErrors(japanese, reading)).toEqual([]);
+  });
+});
+
+describe('authoring:review shows the warnings (P6)', () => {
+  it('returns the course-rule warnings publish would print, and none without a context', () => {
+    const draft = draftWith('おんがち — oops — おんがく', 120);
+    const { skeleton } = compiledOutline();
+    expect(courseRuleWarnings(draft, skeleton)).toContain(
+      'teach[0]: may be the writer correcting itself: "oops"',
+    );
+    expect(
+      courseRuleWarnings({ ...draft, lessonId: 'not-in-outline' }, skeleton),
+    ).toEqual([]);
   });
 });
