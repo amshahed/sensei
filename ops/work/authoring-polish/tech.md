@@ -1,6 +1,15 @@
 # Tech plan: authoring polish
 
-Unit `authoring-polish`. Written by the Tech Lead, 2026-11-22, against `brief.md` (P1 to P7, G.4.f) and the code at `main` `c2b3907`. Technical decisions logged as G.4.g and F.2.k in `decisions.md`. **One Developer PR**, after `open-check-followup` merges. Seven promises fit in one pass: none needs a migration, and P4 to P7 are small, spiked rules. The brief's split isn't needed.
+Unit `authoring-polish`. Written by the Tech Lead, 2026-11-22, against `brief.md` (P1 to P7, G.4.f) and the code at `main` `c2b3907`. Technical decisions logged as G.4.g and F.2.k in `decisions.md`.
+
+**Amended 2026-11-23 for P8** (brief 4.5, B.2.e), against `main` `352755e`. Logged as B.2.f. The P8 parts are 0.1, 1.8, the P8 rows in sections 2, 4 and 5, 3.5 and T0. The plan for P1 to P7 is unchanged, except that T0 now comes first and placement gains a spec.
+
+**One Developer PR.** `open-check-followup` has merged (#91). Eight promises fit in one pass:
+- none needs a migration;
+- P4 to P7 are small, spiked rules;
+- P8 is one moved helper and one mapper change.
+
+The brief's split isn't needed. P8 is the first commit, so it can ship on its own if the rest stalls (section 6).
 
 ---
 
@@ -51,6 +60,34 @@ Rules run over every current draft in `tools/authoring/output/` plus every `publ
 
 - **The brief's corpus is thinner than it says.** Pre-edit text for 80, 102, 108 (in kana), 99 and 120 (self-corrections), and 98 and 115 (readings) isn't stored: the PM edited those drafts in place, and `.prev.json` holds only two ch07 redrafts. Those cases go into the specs verbatim from `content-review-wave3.md` and `content-review-wave2.md` instead.
 - **P3 reach:** 299 of 386 drafted example blocks have a reading identical to the Japanese once spaces and punctuation are ignored. Another 44 are katakana examples with a hiragana reading, and 47 have a rōmaji reading or a pronunciation guide (ch07-l06: "say こ, hold one beat…"). The last two groups keep their reading.
+
+## 0.1 Multiple choice today (P8, verified 2026-11-23 at `352755e`)
+
+**Every place the app asks a question:**
+
+| Where | Built by | Multiple choice? | Order today |
+|---|---|---|---|
+| Lesson checks: first try, redo, reopened later | `GET /lessons/:id` → `LessonsService.getByIdOrSlug` → `toLessonDetailDto` → `mapCheck` (`lesson.mapper.ts`) | Yes (`MULTIPLE_CHOICE`) | **Authored order**, copied from `Check.data.choices`. This is F4 |
+| Placement (onboarding) | `placementQuestionFor` → `withAnswer` (`placement-questions.ts`), stored once per attempt in `PlacementAttempt.questions` | Yes | **Already random.** The answer is spliced in at `floor(random() * 4)`, uniform over the four slots, using the injected `PLACEMENT_RANDOM` (`Math.random`). A resumed attempt shows the same order, which is the same showing. A learner has one attempt, so no placement question comes back |
+| Reviews | `recallQuestionFor` (`reviews.service.ts`) | No, typed only | n/a |
+| Practice | `recallQuestionFor` (`practice.service.ts`) | No, typed only | n/a |
+| Chapter tests | `recallQuestionFor` (`assessments.service.ts`) | No, typed only | n/a |
+
+**What that rests on:**
+- The app renders options in two components only, `CheckBeat` (`LessonPlayer.tsx`) and `PlacementFlow.tsx`, both in the order received.
+- **The app fetches a lesson once per showing.** `LessonPlayer` calls `api.getLesson(slug)` in a `useEffect` keyed on `slug`. There's no cache and no refetch on focus or foreground, and the API sets no cache headers. A redo remounts the player and fetches again.
+- **Grading goes by option text, never by position:**
+  - the payload carries option text and never the answer (`mapCheck`);
+  - the app submits the tapped option's text (`submit(choice)`), and Retry resends that text;
+  - `ChecksService.gradeClosed` compares it with `Check.data.answer` through `exactMatch` (normalised text);
+  - the result carries `correctAnswer` as text, and the app colours the option whose text equals it.
+- **Live checks (Neon default branch, one read-only query, $0):** 668 `MULTIPLE_CHOICE` checks. Every one has exactly four options. The answer is one of its options in 668 of 668. No check has duplicate options. The answer is the first option in 652, matching F4.
+- **Patterns to reuse:**
+  - a Fisher-Yates `shuffle(arr, random)` already exists, private, in `assessments/assessment-sample.ts`;
+  - randomness is injected through a DI token per module (`ASSESSMENT_RANDOM`, `PLACEMENT_RANDOM`, both `Math.random`), so specs are deterministic.
+- **Loose ends found:**
+  - `checks.service.ts` says multiple-choice answers "are option IDs". They are option text, so the comment is stale.
+  - `lessons.service.spec.ts` (line 100) and `app.integration.spec.ts` (line 711) expect choices in authored order (`['あ', 'い', 'う']`).
 
 ---
 
@@ -154,6 +191,44 @@ The rule "uses only the kana, grammar and words listed above" still covers the n
 - A warning only. It never refuses (brief: "a warning can't block fair text"). Spiked at 0 hits on approved drafts.
 - **`authoring:review` now prints the course-rule warnings** for the draft it opens, before the editor, using the same `courseContextFor` and `checkCourseRules` that publish uses. That is what puts the warning in front of the reviewer (P6), not only in the Lead's draft log.
 
+## 1.8 A lesson's options are shuffled in the API, on every request (P8)
+
+**Where it happens**
+- `toLessonDetailDto(lesson, random)` passes `random` to `mapCheck`, which returns `choices` as `shuffle([...choices], random)`.
+- That gives one fresh order per `GET /lessons/:id`. The app fetches once per showing (0.1), so that is one order per showing: a first try, a redo, or a lesson reopened later.
+- **Placement:** no code change. It already meets P8 (0.1). A spec pins it so a refactor can't lose it.
+- **Reviews, practice and chapter tests** ask no multiple-choice question, so there is nothing to shuffle. If one is ever added, it uses the same helper (section 5).
+
+**How**
+- **The helper:** move `shuffle` out of `assessment-sample.ts` into `apps/api/src/common/shuffle.ts`, exported and unchanged (in-place Fisher-Yates, returns the array). Import it back into `assessment-sample.ts`. Callers pass a copy, so the stored `Check.data.choices` is never mutated.
+- **Randomness:**
+  - a new `LESSON_RANDOM` token in `lessons.service.ts`;
+  - provided as `Math.random` in `lessons.module.ts` and injected into `LessonsService`, as assessments and placement already do;
+  - `random` is a required argument of `toLessonDetailDto`, so no future caller can forget it.
+- **Uniform and blind, on purpose:**
+  - The shuffle never looks at the answer, the authored order or an earlier order.
+  - There is no "must differ from the authored order" or "from last time" rule. Any such rule is itself a cue: if an answer authored first could never be shown first, the learner could rule out the top slot.
+  - A uniform shuffle leaves the answer on top a quarter of the time. That is the guessing rate, which is what P8 promises.
+  - Never `sort(() => random() - 0.5)`. It is biased.
+
+**It holds still while on screen**
+- The order arrives once, with the lesson, and lives in `CheckBeat`'s props for the whole check.
+- Submitting, the result colouring and Retry all go by text, so nothing re-renders in a new order.
+- No app logic changes. The Developer adds a one-line comment at the `getLesson` call in `LessonPlayer.tsx`: fetch once per showing, because options are shuffled per request (B.2.e). That is the guard against someone adding a refetch on focus later.
+
+**Grading stays correct**
+- The grader never sees a position. Every step compares option text (0.1).
+- The live data has every answer among its options and no duplicate options, so each tap maps to exactly one option text whatever the order.
+- The stale comment in `checks.service.ts` becomes "multiple-choice answers are option text, compared exactly; their position never matters (B.2.e)".
+- A round-trip spec proves it: the mapper moves the answer, and grading the moved text is still right (section 4).
+
+**Rejected**
+- **Shuffling in the app** (a `useState` initialiser in `CheckBeat`). It would hold still on screen too, but the app has no test runner, so P8's core property would go untested, and every future client would need its own copy. Same reason as P3 (1.3).
+- **A deterministic seed per check** (a hash of the check id). That is "one random order per question, kept forever", which the brief rejects.
+- **Storing an order per showing,** as placement stores one per attempt. Lessons have no attempt row, so it needs a migration, and the single fetch per showing already gives the stability P8 needs.
+- **Reordering the stored options.** Rejected by the PM (brief 4.5).
+- **`crypto.randomInt` instead of `Math.random`.** This isn't a security boundary: the answer never leaves the server before grading, and no learner can predict V8's generator from option order. `Math.random` matches placement and assessments.
+
 ---
 
 # 2. Changes
@@ -166,13 +241,20 @@ The rule "uses only the kana, grammar and words listed above" still covers the n
 | `apps/api/src/ingest/index.ts` | Pass `--dry-run` through; usage text |
 | `apps/api/src/recall/recall-question.ts` | `kanjiWord()`, `RecallQuestion.display`, the verb-kanji branch |
 | `apps/api/src/mastery/mastery.service.ts`, `apps/api/src/practice/practice.service.ts` | `display` from the question |
-| `apps/api/src/lessons/lesson.mapper.ts` | `mapTeach()` |
-| `apps/mobile/src/lesson/teach.ts`, `apps/mobile/src/lesson/LessonPlayer.tsx` | Optional example reading |
+| `apps/api/src/lessons/lesson.mapper.ts` | `mapTeach()` (P3). `toLessonDetailDto(lesson, random)`, and `mapCheck` returns a shuffled copy of `choices` (P8) |
+| `apps/mobile/src/lesson/teach.ts`, `apps/mobile/src/lesson/LessonPlayer.tsx` | Optional example reading (P3). A comment at the `getLesson` call (P8) |
 | `apps/api/src/authoring/lesson-prompter.ts` | 1.4 split |
 | `apps/api/src/authoring/course-rules.ts` | P5 and P7 errors, P6 warning |
 | `apps/api/src/authoring/review.ts` | Print course-rule warnings |
+| `apps/api/src/common/shuffle.ts` (new) | Fisher-Yates moved from `assessment-sample.ts`, exported (P8) |
+| `apps/api/src/assessments/assessment-sample.ts` | Imports `shuffle` from `common` (P8). No behaviour change |
+| `apps/api/src/lessons/lessons.service.ts`, `apps/api/src/lessons/lessons.module.ts` | `LESSON_RANDOM` token, its `Math.random` provider, and the injection (P8) |
+| `apps/api/src/checks/checks.service.ts` | Stale "option IDs" comment corrected (P8). No logic change |
+| Specs (P8) | `common/shuffle.spec.ts` (new), `lesson.mapper.spec.ts`, `lessons.service.spec.ts`, `checks.service.spec.ts`, `placement-questions.spec.ts`, `app.integration.spec.ts` |
 
-No new dependencies, and no contract change visible to the app beyond an example's `reading` becoming optional.
+No new dependencies. The only contract changes visible to the app:
+- an example's `reading` becomes optional (P3);
+- `CheckDto.choices` keeps its type, and only its order changes (P8).
 
 ---
 
@@ -231,6 +313,12 @@ No new dependencies, and no contract change visible to the app beyond an example
 
 P3 to P7 change no stored data.
 
+**P8 changes no stored data either.**
+- No schema change, no row written, no lesson republished. Only the order of `choices` in each lesson response changes, computed per request.
+- So there is nothing to classify as additive or not, and nothing to apply after merge. P8 takes effect wherever the API runs from `main`.
+- **Tested** against live content read-only: the 0.1 query, and the Tester's course-wide count (section 4).
+- **Rollback:** revert the T0 commits (section 6 keeps them separate), or provide `LESSON_RANDOM` as a generator that keeps order. There is nothing to restore. B.2.e's warning applies: authored order puts the answer first again in 652 checks.
+
 ---
 
 # 4. Promise map
@@ -239,6 +327,7 @@ Test locations:
 - **Jest** means unit tests in `pnpm test`, in CI.
 - **Gate scan** means `authoring:draft --recheck` ($0) over every draft in `output/` and `published/` from the main checkout, results in `dev.md`.
 - **Tester-sim** means `Sensei 22a SE3` against the PR build and the throwaway branch, with screenshots in `test.md`.
+- **Tester-API** means the PR build's local API (dev-stub auth) against the throwaway branch, with requests and counts in `test.md`.
 
 | Promise | Implementation | Test that proves it |
 |---|---|---|
@@ -249,6 +338,7 @@ Test locations:
 | **P5** A typed check asking for "in kana" or "(katakana)" is refused | 1.5 gate error | <ul><li>Jest `course-rules.spec.ts`: errors on the verbatim ch04-l06 q2 and ch08-l03 q4 prompts from `corrections.jsonl`, and on "(katakana)"; no error on an open check, a multiple-choice prompt, or "the katakana word for coffee"</li><li>Gate scan: 0 new errors on approved drafts</li></ul> |
 | **P6** Self-corrections warn the reviewer, saying where | 1.7 warning; review prints it | <ul><li>Jest `course-rules.spec.ts`: warnings, never errors, on the verbatim 109 text ("well, you don't know くるま yet"), 120's "おんがち — oops — おんがく", and "let's use words you know"; none on "Wait for the beep" style text without the comma</li><li>Gate scan: 0 warnings on approved drafts</li><li>`dev.md`: `authoring:review` output for a fixture draft showing the warning before the editor (`EDITOR=true`)</li></ul> |
 | **P7** A kana example whose reading says a different sentence is refused | 1.6 gate error | <ul><li>Jest `course-rules.spec.ts`: error on lesson 115's verbatim example; no error on `かぎ / か・ぎ`, `たべます / ta-be-ma-su`, `わたし は いしゃ です。 / watashi wa isha desu.`, `ラーメン / raamen`, `コーヒー / say こ, hold one beat…`, `コーヒー / こーひー`, or a kanji example</li><li>Gate scan: 0 new errors on approved drafts</li></ul> |
+| **P8** Wherever a multiple-choice question is asked, the right answer isn't always in the same place; it can move when the question comes back; options hold still on screen | 1.8: a uniform per-request shuffle in `mapCheck`. Placement already random and unchanged. Reviews, practice and chapter tests have no multiple choice (0.1) | <ul><li>Jest `common/shuffle.spec.ts`: the output is a permutation of the input. A seeded generator (a small mulberry32 in the spec) over 8,000 shuffles of four options puts each option in each slot 2,000 ± 200 times (about 5σ; seeded, so it can't flake). A `keepOrder` generator (`() => 0.999999`, every swap with itself) keeps order</li><li>Jest `lesson.mapper.spec.ts`: a multiple-choice check's `choices` are the generator's permutation of the stored options (a reversing generator gives the reverse); two mappings with different generators give different orders; the stored `data.choices` isn't mutated; the answer is still absent; typed and open checks still have no `choices`</li><li>Jest `lessons.service.spec.ts`: the service uses the injected `LESSON_RANDOM`. Existing order assertions pass `keepOrder`</li><li>Jest `app.integration.spec.ts`: override `LESSON_RANDOM` with `keepOrder` so line 711 still holds, plus one case through the real route with a reversing generator (`['う', 'い', 'あ']`)</li><li>Jest `checks.service.spec.ts`, round trip: map a four-option check with a generator that moves the answer to the last slot, then grade each `dto.choices[k]`. Only the answer's text is correct, wherever it sits</li><li>Jest `placement-questions.spec.ts`: with a seeded generator, a kana question's answer lands in every slot, 50 ± 30 times in 200 builds</li><li>Tester-API, on the PR build against the throwaway branch, reads only: one `GET` per published lesson (108). Using the answers from SQL, the answer is the first option in about a quarter of the 668 checks (expected 167; fail outside 112 to 222; today 652). Lesson 120 fetched 20 times: each of its 12 multiple-choice checks shows its answer in at least two different slots, and across the 240 showings the answer is on top 26 to 94 times (expected 60)</li><li>Tester-sim: lesson 120 done twice, tapping the top option on every multiple-choice check. Each run scores at most 6 of the 12 (expected 3; today 12). A working shuffle scores 7 or more about 1.4% of the time, so one such run gets a third run before it counts as a failure. One check screenshotted in both runs, in different orders. One check before and after submitting: the options are in the same places, and the right one is green where it sits</li></ul> |
 
 ---
 
@@ -264,11 +354,27 @@ Test locations:
 | P6 warnings become noise | Spiked at 0 on 214 files. Warnings never refuse |
 | P3 hides a reading that differed only in punctuation the learner needed | By design (brief 4.3: spaces and punctuation ignored) |
 | The 校 `UPDATE` judged a stop-list action | The Lead's call (3.1). If so, it goes to `BLOCKERS.md` and P1 waits; P2 to P7 are unaffected |
+| P8: a later app change refetches the lesson mid-showing (on focus or foreground), so options jump on screen | The comment at the fetch (1.8), and the Tester-sim before-and-after screenshot. A refetch would also reset the learner's place in the checks, so it would show for other reasons too |
+| P8: a multiple-choice question is added later to reviews, practice or chapter tests in authored order | Code review against B.2.f, which names `common/shuffle.ts` as the one helper. No mechanical guard, because no such question exists to test |
+| P8: an option that depends on its position ("all of the above") is drafted later and breaks once shuffled | The audio-wave watch list (brief 6), at PM review. None exists in 671 lists. No gate rule now: it would guard nothing live. If one ever turns up, a gate warning is a one-line follow-up |
+| P8: the Tester-sim top-tap run scores 7 or more by chance (about 1.4% per run) | A third run (section 4). Two runs at 7 or more is a real failure |
+| P8: the shuffle has a bias (a wrong loop bound) | The 8,000-run slot count in `shuffle.spec.ts`, and the Tester's course-wide answer-first count |
 
 ---
 
 # 6. Tasks (one Developer pass, one PR, in this order)
 
+**P8 goes in this PR, as the first commit or commits.** It's small and touches nothing the other tasks need. Commit order: **T0, T1, T2, T3, T4, T5, then T6.** One commit per task at least, and `pnpm test` green at the end of T0, so T0 stands alone.
+
+**If the PR stalls on anything outside P8** (a Tester FAIL on P1 to P7, or the throwaway-branch work for P1 and P2), the Lead cherry-picks T0's commits onto a branch from `main` and ships P8 alone. That is the brief's fallback (section 3), and P8 must land before the Alpha run scores any lesson.
+
+0. **T0 Shuffled options (P8).**
+   - Move `shuffle` to `common/shuffle.ts`, with its spec.
+   - Add `LESSON_RANDOM` and its provider; make `toLessonDetailDto(lesson, random)` and `mapCheck` shuffle a copy.
+   - Correct the stale comment in `checks.service.ts`, and add the comment in `LessonPlayer.tsx`.
+   - Specs as in P8, including the two order-sensitive specs and the placement spec.
+   - Run `pnpm typecheck && pnpm lint && pnpm test`.
+   - Paste into `dev.md` the course-wide answer-first count. Get it with `toLessonDetailDto` over every published lesson, reading the default branch from the main checkout (read-only, $0). Expect about 167 of 668.
 1. **T1 Kanji supplement.** JSON file, loader, `buildKanjiItem` overrides with both guards, the unknown-character check, `--dry-run`. Specs as in P1. Run the dry run read-only against the default branch from the main checkout, and paste it into `dev.md`: it must show exactly the nine rows.
 2. **T2 Verb kanji questions.** `kanjiWord`, `RecallQuestion.display`, the verb branch, reviews and practice reading `display`. Specs as in P2.
 3. **T3 Example readings.** `mapTeach`, the mobile parser and view. Specs as in P3. `pnpm --filter mobile typecheck`, then `expo export --platform ios`.
@@ -276,10 +382,10 @@ Test locations:
 5. **T5 Gate.** P5 and P7 errors, P6 warning, review prints warnings. Specs use the verbatim cases. Run the gate scan over all of `output/` and `published/` (expect 0 new errors and warnings) and over the `corrections.jsonl` originals (expect the section 0 hits). List both in `dev.md`.
 6. **T6** Run `pnpm typecheck && pnpm lint && pnpm test`, then `/code-review high`, then open the PR. Record any deviation from this plan in `dev.md`.
 
-**After merge, the Lead:** confirms the 3.1 classification, then runs 3.3. The Tester's pre-merge evidence for P1 and P2 comes from the throwaway branch.
+**After merge, the Lead:** confirms the 3.1 classification, then runs 3.3. The Tester's pre-merge evidence for P1, P2 and P8 comes from the throwaway branch. P8 needs no step after merge.
 
 **Not to be touched:**
 - the deferred rules W2.3, W2.5, W3.1 and W3.2;
-- placement;
+- placement code (P8 adds a spec only);
 - the recap card's reading list;
 - anything in `open-check-followup`.
