@@ -24,3 +24,12 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - Drafted from the main checkout with `--max-cost 0.5` per lesson. Measured cost, draft plus critique: lesson 2 $0.071, 20 $0.079, 21 $0.090, 43 $0.055. All four passed the course gate and the critic (lesson 2's critic noted textbook-ish examples, persimmon and voice, as a minor fail on example-feel).
 - **Lesson 19 (`foundation-ja-ch04-l05`, small っ) rejected twice by the course gate, about $0.145 spent.** Both drafts wrote typed checks as recall from English ("Type the kana word that means 'school'"), not reading. P4 needs the prompt to show the kana (がっこう) with no rōmaji. The TYPED READING instruction does reach the drafter (`lesson-prompter.ts:151`, `typedReading` is true), and the model ignored it twice. That makes it systematic, so it is likely to hit all 7 sound lessons. Sent to the Tech Lead; no more redrafts until fixed.
 - Running total for 22b: about $0.44 of the $2.50 cap.
+
+## 2026-11-23: authoring-polish live kanji apply (tech.md 3.3)
+
+- PR #95 merged (`42f327e`), Tester PASS on `e541cb5`.
+- Backup: `ops/work/authoring-polish/kanji-rows-before.json` (9 rows, live, read with Prisma before any write).
+- Dry run on live: exactly 9 of 103 rows. 校 meaning "exam" → "school"; `data.word_reading` added to 食 た.べる, 飲 の.む, 読 よ.む, 書 か.く, 行 い.く, 来 く.る, 見 み.る, 聞 き.く.
+- Apply: `ingest:items kanji` upserted 103, and a second dry run shows 0 rows to change.
+- Verify (SQL on live): 校 = "school"; all eight verb kanji have `word_reading`; no other meaning changed. That matches the PM's 41-kanji audit (brief 4.1: only 校 differed).
+- Rollback: re-run the ingest with the supplement emptied, or a nine-row `UPDATE` from the backup. The Tester proved both on `test-open-check-followup`.

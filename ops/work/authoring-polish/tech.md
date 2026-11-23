@@ -389,3 +389,11 @@ Test locations:
 - placement code (P8 adds a spec only);
 - the recap card's reading list;
 - anything in `open-check-followup`.
+
+---
+
+**Lead note, 2026-11-23.** The two P4 deviations in `dev.md` are accepted, and the Tester concurs (`test.md`):
+- “new” means not taught in an earlier lesson;
+- kanji lessons split their kanji line too.
+
+They serve the brief better than 1.4 as written, which would have told lesson 26’s drafter that four greetings already taught were new. The Tech Lead may revisit at next touch. Reverse by restoring 1.4’s target-based split.

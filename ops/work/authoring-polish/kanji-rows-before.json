@@ -1,0 +1,224 @@
+{
+  "takenAt": "2026-11-23T20:12:32.608Z",
+  "source": "live default branch",
+  "rows": [
+    {
+      "id": "ja:kanji:書",
+      "reading": "か.く",
+      "meaning": "write",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "write"
+        ],
+        "on_readings": [
+          "ショ"
+        ],
+        "kun_readings": [
+          "か.く",
+          "-が.き",
+          "-がき"
+        ],
+        "stroke_count": 10
+      }
+    },
+    {
+      "id": "ja:kanji:来",
+      "reading": "く.る",
+      "meaning": "come",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "come",
+          "due",
+          "next",
+          "cause",
+          "become"
+        ],
+        "on_readings": [
+          "ライ",
+          "タイ"
+        ],
+        "kun_readings": [
+          "く.る",
+          "きた.る",
+          "きた.す",
+          "き.たす",
+          "き.たる",
+          "き",
+          "こ"
+        ],
+        "stroke_count": 7
+      }
+    },
+    {
+      "id": "ja:kanji:校",
+      "reading": "コウ",
+      "meaning": "exam",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "exam",
+          "school",
+          "printing",
+          "proof",
+          "correction"
+        ],
+        "on_readings": [
+          "コウ",
+          "キョウ"
+        ],
+        "kun_readings": [],
+        "stroke_count": 10
+      }
+    },
+    {
+      "id": "ja:kanji:聞",
+      "reading": "き.く",
+      "meaning": "hear",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "hear",
+          "ask",
+          "listen"
+        ],
+        "on_readings": [
+          "ブン",
+          "モン"
+        ],
+        "kun_readings": [
+          "き.く",
+          "き.こえる"
+        ],
+        "stroke_count": 14
+      }
+    },
+    {
+      "id": "ja:kanji:行",
+      "reading": "い.く",
+      "meaning": "going",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "going",
+          "journey",
+          "carry out",
+          "conduct",
+          "act",
+          "line",
+          "row",
+          "bank"
+        ],
+        "on_readings": [
+          "コウ",
+          "ギョウ",
+          "アン"
+        ],
+        "kun_readings": [
+          "い.く",
+          "ゆ.く",
+          "-ゆ.き",
+          "-ゆき",
+          "-い.き",
+          "-いき",
+          "おこな.う",
+          "おこ.なう"
+        ],
+        "stroke_count": 6
+      }
+    },
+    {
+      "id": "ja:kanji:見",
+      "reading": "み.る",
+      "meaning": "see",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "see",
+          "hopes",
+          "chances",
+          "idea",
+          "opinion",
+          "look at",
+          "visible"
+        ],
+        "on_readings": [
+          "ケン"
+        ],
+        "kun_readings": [
+          "み.る",
+          "み.える",
+          "み.せる"
+        ],
+        "stroke_count": 7
+      }
+    },
+    {
+      "id": "ja:kanji:読",
+      "reading": "よ.む",
+      "meaning": "read",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "read"
+        ],
+        "on_readings": [
+          "ドク",
+          "トク",
+          "トウ"
+        ],
+        "kun_readings": [
+          "よ.む",
+          "-よ.み"
+        ],
+        "stroke_count": 14
+      }
+    },
+    {
+      "id": "ja:kanji:食",
+      "reading": "く.う",
+      "meaning": "eat",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "eat",
+          "food"
+        ],
+        "on_readings": [
+          "ショク",
+          "ジキ"
+        ],
+        "kun_readings": [
+          "く.う",
+          "く.らう",
+          "た.べる",
+          "は.む"
+        ],
+        "stroke_count": 9
+      }
+    },
+    {
+      "id": "ja:kanji:飲",
+      "reading": "の.む",
+      "meaning": "drink",
+      "data": {
+        "jlpt": "N5",
+        "meanings": [
+          "drink",
+          "smoke",
+          "take"
+        ],
+        "on_readings": [
+          "イン",
+          "オン"
+        ],
+        "kun_readings": [
+          "の.む",
+          "-の.み"
+        ],
+        "stroke_count": 12
+      }
+    }
+  ]
+}
