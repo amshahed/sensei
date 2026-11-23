@@ -60,6 +60,9 @@ export function LessonPlayer({
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [outcomes, setOutcomes] = useState<CheckOutcome[]>([]);
 
+  // Fetch once per showing, and never refetch on focus or foreground: the API
+  // shuffles multiple-choice options per request, so a refetch would move
+  // them on screen (B.2.e).
   useEffect(() => {
     let active = true;
     api

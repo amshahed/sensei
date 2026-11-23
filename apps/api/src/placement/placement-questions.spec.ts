@@ -8,6 +8,7 @@ import {
   samplePlacement,
   toQuestionDto,
 } from './placement-questions';
+import { mulberry32 } from '../testing/random';
 
 /** Deterministic "random": cycles through a fixed sequence. */
 function seq(...values: number[]) {
@@ -102,6 +103,24 @@ describe('placementQuestionFor (I.4.b formats)', () => {
     expect(part.choices).toContain('あ');
     // ア shares the sound but is katakana: never offered for a hiragana question.
     expect(part.choices).not.toContain('ア');
+  });
+
+  it('kana: the answer lands in every slot, so position is no cue (B.2.e, P8)', () => {
+    const random = mulberry32(2026);
+    const slots = [0, 0, 0, 0];
+    for (let n = 0; n < 200; n++) {
+      const [part] = placementQuestionFor(
+        hiragana[0],
+        'c1',
+        pools,
+        random,
+      )!.parts;
+      slots[part.choices.indexOf(part.answer)]++;
+    }
+    for (const count of slots) {
+      expect(count).toBeGreaterThanOrEqual(20);
+      expect(count).toBeLessThanOrEqual(80);
+    }
   });
 
   it('kana: sound-alikes are never distractors (を is pronounced "o")', () => {
