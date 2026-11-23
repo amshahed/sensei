@@ -1991,3 +1991,17 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** Shuffling in the app (untestable there, and needed again in every client). A seed per check (one order forever, which B.2.e rejects). Storing an order per showing (needs a migration for no gain). `sort(() => random() - 0.5)` (biased).
 
 **Reverse:** Provide `LESSON_RANDOM` as a generator that keeps order, or revert the commit. There is no data to restore. As B.2.e says, the stored order would need varying first.
+
+### M.5.a How the age confirmation behaves: two choices in onboarding, and an "under 18" answer sticks (amends M.5) (decided by Project Manager, 2026-11-23)
+
+**Decision:**
+1. The confirmation is the first onboarding screen, before the intake questions (I.3.b) and placement, for every account, including accounts made before it existed. It is not part of the sign-up form.
+2. It offers two choices of equal weight, "I'm 18 or older" and "I'm under 18", in place of M.5's single "I am 18 or older" tap. One tap answers it. No birth date, no proof.
+3. "18 or older" is asked once per account, never again on any device.
+4. "Under 18" shows a kind adults-only message and nothing else: no intake, placement, lessons, reviews or practice. A real account can sign out from it. The answer sticks to the account, so the message is shown again rather than the question. A mis-tap is reset by the team on request. The account isn't deleted.
+
+**Why:** In onboarding it covers every sign-in route, the existing accounts and dev-stub learners, so the Alpha run can score it. A lone confirm button leaves an honest teenager nothing to press and nudges everyone to tap through. A birth date is personal data with no other use, and it verifies no more than a tap. Re-asking would make the check a speed bump. Deletion is irreversible on a mis-tap, and whether it's required is a legal question for the founder. Full reasoning is in `ops/work/age-confirmation/brief.md`.
+
+**Rejected:** A checkbox on the sign-up form. A date of birth. Asking again on every open. Deleting the account on "under 18".
+
+**Reverse:** Remove the screen once M.5 is reversed (grading on a provider whose terms allow under-18s). To return to M.5's single button, drop the "under 18" choice and its message.

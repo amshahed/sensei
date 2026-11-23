@@ -22,8 +22,8 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **Unit B5, "couldn't grade" in reviews and practice** (`open-check-followup/triage.md` I2). Today a grading fallback there shows "Not quite — the expected answer was…" next to "Couldn't grade". On the free Gemini tier, about 1 call in 4 falls back, so the Alpha walker will hit it. PM brief, then Tech Lead, Developer, Tester. Do it before Alpha.
-2. **Unit: age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. PM brief first.
+1. **Unit B5, "couldn't grade" in reviews and practice** (`open-check-followup/triage.md` I2). Today a grading fallback there shows "Not quite — the expected answer was…" next to "Couldn't grade". On the free Gemini tier, about 1 call in 4 falls back, so the Alpha walker will hit it. **Brief done** (`ops/work/grading-fallback-honesty/brief.md`, P1 to P6, chapter tests included). Tech Lead next, then Developer, Tester. Do it before Alpha.
+2. **Unit: age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. **Brief done** (`ops/work/age-confirmation/brief.md`, P1 to P6, decision M.5.a). Founder items are Blockers 12 and 13. **Tech Lead planning both units now.**
 3. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
