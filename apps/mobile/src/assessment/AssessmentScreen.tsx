@@ -198,7 +198,10 @@ export function AssessmentScreen({
   }
 
   const { result } = phase;
-  const missed = result.results.filter((r) => !r.correct);
+  // An answer the grader couldn't judge isn't a miss: it is listed on its own
+  // and left out of the score (I.4.d.a, B.2.g).
+  const missed = result.results.filter((r) => r.scored !== false && !r.correct);
+  const ungraded = result.results.filter((r) => r.scored === false);
   return (
     <Screen footer={<PrimaryButton label="Done" onPress={onExit} />}>
       <Text style={ui.kicker}>{skip ? 'Skip test' : 'Chapter assessment'}</Text>
@@ -232,6 +235,21 @@ export function AssessmentScreen({
               <Text style={ui.body}>{r.prompt}</Text>
               <Text style={ui.hint}>
                 You: {r.answer || '—'} · Answer: {r.correctAnswer}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {ungraded.length > 0 ? (
+        <View style={styles.missed}>
+          <Text style={ui.body}>
+            Couldn’t grade these right now, so they don’t count:
+          </Text>
+          {ungraded.map((r) => (
+            <View key={r.itemId} style={styles.missedRow}>
+              <Text style={ui.body}>{r.prompt}</Text>
+              <Text style={ui.hint}>
+                You: {r.answer || '—'} · Answer: {r.correctAnswer || '—'}
               </Text>
             </View>
           ))}

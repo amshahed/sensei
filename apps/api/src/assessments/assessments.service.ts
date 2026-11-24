@@ -52,15 +52,18 @@ const ITEM_SELECT = {
 } satisfies Prisma.ItemSelect;
 
 type GradedResult = AssessmentItemResultDto & {
-  /** False when the answer couldn't be fairly judged — excluded from the score + FSRS. */
-  scored: boolean;
   /** AI rating, when the meaning grader produced one. */
   rating?: Grade;
 };
 
+/** One stored answer. Attempts submitted before B.2.g carry no `scored`. */
+type StoredItem = Omit<AssessmentItemResultDto, 'scored'> & {
+  scored?: boolean;
+};
+
 /** What `AssessmentAttempt.results` stores, so a repeat submit can replay it. */
 type StoredResults = {
-  items: AssessmentItemResultDto[];
+  items: StoredItem[];
   total: number;
   skippedLessonIds: string[];
 };
@@ -153,7 +156,7 @@ export class AssessmentsService {
             itemIds: [],
             status: 'PASSED',
             correctCount: 0,
-            results: stored as unknown as Prisma.InputJsonValue,
+            results: stored,
             submittedAt: new Date(),
           },
           select: { id: true },
@@ -249,13 +252,16 @@ export class AssessmentsService {
           )
         : [];
     const stored: StoredResults = {
+      // Only the DTO's fields are stored (no rating or feedback). Typed as the
+      // DTO, so a new required field can't be left out silently.
       items: graded.map(
-        ({ itemId, prompt, answer, correct: ok, correctAnswer }) => ({
-          itemId,
-          prompt,
-          answer,
-          correct: ok,
-          correctAnswer,
+        (g): AssessmentItemResultDto => ({
+          itemId: g.itemId,
+          prompt: g.prompt,
+          answer: g.answer,
+          correct: g.correct,
+          correctAnswer: g.correctAnswer,
+          scored: g.scored,
         }),
       ),
       total,
@@ -271,7 +277,7 @@ export class AssessmentsService {
         data: {
           status: passed ? 'PASSED' : 'FAILED',
           correctCount: correct,
-          results: stored as unknown as Prisma.InputJsonValue,
+          results: stored,
           submittedAt: now,
         },
       });
@@ -332,7 +338,7 @@ export class AssessmentsService {
       correct,
       total,
       passThreshold: ASSESSMENT_PASS_THRESHOLD,
-      results: stored.items,
+      results: stored.items.map(toResult),
       skippedLessonIds,
     };
   }
@@ -507,6 +513,14 @@ export class AssessmentsService {
   }
 }
 
+/**
+ * A stored answer on the wire. One stored before B.2.g can't tell an ungraded
+ * answer from a miss, so it replays as it was shown then: graded.
+ */
+function toResult(item: StoredItem): AssessmentItemResultDto {
+  return { ...item, scored: item.scored ?? true };
+}
+
 /** Rebuild the result of an already-submitted attempt from what it stored. */
 function storedResult(attempt: {
   id: string;
@@ -525,7 +539,7 @@ function storedResult(attempt: {
     correct: attempt.correctCount ?? 0,
     total: stored.total ?? 0,
     passThreshold: ASSESSMENT_PASS_THRESHOLD,
-    results: stored.items ?? [],
+    results: (stored.items ?? []).map(toResult),
     skippedLessonIds: stored.skippedLessonIds ?? [],
   };
 }

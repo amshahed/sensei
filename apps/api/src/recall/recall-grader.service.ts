@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Grade } from 'ts-fsrs';
 import { exactMatch } from '../common/normalize-answer';
-import { GradingService } from '../grading/grading.service';
+import { GradingService, modelComment } from '../grading/grading.service';
 import { ratingFromLabel } from '../mastery/fsrs';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import type { RecallQuestion } from './recall-question';
@@ -16,7 +16,7 @@ export interface RecallGrade {
   scored: boolean;
   /** AI rating for meaning answers; undefined → derive from `correct`. */
   rating?: Grade;
-  /** The AI grader's explanation (meaning answers). */
+  /** The model's own comment (meaning answers), never a fallback line (B.2.g). */
   feedback?: string;
 }
 
@@ -72,11 +72,13 @@ export class RecallGraderService {
           exemplar: question.expected,
         });
         const fallbackMiss = r.gradedBy === 'fallback' && !r.correct;
+        // Only the model's own comment on what the learner wrote (B.2.g).
+        const feedback = modelComment(r);
         return {
           correct: r.correct,
           scored: r.scored && !fallbackMiss,
           rating: ratingFromLabel(r.rating),
-          ...(r.feedback ? { feedback: r.feedback } : {}),
+          ...(feedback ? { feedback } : {}),
         };
       }
     }

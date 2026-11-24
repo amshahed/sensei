@@ -102,7 +102,10 @@ export function RecallCard<R extends ReviewResultDto>({
             : `Answer: ${result.correctAnswer || '—'}`}
         </Text>
       ) : null}
-      {result?.feedback ? <Text style={ui.hint}>{result.feedback}</Text> : null}
+      {/* A comment only ever sits under a verdict (B.2.g). */}
+      {result?.scored && result.feedback ? (
+        <Text style={ui.hint}>{result.feedback}</Text>
+      ) : null}
       {extra ? <Text style={ui.hint}>{extra}</Text> : null}
     </Screen>
   );

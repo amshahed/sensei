@@ -226,12 +226,15 @@ describe('ReviewsService', () => {
         correct: false,
         gradedBy: 'fallback',
         scored: true,
+        feedback: 'Not quite — the expected answer was: sushi.',
       });
       const result = await service.grade(
         'dev-user',
         'ja:vocab:すし',
         'raw fish rice',
       );
+      // No `feedback`: the fallback's "Not quite" would contradict the
+      // "doesn't count" line (B.2.g, P1).
       expect(result).toEqual({
         itemId: 'ja:vocab:すし',
         correct: false,

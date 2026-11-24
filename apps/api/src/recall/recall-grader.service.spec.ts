@@ -86,30 +86,42 @@ describe('RecallGraderService', () => {
     });
   });
 
-  it('meaning: a fallback-graded miss (AI outage) is unscored', async () => {
+  it('meaning: a fallback-graded miss (AI outage) is unscored, with no comment', async () => {
     gradeOpen.mockResolvedValue({
       rating: 'Again',
       correct: false,
       gradedBy: 'fallback',
       scored: true,
+      feedback: 'Not quite — the expected answer was: cat.',
     });
     const res = await grader.grade(q({ check: 'meaning' }), 'kitty');
     expect(res).toMatchObject({ correct: false, scored: false });
+    expect(res).not.toHaveProperty('feedback');
   });
 
-  it('meaning: a fallback-graded match still counts', async () => {
+  it('meaning: a fallback-graded match still counts, without repeating the verdict', async () => {
     gradeOpen.mockResolvedValue({
       rating: 'Good',
       correct: true,
       gradedBy: 'fallback',
       scored: true,
+      feedback: 'Correct.',
     });
-    await expect(
-      grader.grade(q({ check: 'meaning' }), 'x'),
-    ).resolves.toMatchObject({
+    const res = await grader.grade(q({ check: 'meaning' }), 'x');
+    expect(res).toMatchObject({ correct: true, scored: true });
+    expect(res).not.toHaveProperty('feedback');
+  });
+
+  it('meaning: a model grade with an empty comment carries no feedback', async () => {
+    gradeOpen.mockResolvedValue({
+      rating: 'Good',
       correct: true,
+      gradedBy: 'ai',
       scored: true,
+      feedback: '',
     });
+    const res = await grader.grade(q({ check: 'meaning' }), 'x');
+    expect(res).not.toHaveProperty('feedback');
   });
 });
 

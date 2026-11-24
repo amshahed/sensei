@@ -472,6 +472,7 @@ describe('PracticeService', () => {
         correct: false,
         gradedBy: 'fallback',
         scored: true,
+        feedback: 'Not quite — the expected answer was: sushi.',
       });
 
       const result = await service.answer('u1', 'ps-1', {
@@ -484,6 +485,8 @@ describe('PracticeService', () => {
         counted: false,
         mastery: 0.4,
       });
+      // The fallback's "Not quite" never reaches the card (B.2.g, P1).
+      expect(result).not.toHaveProperty('feedback');
       expect(attemptCreateMany).not.toHaveBeenCalled();
       expect(recordCheckResult).not.toHaveBeenCalled();
     });

@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { CheckResultDto } from '@sensei/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MasteryService } from '../mastery/mastery.service';
-import { GradingService } from '../grading/grading.service';
+import { GradingService, modelComment } from '../grading/grading.service';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
 import { Rating } from 'ts-fsrs';
 import { ratingFromLabel } from '../mastery/fsrs';
@@ -186,9 +186,8 @@ export class ChecksService {
       correct: result.correct,
       correctAnswer: result.exemplar,
       rating: ratingFromLabel(result.rating),
-      // Only the model's own comment on what the learner wrote is shown. The
-      // fallback's lines ("the expected answer was…") aren't one (B.2.d).
-      feedback: result.gradedBy === 'ai' ? result.feedback : undefined,
+      // Only the model's own comment on what the learner wrote (B.2.d).
+      feedback: modelComment(result),
       scored: result.scored && !fallbackMiss,
     };
   }

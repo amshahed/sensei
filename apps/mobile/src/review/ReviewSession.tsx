@@ -9,7 +9,9 @@ import { PrimaryButton, ui } from '../ui';
  * Runs a spaced-repetition review session (#7 / G.4): pulls the due queue
  * (lowest-retention-first, capped server-side), runs each item as typed recall,
  * writes each answer back into FSRS + mastery, and shows a summary. Items not
- * due are never surfaced, so finishing the queue clears the due count.
+ * due are never surfaced, so finishing the queue clears the due count. The
+ * score counts graded cards only: one the grader couldn't judge isn't counted
+ * either way and stays due (J.1.f, B.2.g).
  */
 type Phase =
   | { kind: 'loading' }
@@ -20,6 +22,8 @@ type Phase =
       queue: DueReviewItemDto[];
       index: number;
       correct: number;
+      /** Cards that got a verdict. A skipped or ungraded card didn't. */
+      graded: number;
     }
   | { kind: 'done'; correct: number; total: number };
 
@@ -35,7 +39,7 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
         setPhase(
           queue.length === 0
             ? { kind: 'empty' }
-            : { kind: 'review', queue, index: 0, correct: 0 },
+            : { kind: 'review', queue, index: 0, correct: 0, graded: 0 },
         );
       })
       .catch((e) => active && setPhase({ kind: 'error', message: String(e) }));
@@ -82,7 +86,9 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
         <Text style={styles.emoji}>🎉</Text>
         <Text style={ui.title}>Review complete</Text>
         <Text style={ui.body}>
-          You got {phase.correct} of {phase.total} right.
+          {phase.total > 0
+            ? `You got ${phase.correct} of ${phase.total} right.`
+            : 'Nothing could be graded this time, so nothing counted. These cards will come back in your next review.'}
         </Text>
         {onExit ? (
           <PrimaryButton label="Back to home" onPress={onExit} />
@@ -91,7 +97,7 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
     );
   }
 
-  const { queue, index, correct } = phase;
+  const { queue, index, correct, graded } = phase;
   const item = queue[index];
   return (
     <RecallCard
@@ -102,8 +108,9 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
       last={index + 1 >= queue.length}
       grade={(answer) => api.gradeReview(item.itemId, answer)}
       onNext={(result) => {
-        const wasCorrect = !!result?.correct && result.scored;
-        const nextCorrect = correct + (wasCorrect ? 1 : 0);
+        const wasGraded = !!result?.scored;
+        const nextCorrect = correct + (wasGraded && result.correct ? 1 : 0);
+        const nextGraded = graded + (wasGraded ? 1 : 0);
         const next = index + 1;
         if (next < queue.length) {
           setPhase({
@@ -111,9 +118,10 @@ export function ReviewSession({ onExit }: { onExit?: () => void }) {
             queue,
             index: next,
             correct: nextCorrect,
+            graded: nextGraded,
           });
         } else {
-          setPhase({ kind: 'done', correct: nextCorrect, total: queue.length });
+          setPhase({ kind: 'done', correct: nextCorrect, total: nextGraded });
         }
       }}
     />
