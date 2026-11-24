@@ -245,7 +245,11 @@ export interface ReviewResultDto {
    * its word-for-word fallback said "wrong"): nothing was recorded.
    */
   scored: boolean;
-  /** The AI grader's explanation, for meaning answers. */
+  /**
+   * The AI grader's comment on what the learner wrote, for meaning answers.
+   * Present only when the model graded the answer, never on a fallback grade
+   * or an unscored result (B.2.g).
+   */
   feedback?: string;
 }
 
@@ -402,6 +406,13 @@ export interface AssessmentItemResultDto {
   answer: string;
   correct: boolean;
   correctAnswer: string;
+  /**
+   * False when the answer couldn't be fairly judged (AI grader unavailable and
+   * its word-for-word fallback said "wrong"): it is left out of the score and
+   * FSRS, and the app lists it on its own, not as a miss. Read this before
+   * `correct`. Same meaning as `ReviewResultDto.scored` (B.2.g).
+   */
+  scored: boolean;
 }
 
 export interface AssessmentResultDto {

@@ -44,6 +44,17 @@ export interface OpenGradeResult {
   scored: boolean;
 }
 
+/**
+ * The grade's comment, if it is the model's own comment on what the learner
+ * wrote. The fallback's lines ("Correct.", "the expected answer was…") only
+ * repeat or contradict the verdict, so no surface shows them (B.2.d, B.2.g).
+ */
+export function modelComment(result: OpenGradeResult): string | undefined {
+  return result.gradedBy === 'ai' && result.feedback
+    ? result.feedback
+    : undefined;
+}
+
 /** Grading must never hang the lesson — cap the model call. */
 const GRADE_TIMEOUT_MS = 12_000;
 
