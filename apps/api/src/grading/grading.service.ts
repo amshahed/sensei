@@ -50,7 +50,7 @@ export interface OpenGradeResult {
  * repeat or contradict the verdict, so no surface shows them (B.2.d, B.2.g).
  */
 export function modelComment(result: OpenGradeResult): string | undefined {
-  return result.gradedBy === 'ai' && result.feedback
+  return result.gradedBy === 'ai' && result.feedback.trim().length > 0
     ? result.feedback
     : undefined;
 }

@@ -407,10 +407,11 @@ export interface AssessmentItemResultDto {
   correct: boolean;
   correctAnswer: string;
   /**
-   * False when the answer couldn't be fairly judged (AI grader unavailable and
-   * its word-for-word fallback said "wrong"): it is left out of the score and
-   * FSRS, and the app lists it on its own, not as a miss. Read this before
-   * `correct`. Same meaning as `ReviewResultDto.scored` (B.2.g).
+   * False when the answer couldn't be fairly judged: the AI grader was
+   * unavailable and its word-for-word fallback said "wrong", or (rarely) the
+   * item changed since the test started. Left out of the score and FSRS, and
+   * the app lists it on its own, not as a miss. Read this before `correct`,
+   * which is then false. Attempts stored before B.2.g replay as `true`.
    */
   scored: boolean;
 }

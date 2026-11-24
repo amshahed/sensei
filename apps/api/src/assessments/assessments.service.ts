@@ -252,21 +252,16 @@ export class AssessmentsService {
           )
         : [];
     const stored: StoredResults = {
+      // Only the DTO's fields are stored (no rating or feedback). Typed as the
+      // DTO, so a new required field can't be left out silently.
       items: graded.map(
-        ({
-          itemId,
-          prompt,
-          answer,
-          correct: ok,
-          correctAnswer,
-          scored: judged,
-        }) => ({
-          itemId,
-          prompt,
-          answer,
-          correct: ok,
-          correctAnswer,
-          scored: judged,
+        (g): AssessmentItemResultDto => ({
+          itemId: g.itemId,
+          prompt: g.prompt,
+          answer: g.answer,
+          correct: g.correct,
+          correctAnswer: g.correctAnswer,
+          scored: g.scored,
         }),
       ),
       total,

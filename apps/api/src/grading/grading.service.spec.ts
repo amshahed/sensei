@@ -274,6 +274,7 @@ describe('modelComment (B.2.d, B.2.g)', () => {
       }),
     ],
     ['an empty model comment', result({ feedback: '' })],
+    ['a blank model comment', result({ feedback: ' \n ' })],
   ])('returns nothing for %s', (_label, r) => {
     expect(modelComment(r)).toBeUndefined();
   });
