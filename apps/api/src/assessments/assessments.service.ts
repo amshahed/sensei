@@ -156,7 +156,7 @@ export class AssessmentsService {
             itemIds: [],
             status: 'PASSED',
             correctCount: 0,
-            results: stored as unknown as Prisma.InputJsonValue,
+            results: stored,
             submittedAt: new Date(),
           },
           select: { id: true },
@@ -282,7 +282,7 @@ export class AssessmentsService {
         data: {
           status: passed ? 'PASSED' : 'FAILED',
           correctCount: correct,
-          results: stored as unknown as Prisma.InputJsonValue,
+          results: stored,
           submittedAt: now,
         },
       });
