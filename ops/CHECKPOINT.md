@@ -1,6 +1,6 @@
 # Checkpoint
 
-Last updated: 2026-11-23 by the Lead.
+Last updated: 2026-11-24 by the Lead.
 
 Resume point for any session. Overwritten, never appended. Details live in `ops/journal.md` and `ops/work/`.
 
@@ -22,8 +22,8 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **Unit B5, "couldn't grade" in reviews and practice** (`open-check-followup/triage.md` I2). Today a grading fallback there shows "Not quite — the expected answer was…" next to "Couldn't grade". On the free Gemini tier, about 1 call in 4 falls back, so the Alpha walker will hit it. **Brief done** (`ops/work/grading-fallback-honesty/brief.md`, P1 to P6, chapter tests included). **`tech.md` done (G2, B.2.g)**, with no schema change. Next: **Developer**, then Tester. Do it before Alpha.
-2. **Unit: age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. **Brief done** (`ops/work/age-confirmation/brief.md`, P1 to P6, decision M.5.a). Founder items are Blockers 12 and 13. **`tech.md` done (G2, M.5.b)**. The migration is additive (an enum and two nullable columns on `User`). Before its Developer starts, the Lead creates Neon branch `test-age-confirmation` from the main session. Testing may also reuse `br-winter-poetry-baq6sbs4`. P6 (sign-out) is proven end to end only by Blocker 7. **Lead ruling:** Alpha accepts the Tester’s branch evidence for P5 (an existing learner), because live has no dev learner with progress. Runs after grading-fallback-honesty.
+1. **Unit B5, "couldn't grade" in reviews and practice** (`open-check-followup/triage.md` I2). Today a grading fallback there shows "Not quite — the expected answer was…" next to "Couldn't grade". On the free Gemini tier, about 1 call in 4 falls back, so the Alpha walker will hit it. **Brief done** (`ops/work/grading-fallback-honesty/brief.md`, P1 to P6, chapter tests included). **`tech.md` done (G2, B.2.g)**, with no schema change. **PR #99 merged** (`4a2d305`, Tester PASS on `f96236d`). Ungraded answers in reviews, practice, chapter tests and skip-tests are now shown and counted honestly. Do it before Alpha.
+2. **Unit: age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. **Brief done** (`ops/work/age-confirmation/brief.md`, P1 to P6, decision M.5.a). Founder items are Blockers 12 and 13. **`tech.md` done (G2, M.5.b)**. The migration is additive (an enum and two nullable columns on `User`). The Lead created Neon branch `test-age-confirmation` (`br-red-mud-batele3k`) on 2026-11-24. **Developer implementing now.** Testing may also reuse `br-winter-poetry-baq6sbs4`. P6 (sign-out) is proven end to end only by Blocker 7. **Lead ruling:** Alpha accepts the Tester’s branch evidence for P5 (an existing learner), because live has no dev learner with progress. Runs after grading-fallback-honesty.
 3. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
@@ -36,9 +36,14 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 | What | Where | State |
 |---|---|---|
 | Old worktrees | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
-| Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`) | Deleting needs the founder's yes (Blocker 11) |
+| Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`), `test-age-confirmation` (`br-red-mud-batele3k`) | Deleting needs the founder's yes (Blocker 11) |
 
 ## PM backlog
+
+- From `grading-fallback-honesty/test.md`:
+  - **F1:** model comments repeat the verdict, and on a miss the answer too (“That’s incorrect — いしゃ means doctor.”). That is the grading prompt, so bundle it with B1’s eval.
+  - **F2:** the end screen keeps 🎉 when nothing counted.
+  - **F3:** with the grader down, one meaning such as “hello” is “couldn’t grade”, because the stored answer holds several meanings.
 
 - From `open-check-followup/triage.md`:
   - B3: the eval's pair rule (F3).
