@@ -1,6 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { GradingService } from './grading.service';
+import {
+  GradingService,
+  modelComment,
+  type OpenGradeResult,
+} from './grading.service';
 import {
   LLM_CLIENT,
   LlmCallError,
@@ -237,5 +241,40 @@ describe('GradingService', () => {
     expect(result.correct).toBe(false);
     expect(result.scored).toBe(true);
     expect(parseJson).not.toHaveBeenCalled();
+  });
+});
+
+describe('modelComment (B.2.d, B.2.g)', () => {
+  const result = (over: Partial<OpenGradeResult>): OpenGradeResult => ({
+    rating: 'Good',
+    correct: true,
+    feedback: 'Close — but mind the particle.',
+    exemplar: 'x',
+    gradedBy: 'ai',
+    scored: true,
+    ...over,
+  });
+
+  it("returns the model's own comment", () => {
+    expect(modelComment(result({}))).toBe('Close — but mind the particle.');
+  });
+
+  it.each([
+    [
+      'a fallback match',
+      result({ gradedBy: 'fallback', feedback: 'Correct.' }),
+    ],
+    [
+      'a fallback miss',
+      result({
+        gradedBy: 'fallback',
+        correct: false,
+        rating: 'Again',
+        feedback: 'Not quite — the expected answer was: x.',
+      }),
+    ],
+    ['an empty model comment', result({ feedback: '' })],
+  ])('returns nothing for %s', (_label, r) => {
+    expect(modelComment(r)).toBeUndefined();
   });
 });

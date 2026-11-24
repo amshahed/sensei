@@ -372,6 +372,7 @@ describe('AssessmentsService', () => {
         answer: 'KA2',
         correct: true,
         correctAnswer: 'ka2',
+        scored: true,
       });
       const [[claim]] = attemptUpdateMany.mock.calls as [
         [{ where: unknown; data: Record<string, unknown> }],
@@ -563,6 +564,79 @@ describe('AssessmentsService', () => {
           ([a]) => a.itemId,
         ),
       ).not.toContain('g1');
+    });
+
+    it('marks an ungraded answer scored: false in the results and the stored JSON (B.2.g)', async () => {
+      attemptFindUnique.mockResolvedValue(attempt({ kind: 'EXIT' }));
+      gradeOpen.mockResolvedValue(
+        aiGrade(false, {
+          gradedBy: 'fallback',
+          rating: 'Again',
+          feedback: 'Not quite — the expected answer was: please do.',
+        }),
+      );
+      const res = await service.submit(
+        'u1',
+        'att-1',
+        answers({ ...allRight, k3: 'wrong', g1: 'please, do it' }),
+      );
+      const scoredById = Object.fromEntries(
+        res.results.map((r) => [r.itemId, r.scored]),
+      );
+      expect(scoredById).toEqual({ k1: true, k2: true, k3: true, g1: false });
+      expect(res.results.find((r) => r.itemId === 'g1')).toEqual({
+        itemId: 'g1',
+        prompt: 'What does 「〜ください」 mean?',
+        answer: 'please, do it',
+        correct: false,
+        correctAnswer: 'please do',
+        scored: false,
+      });
+      const [[update]] = attemptUpdateMany.mock.calls as [
+        [
+          {
+            data: { results: { items: { itemId: string; scored: boolean }[] } };
+          },
+        ],
+      ];
+      expect(
+        update.data.results.items.map((i) => [i.itemId, i.scored]),
+      ).toEqual([
+        ['k1', true],
+        ['k2', true],
+        ['k3', true],
+        ['g1', false],
+      ]);
+    });
+
+    it('a replay keeps scored as stored, and reads answers stored before it as graded', async () => {
+      const item = (itemId: string, extra: Record<string, unknown>) => ({
+        itemId,
+        prompt: 'p',
+        answer: 'a',
+        correct: false,
+        correctAnswer: 'x',
+        ...extra,
+      });
+      attemptFindUnique.mockResolvedValue(
+        attempt({
+          ...storedPass,
+          results: {
+            ...storedPass.results,
+            items: [
+              item('k1', {}),
+              item('g1', { scored: false }),
+              item('k2', { scored: true }),
+            ],
+          },
+        }),
+      );
+      const res = await service.submit('u1', 'att-1', answers(allRight));
+      expect(res.results.map((r) => [r.itemId, r.scored])).toEqual([
+        ['k1', true],
+        ['g1', false],
+        ['k2', true],
+      ]);
     });
 
     it('503s and leaves the attempt open when nothing could be graded', async () => {

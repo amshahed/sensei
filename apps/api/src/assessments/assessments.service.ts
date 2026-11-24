@@ -253,7 +253,14 @@ export class AssessmentsService {
         : [];
     const stored: StoredResults = {
       items: graded.map(
-        ({ itemId, prompt, answer, correct: ok, correctAnswer, scored: s }) => ({
+        ({
+          itemId,
+          prompt,
+          answer,
+          correct: ok,
+          correctAnswer,
+          scored: s,
+        }) => ({
           itemId,
           prompt,
           answer,

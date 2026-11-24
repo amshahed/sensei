@@ -21,6 +21,7 @@ import type {
   ReviewResultDto,
 } from '@sensei/types';
 import { AppModule } from './app.module';
+import { LLM_CLIENT, type LlmClient } from './llm/llm-client';
 import { PrismaService } from './prisma/prisma.service';
 import { DEV_USER_HEADER } from './auth/dev-user';
 import { LESSON_RANDOM } from './lessons/lessons.service';
@@ -337,7 +338,7 @@ function fakePrisma(extraLessonItems: Array<FakeItem> = []) {
     },
     item: {
       findUnique: ({ where: { id } }: { where: { id: string } }) =>
-        Promise.resolve(id === kanaA.id ? kanaA : null),
+        Promise.resolve(taughtItem(id) ?? null),
       // By id (assessments) or by type (placement's distractor pool).
       findMany: ({ where }: { where: { id?: { in: string[] } } }) =>
         Promise.resolve(
@@ -671,6 +672,131 @@ describe('kanji evidence over HTTP (G.4.d)', () => {
       KANJI: 1,
       GRAMMAR: 0,
     });
+  });
+});
+
+describe('an answer the grader could not judge, over HTTP (B.2.g)', () => {
+  const sushi: FakeItem = {
+    ...kanaA,
+    id: 'ja:vocab:すし',
+    type: 'VOCAB',
+    display: 'すし',
+    reading: 'すし',
+    meaning: 'sushi',
+    data: {},
+  };
+  /** The grader is down: deterministic fallback, whatever an .env holds. */
+  const graderDown: LlmClient = {
+    enabled: false,
+    parseJson: () => Promise.reject(new Error('grader is down')),
+  };
+  let app: INestApplication<App>;
+  const post = (user: string, path: string, body: object) =>
+    request(app.getHttpServer())
+      .post(path)
+      .set(DEV_USER_HEADER, user)
+      .send(body)
+      .expect(201);
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue(fakePrisma([sushi]))
+      .overrideProvider(LLM_CLIENT)
+      .useValue(graderDown)
+      .compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  const reviewPath = `/reviews/${encodeURIComponent(sushi.id)}/answer`;
+
+  it('a review: unscored, the answer once, no fallback line (P1)', async () => {
+    const res = await post('user_b5_review', reviewPath, {
+      answer: 'raw fish rice',
+    });
+    expect(res.body as ReviewResultDto).toMatchObject({
+      itemId: sushi.id,
+      correct: false,
+      correctAnswer: 'sushi',
+      scored: false,
+    });
+    expect(res.body).not.toHaveProperty('feedback');
+  });
+
+  it('a review typed exactly: graded correct, the verdict not repeated (P2)', async () => {
+    const res = await post('user_b5_review', reviewPath, { answer: 'Sushi' });
+    expect(res.body as ReviewResultDto).toMatchObject({
+      correct: true,
+      scored: true,
+    });
+    expect(res.body).not.toHaveProperty('feedback');
+  });
+
+  it('a practice answer: unscored, no fallback line (P1)', async () => {
+    const user = 'user_b5_practice';
+    // An exact answer is graded, so it creates the mastery row practice needs.
+    await post(user, reviewPath, { answer: 'sushi' });
+    const session = (
+      await post(user, '/practice/sessions', {
+        scope: { kind: 'chapter', id: 'ch-1' },
+        types: ['VOCAB'],
+      })
+    ).body as PracticeSessionDto;
+    const res = await post(
+      user,
+      `/practice/sessions/${session.sessionId}/answer`,
+      {
+        itemId: sushi.id,
+        answer: 'raw fish rice',
+      },
+    );
+    expect(res.body as PracticeResultDto).toMatchObject({
+      correct: false,
+      correctAnswer: 'sushi',
+      scored: false,
+      counted: false,
+    });
+    expect(res.body).not.toHaveProperty('feedback');
+  });
+
+  it('a chapter test marks each result scored, so an ungraded one is not a miss (P5)', async () => {
+    const user = 'user_b5_assessment';
+    const started = (await post(user, '/chapters/ch-1/assessment', {}))
+      .body as AssessmentStartDto;
+    const res = await post(user, `/assessments/${started.attemptId}/submit`, {
+      answers: [
+        { itemId: kanaA.id, answer: 'a' },
+        { itemId: sushi.id, answer: 'raw fish rice' },
+      ],
+    });
+    const body = res.body as AssessmentResultDto;
+    expect(body).toMatchObject({ passed: true, correct: 1, total: 1 });
+    expect(
+      Object.fromEntries(body.results.map((r) => [r.itemId, r.scored])),
+    ).toEqual({ [kanaA.id]: true, [sushi.id]: false });
+    expect(body.results.find((r) => r.itemId === sushi.id)).toEqual({
+      itemId: sushi.id,
+      prompt: expect.any(String) as string,
+      answer: 'raw fish rice',
+      correct: false,
+      correctAnswer: 'sushi',
+      scored: false,
+    });
+
+    // A repeat submit replays the same flags.
+    const replay = await post(
+      user,
+      `/assessments/${started.attemptId}/submit`,
+      {
+        answers: [],
+      },
+    );
+    expect((replay.body as AssessmentResultDto).results).toEqual(body.results);
   });
 });
 
