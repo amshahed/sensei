@@ -225,6 +225,17 @@ model User {
   quietEndMinute   Int       @default(480)
   /// When the in-context offer was answered (Turn on / Not now): asked once.
   remindersAskedAt DateTime?
+
+  /// Age confirmation (M.5, M.5.a). Null until answered. The app never
+  /// overwrites it; a mis-tap reset is a team edit (age-confirmation tech.md 3.4).
+  ageAnswer     AgeAnswer?
+  ageAnsweredAt DateTime?
+}
+
+/// The age question before onboarding (M.5.a): the beta is for adults.
+enum AgeAnswer {
+  ADULT // "I'm 18 or older"
+  UNDER_18 // "I'm under 18"
 }
 
 /// Signup Q2 (I.3.b): drives placement routing (I.3.d).

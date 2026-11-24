@@ -526,11 +526,24 @@ export interface IntakeRequest {
 }
 
 /**
- * Where the learner is in onboarding. `placement` is `pending` while a
- * placement quiz is owed (intake says they've studied before and they haven't
- * finished or skipped it yet).
+ * The age question before anything else in onboarding (M.5, M.5.a). The beta
+ * is for adults while runtime grading uses Gemini.
+ */
+export type AgeAnswer = "ADULT" | "UNDER_18";
+
+/** `POST /onboarding/age`. Stored once; a later answer never overwrites it. */
+export interface AgeAnswerRequest {
+  answer: AgeAnswer;
+}
+
+/**
+ * Where the learner is in onboarding. `ageAnswer` is null until the age
+ * question is answered; only `ADULT` goes on to the survey. `placement` is
+ * `pending` while a placement quiz is owed (intake says they've studied
+ * before and they haven't finished or skipped it yet).
  */
 export interface OnboardingDto {
+  ageAnswer: AgeAnswer | null;
   intakeDone: boolean;
   placement: "not_needed" | "pending" | "done";
 }
