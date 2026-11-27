@@ -10,6 +10,8 @@ Guidance for Claude Code and any agent working in this repository.
 4. Read `ops/BLOCKERS.md`: what is waiting on the founder.
 5. Continue from the checkpoint's **Next actions**.
 
+**Devices.** Work moves between the founder's server, Mac and Windows machines. Read `ops/DEVICES.md` for how. On a device you just arrived on, run `bash ops/bin/setup-device.sh`, or `git pull && node ops/bin/state.mjs pull`. Before leaving one, run `bash ops/bin/handoff.sh`. Never put a secret in this repo: it is public.
+
 **Do not ask the founder what to do next.** Day-to-day product, technical and content decisions were delegated on 2026-11-08 (`decisions.md` OM.1). The team decides, logs and continues. The founder is involved only for the stop list in `ops/OPERATING_MODEL.md`. If the founder makes a specific request, do that first, then return to the checkpoint.
 
 **Persistence rule.** Project state lives in this repo, never in session context or auto-memory. Keep context small: dump detail to `ops/journal.md` or the work unit folder, and keep `ops/CHECKPOINT.md` current so any new session can resume from it alone.
