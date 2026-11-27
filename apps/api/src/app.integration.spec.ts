@@ -21,6 +21,7 @@ import type {
   ReviewResultDto,
 } from '@sensei/types';
 import { AppModule } from './app.module';
+import { AgeGateService } from './auth/age-gate.service';
 import { LLM_CLIENT, type LlmClient } from './llm/llm-client';
 import { PrismaService } from './prisma/prisma.service';
 import { DEV_USER_HEADER } from './auth/dev-user';
@@ -369,6 +370,9 @@ function fakePrisma(extraLessonItems: Array<FakeItem> = []) {
               quietStartMinute: 1320,
               quietEndMinute: 480,
               remindersAskedAt: null,
+              // Age confirmation (M.5.b): unanswered until POST /onboarding/age.
+              ageAnswer: null,
+              ageAnsweredAt: null,
               ...create,
             };
         users.set(create.id, row);
@@ -601,6 +605,14 @@ function fakePrisma(extraLessonItems: Array<FakeItem> = []) {
   return fake;
 }
 
+/**
+ * Every learner is an adult who has answered the age question, for suites
+ * about other things. The real gate is exercised in its own describe.
+ */
+const everyoneAdult: Pick<AgeGateService, 'answerFor'> = {
+  answerFor: () => Promise.resolve('ADULT'),
+};
+
 describe('kanji evidence over HTTP (G.4.d)', () => {
   const kanji = (char: string, on: string, kun: string) => ({
     ...kanaA,
@@ -615,6 +627,8 @@ describe('kanji evidence over HTTP (G.4.d)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AgeGateService)
+      .useValue(everyoneAdult)
       .overrideProvider(PrismaService)
       .useValue(
         fakePrisma([
@@ -700,6 +714,8 @@ describe('an answer the grader could not judge, over HTTP (B.2.g)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AgeGateService)
+      .useValue(everyoneAdult)
       .overrideProvider(PrismaService)
       .useValue(fakePrisma([sushi]))
       .overrideProvider(LLM_CLIENT)
@@ -800,6 +816,155 @@ describe('an answer the grader could not judge, over HTTP (B.2.g)', () => {
   });
 });
 
+describe('the age question gates the API (M.5.a, M.5.b)', () => {
+  const sushi: FakeItem = {
+    ...kanaA,
+    id: 'ja:vocab:すし',
+    type: 'VOCAB',
+    display: 'すし',
+    reading: 'すし',
+    meaning: 'sushi',
+    data: {},
+  };
+  /** An enabled grader whose every call is recorded (and fails, so no model runs). */
+  const parseJson = jest.fn(() => Promise.reject(new Error('grader stub')));
+  const grader = { enabled: true, parseJson } as unknown as LlmClient;
+  let app: INestApplication<App>;
+  const as = (user: string) => ({
+    get: (path: string) =>
+      request(app.getHttpServer()).get(path).set(DEV_USER_HEADER, user),
+    post: (path: string, body?: object) =>
+      request(app.getHttpServer())
+        .post(path)
+        .set(DEV_USER_HEADER, user)
+        .send(body),
+  });
+  const reviewPath = `/reviews/${encodeURIComponent(sushi.id)}/answer`;
+  /** The four routes that reach the grader today, with a gradable body. */
+  const gradingRoutes: Array<[string, object]> = [
+    ['/checks/chk-1/answer', { answer: 'あ' }],
+    [reviewPath, { answer: 'raw fish rice' }],
+    [
+      '/practice/sessions/any-session/answer',
+      { itemId: sushi.id, answer: 'raw fish rice' },
+    ],
+    [
+      '/assessments/any-attempt/submit',
+      { answers: [{ itemId: sushi.id, answer: 'raw fish rice' }] },
+    ],
+  ];
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService)
+      .useValue(fakePrisma([sushi]))
+      .overrideProvider(LLM_CLIENT)
+      .useValue(grader)
+      .compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => parseJson.mockClear());
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  /** Everything past the gate refuses, and the grader is never called. */
+  async function expectBlocked(user: string, message: string) {
+    const u = as(user);
+    for (const [path, body] of gradingRoutes) {
+      const res = await u.post(path, body).expect(403);
+      expect((res.body as { message: string }).message).toBe(message);
+    }
+    await u
+      .post('/onboarding/intake', {
+        interests: ['TRAVEL'],
+        priorExperience: 'NONE',
+      })
+      .expect(403);
+    await u.post('/placement').expect(403);
+    await u.get('/curriculum').expect(403);
+    await u.get(`/lessons/${lessonRow.slug}`).expect(403);
+    await u.get('/reviews/due').expect(403);
+    expect(parseJson).not.toHaveBeenCalled();
+  }
+
+  it('a new account reaches only the exempt routes until it answers (P1)', async () => {
+    const u = as('user_age_new');
+    await request(app.getHttpServer()).get('/health').expect(200);
+    await u.get('/me').expect(200);
+    expect((await u.get('/onboarding').expect(200)).body).toEqual({
+      ageAnswer: null,
+      intakeDone: false,
+      placement: 'not_needed',
+    });
+    await expectBlocked('user_age_new', 'Age not confirmed yet.');
+  });
+
+  it('POST /onboarding/age validates the answer', async () => {
+    const u = as('user_age_bad');
+    for (const body of [{}, { answer: 'adult' }, { answer: 'OVER_18' }]) {
+      await u.post('/onboarding/age', body).expect(400);
+    }
+    expect((await u.get('/onboarding').expect(200)).body).toMatchObject({
+      ageAnswer: null,
+    });
+  });
+
+  it('an adult goes on to the survey and the grader; the answer sticks (P2)', async () => {
+    const u = as('user_age_adult');
+    expect(
+      (await u.post('/onboarding/age', { answer: 'ADULT' }).expect(201)).body,
+    ).toEqual({
+      ageAnswer: 'ADULT',
+      intakeDone: false,
+      placement: 'not_needed',
+    });
+    // A later answer changes nothing.
+    expect(
+      (await u.post('/onboarding/age', { answer: 'UNDER_18' }).expect(201))
+        .body,
+    ).toMatchObject({ ageAnswer: 'ADULT' });
+
+    // Non-exempt routes now pass, so AuthGuard ran first and set the user.
+    await u
+      .post('/onboarding/intake', {
+        interests: ['TRAVEL'],
+        priorExperience: 'NONE',
+      })
+      .expect(201);
+    await u.get('/curriculum').expect(200);
+    // The same grading call the blocked accounts make does reach the grader.
+    await u.post(reviewPath, { answer: 'raw fish rice' }).expect(201);
+    expect(parseJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('under 18 is refused everywhere, and re-answering never flips it (P3, P4)', async () => {
+    const u = as('user_age_minor');
+    expect(
+      (await u.post('/onboarding/age', { answer: 'UNDER_18' }).expect(201))
+        .body,
+    ).toMatchObject({ ageAnswer: 'UNDER_18' });
+    await expectBlocked(
+      'user_age_minor',
+      "Sensei's beta is for adults for now.",
+    );
+
+    expect(
+      (await u.post('/onboarding/age', { answer: 'ADULT' }).expect(201)).body,
+    ).toMatchObject({ ageAnswer: 'UNDER_18' });
+    expect((await u.get('/onboarding').expect(200)).body).toMatchObject({
+      ageAnswer: 'UNDER_18',
+    });
+    await expectBlocked(
+      'user_age_minor',
+      "Sensei's beta is for adults for now.",
+    );
+  });
+});
+
 describe('API (HTTP integration)', () => {
   let app: INestApplication<App>;
   /** What LESSON_RANDOM draws from: authored order unless a test swaps it. */
@@ -809,6 +974,8 @@ describe('API (HTTP integration)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(AgeGateService)
+      .useValue(everyoneAdult)
       .overrideProvider(PrismaService)
       .useValue(fakePrisma())
       .overrideProvider(LESSON_RANDOM)
@@ -1279,7 +1446,11 @@ describe('API (HTTP integration)', () => {
     it('a new learner owes the survey first; placement 400s until then', async () => {
       const u = as('user_onboard_new');
       const res = await u.get('/onboarding').expect(200);
-      expect(res.body).toEqual({ intakeDone: false, placement: 'not_needed' });
+      expect(res.body).toEqual({
+        ageAnswer: null,
+        intakeDone: false,
+        placement: 'not_needed',
+      });
       await u.post('/placement').expect(400);
     });
 
@@ -1309,6 +1480,7 @@ describe('API (HTTP integration)', () => {
         })
         .expect(201);
       expect(res.body as OnboardingDto).toEqual({
+        ageAnswer: null,
         intakeDone: true,
         placement: 'not_needed',
       });
@@ -1334,7 +1506,11 @@ describe('API (HTTP integration)', () => {
             dailyTargetMinutes: 20,
           })
           .expect(201);
-        expect(res.body).toEqual({ intakeDone: true, placement: 'pending' });
+        expect(res.body).toEqual({
+          ageAnswer: null,
+          intakeDone: true,
+          placement: 'pending',
+        });
       });
 
       it('POST /placement asks multiple-choice kana without leaking answers', async () => {
@@ -1400,6 +1576,7 @@ describe('API (HTTP integration)', () => {
         expect(replay.body).toEqual(body);
 
         expect((await u.get('/onboarding').expect(200)).body).toEqual({
+          ageAnswer: null,
           intakeDone: true,
           placement: 'done',
         });
@@ -1447,6 +1624,7 @@ describe('API (HTTP integration)', () => {
       // user_int_test completed the-five-vowels earlier in this file.
       const u = as('user_int_test');
       expect((await u.get('/onboarding').expect(200)).body).toEqual({
+        ageAnswer: null,
         intakeDone: false,
         placement: 'not_needed',
       });
@@ -1456,7 +1634,11 @@ describe('API (HTTP integration)', () => {
           priorExperience: 'FAIR_AMOUNT',
         })
         .expect(201);
-      expect(res.body).toEqual({ intakeDone: true, placement: 'not_needed' });
+      expect(res.body).toEqual({
+        ageAnswer: null,
+        intakeDone: true,
+        placement: 'not_needed',
+      });
       await u.post('/placement').expect(400);
       await u.post('/placement/skip').expect(400);
     });
@@ -1479,6 +1661,7 @@ describe('API (HTTP integration)', () => {
       // Idempotent, and placement is no longer owed.
       await u.post('/placement/skip').expect(201);
       expect((await u.get('/onboarding').expect(200)).body).toEqual({
+        ageAnswer: null,
         intakeDone: true,
         placement: 'done',
       });
