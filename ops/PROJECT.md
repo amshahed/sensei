@@ -49,7 +49,8 @@ pnpm exec expo export --platform ios --output-dir <scratchpad>
 
 ## Git workflow
 
-- `main` is the default branch. Keep the main checkout at `/Users/sh/workspace/sensei` on `main`. It holds `apps/api/.env` and is where state files are edited.
+- `main` is the default branch. Keep the main checkout (the repo root: `~/workspace/sensei` by convention, `/Users/sh/workspace/sensei` on the Mac) on `main`. It holds `apps/api/.env` and is where state files are edited.
+- **Devices:** the work moves between the server, the Mac and Windows. See `ops/DEVICES.md`. Run `bash ops/bin/handoff.sh` before leaving a device. Secrets, Claude sessions, drafts and datasets travel through the private store `amshahed/sensei-private` (`ops/bin/state.mjs`), never through this public repo.
 - Feature work goes in worktrees at `.claude/worktrees/<name>`. Each new worktree needs `pnpm install --offline --frozen-lockfile`, `pnpm --filter @sensei/types build`, and `pnpm --filter api prisma:generate`.
 - Merge with `gh pr merge <n> --merge`, using merge commits, not squash.
 - Finish code PRs before starting new ones. Stack only when strictly necessary.
@@ -74,7 +75,7 @@ items (ingest) → outline (skeleton) → draft → critique → PM review → p
 ```
 
 - Commands are `pnpm authoring:skeleton`, `authoring:draft`, `authoring:critique`, `authoring:review`, `authoring:publish`, from `apps/api`. Output is in `tools/authoring/output/` (gitignored).
-- To run from a worktree against the main `.env`, use `pnpm exec node --env-file=/Users/sh/workspace/sensei/apps/api/.env -r ts-node/register -r tsconfig-paths/register src/authoring/<cli>.ts ...`. `NODE_OPTIONS=--env-file` isn't allowed.
+- To run from a worktree against the main `.env`, use `pnpm exec node --env-file=<repo root>/apps/api/.env -r ts-node/register -r tsconfig-paths/register src/authoring/<cli>.ts ...`. `NODE_OPTIONS=--env-file` isn't allowed.
 - Regenerating the outline changes lesson IDs, so it needs `--force`. Never regenerate once drafts exist unless they are being thrown away.
 - Costs: Opus 4.8 at $5/$25 per million tokens in/out, Haiku 4.5 at $1/$5. Outline about $0.50, draft about $0.15 per lesson. Check the balance assumption in `ops/CHECKPOINT.md` before a batch.
 
