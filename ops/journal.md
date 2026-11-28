@@ -81,3 +81,12 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
   - The parser reads "reset at 5pm (Europe/London)", "resets Dec 2, 9am (America/New_York)" (a time zone conversion), "resets Mon 9am", "resets in 2h 13m" and "resets 11:30pm", and returns unknown for a message with no time.
 - Gotcha: Claude's prompt is `❯` plus U+00A0. The script normalises it, or the empty box reads as non-empty.
 - The real limit message's wording is unverified: no transcript on this machine holds one. Check `~/.local/state/sensei/auto-resume.log` after the first real limit.
+- Found on the way: the server had no git identity, so `sync-state.sh` failed at commit. The Lead set a repo-local `user.name`/`user.email` copied from the Mac's commits on this repo. Worktrees share it. Nothing was set globally.
+
+## 2026-11-28: age-confirmation Developer done, Tester split
+
+- PR #107 at `4c75871`: CI green, mergeable. 67 suites, 1,605 tests. `expo export` bundled 801 modules.
+- The T5 smoke ran on `br-winter-poetry-baq6sbs4`: the migration applied once, a second run found nothing pending, and the curl paths behaved as planned. Details in `dev.md`.
+- Drift-check gotcha: `prisma migrate diff` always shows `ReferenceDoc_embedding_hnsw_idx`, which Prisma can't model. It predates this unit.
+- `9aa0ed2` keeps its "wip" subject. Rewording it would rewrite pushed history.
+- Lead ruling: the Tester runs in two halves, server then Mac (checkpoint). Two cold starts cost more usage, but it moves overnight while the founder is away from the Mac.
