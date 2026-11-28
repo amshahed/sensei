@@ -1,6 +1,6 @@
 # Checkpoint
 
-Last updated: 2026-11-27 by the Lead.
+Last updated: 2026-11-28 by the Lead.
 
 Resume point for any session. Overwritten, never appended. Details live in `ops/journal.md` and `ops/work/`.
 
@@ -36,6 +36,10 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 - The work moves between the OMV server (default), the Mac (needed for the simulator) and Windows. See `ops/DEVICES.md`.
 - Secrets, Claude transcripts and memory, drafts, datasets and `~/.claude` config travel through the private store `amshahed/sensei-private`, using `node ops/bin/state.mjs push|pull|status`.
 - Leave a device with `bash ops/bin/handoff.sh`. Arrive with `bash ops/bin/setup-device.sh`.
+- **Sessions now run on the server** (`~/workspace/sensei` on `turingMachine`, tmux session `sensei`, Remote Control name "sensei").
+- The server is Linux. It can't run the iOS simulator, and Chrome isn't installed. Everything else works there: tests, the API, authoring, Neon and `expo export`.
+- A Tester that needs on-screen evidence (`xcrun simctl` screenshots), and the Alpha run, must run on the Mac. Hand off with `handoff.sh` on the server, then `setup-device.sh` on the Mac, and back afterwards.
+- The Mac's old worktrees are not on the server. `feat/age-confirmation` is pushed (`9aa0ed2`), so create a fresh worktree from it on the server.
 
 ## In flight
 
