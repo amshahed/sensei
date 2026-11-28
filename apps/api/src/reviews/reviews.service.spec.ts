@@ -1,5 +1,6 @@
 import { StreakService } from '../streak/streak.service';
 import { Test } from '@nestjs/testing';
+import { Rating } from 'ts-fsrs';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReviewsService, REVIEW_SESSION_CAP } from './reviews.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -205,11 +206,59 @@ describe('ReviewsService', () => {
         scored: true,
         feedback: 'Exactly.',
       });
-      const result = await service.grade('dev-user', 'ja:vocab:すし', 'sushi');
+      // Not a listed meaning ('sushi' itself is right at once, G.4.h).
+      const result = await service.grade(
+        'dev-user',
+        'ja:vocab:すし',
+        'raw fish on rice',
+      );
+      expect(gradeOpen).toHaveBeenCalled();
       expect(result).toMatchObject({ correct: true, feedback: 'Exactly.' });
       expect(recordCheckResult).toHaveBeenCalledWith(
         expect.objectContaining({ correct: true, rating: 4 }),
       );
+    });
+
+    it('a listed meaning is right at once, even with the grader hanging (G.4.h)', async () => {
+      itemFindUnique.mockResolvedValue({
+        id: 'ja:vocab:こんにちは',
+        type: 'VOCAB',
+        display: 'こんにちは',
+        reading: 'こんにちは',
+        meaning: 'hello; good day; good afternoon',
+        data: {},
+      });
+      gradeOpen.mockImplementation(() => new Promise(() => {}));
+      streakRecord.mockClear();
+
+      const result = await service.grade(
+        'dev-user',
+        'ja:vocab:こんにちは',
+        'Hello!',
+      );
+
+      // "Correct!" with nothing under it: no `feedback` key.
+      expect(result).toEqual({
+        itemId: 'ja:vocab:こんにちは',
+        correct: true,
+        correctAnswer: 'hello; good day; good afternoon',
+        scored: true,
+        mastery: 0.25,
+      });
+      expect(gradeOpen).not.toHaveBeenCalled();
+      // Scheduled like any right answer (P6).
+      expect(recordCheckResult).toHaveBeenCalledWith({
+        userId: 'dev-user',
+        itemId: 'ja:vocab:こんにちは',
+        format: 'TYPED',
+        correct: true,
+        rating: Rating.Good,
+      });
+      expect(streakRecord).toHaveBeenCalledWith('dev-user', {
+        kind: 'answers',
+        count: 1,
+        review: true,
+      });
     });
 
     it('grader down and fallback says wrong: shows the answer, records nothing, learner moves on', async () => {
