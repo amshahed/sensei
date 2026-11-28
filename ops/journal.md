@@ -66,3 +66,18 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - Launcher `~/.local/bin/sensei` (tmux session `sensei`), and Mac ssh aliases `sensei`, `turing`, `turing-ts`.
 - tmux needs the founder's sudo password: `sudo apt-get install -y tmux`.
 - Both machines use pnpm's isolated layout. pnpm 11 ignores `.npmrc`'s `node-linker=hoisted`, so that comment is stale. No change is needed, because the Mac already runs this way.
+
+## 2026-11-28: auto-resume after usage limits (founder request)
+
+- The founder is on Claude Pro, and asked for sessions to resume by themselves when a usage limit resets. Claude Code has no setting for this, so a watcher types the resume prompt through tmux.
+- `ops/bin/auto-resume.sh` runs in tmux window `sensei:auto-resume`. `~/.local/bin/sensei` (server only, not in the repo) now opens that window whenever it's missing, in a restart loop. The founder approved the launcher change and the new script ("yes, go ahead").
+- Rejected:
+  - scheduled tasks inside Claude Code: they fire at fixed times, not at the reset;
+  - cloud `/schedule`: no server `.env` or Neon, and the same quota;
+  - cron `claude --continue`: a second process on the conversation the tmux one holds.
+- Tested against a fake Claude pane: a python3 copy named `claude` in a throwaway tmux session.
+  - It types once after the reset time, and a second copy refuses to start (flock).
+  - It types nothing while busy, nothing over text in the box, and, with a menu up, sends one Escape and types nothing.
+  - The parser reads "reset at 5pm (Europe/London)", "resets Dec 2, 9am (America/New_York)" (a time zone conversion), "resets Mon 9am", "resets in 2h 13m" and "resets 11:30pm", and returns unknown for a message with no time.
+- Gotcha: Claude's prompt is `❯` plus U+00A0. The script normalises it, or the empty box reads as non-empty.
+- The real limit message's wording is unverified: no transcript on this machine holds one. Check `~/.local/state/sensei/auto-resume.log` after the first real limit.

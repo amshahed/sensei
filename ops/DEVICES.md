@@ -60,6 +60,14 @@ The server is set up: `turingMachine` (Debian 13, OMV), user `shahed`, LAN `192.
 - A fresh `claude` reads `ops/CHECKPOINT.md` and carries on.
 - `/resume` inside Claude lists the old conversations, including the Mac's.
 
+**Auto-resume after a usage limit** (founder request, 2026-11-28). The founder is on Claude Pro, so sessions stop at the 5-hour and weekly caps. The launcher also opens tmux window 1, `auto-resume`, which runs `ops/bin/auto-resume.sh` and restarts it if it exits.
+- Every minute it reads the bottom of Claude's pane (window 0). When Claude is idle at an empty prompt and the screen shows a usage-limit message, it waits until 2 minutes after the stated reset time. Then it types a prompt telling the Lead to resume from `CHECKPOINT.md` and restart any agent that was cut off.
+- If the limit hasn't lifted, Claude just refuses again, which costs nothing, and the script retries every 15 minutes. If the message gives no time, it tries every 30 minutes.
+- It never types while Claude is working, over text already in the box, or into a menu. If a dialog hides the box, it sends one Escape and types only if the empty box comes back.
+- **Agents cut off by a limit die.** Their progress since the last commit, or since their last file in the work unit, may have to be redone.
+- **Check it:** `bash ops/bin/auto-resume.sh --once` (one read of the screen, no typing). The log is `~/.local/state/sensei/auto-resume.log`. The exact wording of the limit message isn't recorded anywhere yet, so check the log after the first real limit. If it says "no readable time", widen `STRICT_RE` in the script.
+- **Turn it off:** `tmux kill-window -t sensei:auto-resume`. The launcher brings it back on the next attach.
+
 **Machine-specific rules.** The shared `~/.claude/CLAUDE.md` (synced) ends with `@~/.claude/MACHINE.md`. Each machine keeps its own `MACHINE.md`, which is never synced. The server's holds the NAS hard rules (never touch the photo HDD, ask before installs, OMV owns `/etc`). The Mac's says it is the simulator machine.
 
 Use `handoff.sh` and `setup-device.sh` only when the work itself moves machines, for example to the Mac for simulator work.
