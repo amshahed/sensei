@@ -25,9 +25,12 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 1. **Unit age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. Brief and `tech.md` done (M.5.a, M.5.b). Founder items are Blockers 12 and 13.
    - Branch `feat/age-confirmation` (`9aa0ed2`, pushed): the migration, types, AgeGuard, `POST /onboarding/age` and the integration spec. The Lead ran the API specs on the server on 2026-11-28: all green, so the "WIP" spec passes.
    - Server worktree: `.claude/worktrees/age-confirmation`, installed and generated.
-   - **Developer started 2026-11-28** to finish T4 (the app), T5, T6, `dev.md` and the PR. No PR yet.
+   - **PR #107 open**, head `4c75871`: CI green, mergeable, `dev.md` written. Developer done. `/code-review high` found five things: two fixed, three argued against in `dev.md`. One fix touches `AuthGate.tsx` (the first signed-in request had no token), which the Tester must judge.
+   - **Lead ruling 2026-11-28: the Tester runs in two halves**, because the founder wasn't at the Mac and nothing else is unblocked.
+     - Half 1 runs on the server, now: the `tech.md` 3.2 rehearsal on `test-age-confirmation`, Tester-API, Jest, the review, and a diff read.
+     - Half 2 is a fresh Tester on the Mac for the Tester-sim cases, on the same branch.
+     - G3 needs both halves. Half 1 alone is never PASS.
    - **Lead ruling on T5:** the server can't run the simulator. The Developer smokes the API on `br-winter-poetry-baq6sbs4` and runs `expo export`. The SE screenshot moves to the Tester's simulator work, which runs on the Mac.
-   - Then the Tester (on the Mac, for P1 to P6 on the simulator) runs on `test-age-confirmation` (`br-red-mud-batele3k`).
    - **Lead ruling:** Alpha accepts the Tester's branch evidence for P5 (an existing learner), because live has no dev learner with progress. P6 end to end is only Blocker 7.
 2. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
 3. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
@@ -52,7 +55,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 | What | Where | State |
 |---|---|---|
-| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, pushed at `9aa0ed2` | Developer finishing; no PR yet |
+| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, PR #107 at `4c75871` | Tester half 1 (server) running; half 2 needs the Mac |
 | Old worktrees (Mac only) | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
 | Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`), `test-age-confirmation` (`br-red-mud-batele3k`) | Deleting needs the founder's yes (Blocker 11) |
 

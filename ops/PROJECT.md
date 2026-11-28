@@ -117,6 +117,7 @@ Never sign up or sign in through Clerk during an alpha run. The real sign-in wal
 - After a parent lands, replay children with `git rebase --onto origin/main <old-parent-sha> <branch>`. A plain rebase double-applies merged commits.
 
 **Machine**
+- **Git identity.** The server had none, so commits failed. Since 2026-11-28 the server repo has a repo-local `user.name` and `user.email`, copied from the Mac's commits; worktrees share it. Any fresh clone needs the same before its first commit.
 - `expo start --ios` exited on its own `osascript` call to System Events and took Metro with it. Use `expo start --offline`, then open `exp://127.0.0.1:8081` with the simulator tool's `open_url`.
 - The simulator tool needs the founder to grant access per device in the simulator panel. Reuse `Sensei 22a SE3` so it only has to happen once.
 - macOS updates can reset the Xcode license, which blocks `git` and `python3` (`/usr/bin` shims). Only the founder can fix it with `sudo xcodebuild -license accept`. Until then `gh -R amshahed/sensei ...` works and `node` can replace Python.
