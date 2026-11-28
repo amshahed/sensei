@@ -1,4 +1,10 @@
-import { useEffect, useRef } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
 import {
   ClerkLoaded,
   ClerkProvider,
@@ -9,6 +15,17 @@ import {
 import { api, setAuthTokenProvider } from '../api';
 import { clerkPublishableKey, isClerkEnabled, tokenCache } from './clerk';
 import { AuthScreen } from './AuthScreen';
+
+/**
+ * Signs the learner out, or null when there is no account to sign out of
+ * (dev-stub mode). Screens that offer "Sign out" render it only when non-null.
+ */
+const SignOutContext = createContext<(() => Promise<void>) | null>(null);
+
+/** The sign-out action for the current session, or null in dev-stub mode. */
+export function useSignOut(): (() => Promise<void>) | null {
+  return useContext(SignOutContext);
+}
 
 /**
  * Gates the app behind authentication (L.6).
@@ -38,12 +55,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
 /**
  * Registers the Clerk session token with the API client and materialises the
- * user row (`GET /me`) once, then renders the app. Only mounts under
- * `<SignedIn>`, so the session is guaranteed present.
+ * user row (`GET /me`) once, then renders the app with sign-out available
+ * (the under-18 screen offers it, M.5.a). Only mounts under `<SignedIn>`, so
+ * the session is guaranteed present. Signing out swaps in `<SignedOut>`, and
+ * the cleanup below clears the token.
  */
 function AuthedApp({ children }: { children: React.ReactNode }) {
-  const { getToken } = useAuth();
+  const { getToken, signOut } = useAuth();
   const materialised = useRef(false);
+  const signOutOfClerk = useCallback(() => signOut(), [signOut]);
 
   useEffect(() => {
     // Install the token provider FIRST so the /me request below is
@@ -60,5 +80,9 @@ function AuthedApp({ children }: { children: React.ReactNode }) {
     return () => setAuthTokenProvider(null);
   }, [getToken]);
 
-  return <>{children}</>;
+  return (
+    <SignOutContext.Provider value={signOutOfClerk}>
+      {children}
+    </SignOutContext.Provider>
+  );
 }

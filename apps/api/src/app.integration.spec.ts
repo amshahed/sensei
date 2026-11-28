@@ -888,6 +888,11 @@ describe('the age question gates the API (M.5.a, M.5.b)', () => {
     await u.get('/curriculum').expect(403);
     await u.get(`/lessons/${lessonRow.slug}`).expect(403);
     await u.get('/reviews/due').expect(403);
+    await u
+      .post('/practice/sessions', { scope: { kind: 'weakest' } })
+      .expect(403);
+    await u.post('/chapters/any-chapter/assessment').expect(403);
+    await u.get('/streak').expect(403);
     expect(parseJson).not.toHaveBeenCalled();
   }
 

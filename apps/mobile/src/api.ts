@@ -1,4 +1,6 @@
 import type {
+  AgeAnswer,
+  AgeAnswerRequest,
   AssessmentResultDto,
   AssessmentStartDto,
   AssessmentSubmitRequest,
@@ -232,9 +234,18 @@ export const api = {
     );
   },
 
-  /** What onboarding still owes: the signup survey, then placement (I.3). */
+  /** What onboarding still owes: age question, survey, then placement (M.5.a, I.3). */
   onboarding(): Promise<OnboardingDto> {
     return request<OnboardingDto>('/onboarding');
+  },
+
+  /** Answer the age question once (M.5.a). The stored answer comes back. */
+  answerAge(answer: AgeAnswer): Promise<OnboardingDto> {
+    const body: AgeAnswerRequest = { answer };
+    return request<OnboardingDto>('/onboarding/age', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 
   /** Submit the 3-question signup survey (once). */
