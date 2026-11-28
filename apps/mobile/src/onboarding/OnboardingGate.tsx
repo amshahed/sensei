@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import type { IntakeRequest, OnboardingDto } from '@sensei/types';
+import type { AgeAnswer, IntakeRequest, OnboardingDto } from '@sensei/types';
 import { api, ApiError } from '../api';
 import { PrimaryButton, ui } from '../ui';
+import { AdultsOnly, AgeQuestion } from './AgeScreen';
 import { IntakeScreen } from './IntakeScreen';
 import { PlacementFlow } from './PlacementFlow';
 
 /**
- * Onboarding before the app (I.3.a/I.3.d): the signup survey, then — for
- * learners who've studied before — the placement quiz, in the same session.
- * Renders the app once nothing is owed.
+ * Onboarding before the app (M.5.a, I.3.a/I.3.d): the age question, then the
+ * signup survey, then — for learners who've studied before — the placement
+ * quiz, in the same session. Renders the app once nothing is owed. Status is
+ * re-read on every launch, so the age answer holds across launches and devices.
  */
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<OnboardingDto | null>(null);
@@ -48,6 +50,29 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
+  // Unanswered. A missing field (an API from before the age question) asks
+  // too, rather than telling an adult they're under 18.
+  if (!state.ageAnswer) {
+    const answer = (a: AgeAnswer) => {
+      setSubmitting(true);
+      setSubmitError(null);
+      api
+        .answerAge(a)
+        // The stored answer comes back, even if another device answered first.
+        .then(setState)
+        .catch(() => setSubmitError('Couldn’t save your answer — try again.'))
+        .finally(() => setSubmitting(false));
+    };
+    return (
+      <AgeQuestion
+        onAnswer={answer}
+        submitting={submitting}
+        error={submitError}
+      />
+    );
+  }
+  // Only an adult goes on; anything else stops here (fails closed).
+  if (state.ageAnswer !== 'ADULT') return <AdultsOnly />;
   if (!state.intakeDone) {
     const submit = (req: IntakeRequest) => {
       setSubmitting(true);
