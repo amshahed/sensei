@@ -2100,3 +2100,13 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 - Gating the "to" rule on ingest part-of-speech data.
 
 **Reverse:** Revert the commit. Every meaning answer goes to the grader again, and rows written meanwhile are ordinary `Good` reviews.
+
+### G.4.j A `;` inside brackets doesn't split a listed meaning (amends G.4.i) (decided by Lead, 2026-11-28)
+
+**Decision:** When G.4.h splits a stored meaning into its listed senses, a `;` inside brackets is part of that bracketed note. "water (esp. cool; or cold)" is one sense, so "or cold" isn't accepted on its own.
+
+**Why:** It was the Developer's deviation in PR #112 (`exact-meaning-grading/dev.md` section 3). The Tester confirmed it on live data: without it, たち would accept "formerly honorific". The change can only accept less, so it fails safe to the grader. The Lead recorded it instead of starting a Tech Lead run for one line, because usage is tight.
+
+**Rejected:** Splitting on every `;` (G.4.i as first written). It accepts fragments of bracketed notes.
+
+**How to reverse:** Split on every `;` again in `apps/api/src/recall/listed-meaning.ts`.

@@ -10,88 +10,67 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## State
 
-- **108 of 120 lessons are live** (17 chapters, 874 checks): every lesson except the 12 audio lessons, which wait for Azure (Blocker 2).
-  - Waves 1 to 3 were reviewed by the PM (`ops/work/22c-full-batch/content-review*.md`).
-  - Lesson 120, the one open check, went live 2026-11-23 on the PM's ruling (`open-check-followup/triage.md`).
-- Units merged since 2026-11-16, each with a Tester PASS on its last commit:
-  - #82 `authoring-hardening`;
-  - #91 `open-check-followup`: the grader's comment, an honest "couldn't grade" on lesson checks, the multiline answer box;
-  - #95 `authoring-polish`: multiple-choice options are shuffled per request, 校 shows "school", verb kanji are asked as whole words, kana-only readings are shown once, and four draft-gate rules are added.
-- **Live kanji apply done 2026-11-23:** 9 rows. The backup is `ops/work/authoring-polish/kanji-rows-before.json`, and rollback is in the journal.
-- Decisions this stretch: F.1.c, F.1.d, F.2.f to F.2.k, B.2.c to B.2.f, G.4.f, G.4.g.
+- **108 of 120 lessons are live** (17 chapters, 874 checks). Only the 12 audio lessons remain, and they wait for Azure (Blocker 2). The PM reviewed every wave (`ops/work/22c-full-batch/`).
+- Merged since 2026-11-16, each with a Tester PASS: #82 `authoring-hardening`, #91 `open-check-followup`, #95 `authoring-polish`, #99 `grading-fallback-honesty` (B5) and **#112 `exact-meaning-grading`** (2026-11-28, `8470662`). With #112, a typed listed meaning is marked right without the grader in reviews, practice, chapter tests and skip-tests (G.4.h to G.4.j).
+- One code PR is open (#107). Server units run beside it only if they touch none of its files (Lead ruling 2026-11-28, in the journal).
 
 ## Next actions
 
-1. **Unit age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. Brief and `tech.md` done (M.5.a, M.5.b). Founder items are Blockers 12 and 13.
-   - Branch `feat/age-confirmation` (`9aa0ed2`, pushed): the migration, types, AgeGuard, `POST /onboarding/age` and the integration spec. The Lead ran the API specs on the server on 2026-11-28: all green, so the "WIP" spec passes.
-   - Server worktree: `.claude/worktrees/age-confirmation`, installed and generated.
-   - **PR #107 open**, head `4c75871`: CI green, mergeable, `dev.md` written. Developer done. `/code-review high` found five things: two fixed, three argued against in `dev.md`. One fix touches `AuthGate.tsx` (the first signed-in request had no token), which the Tester must judge.
-   - **Tester half 1 (server): PASS on `4c75871`** (`test.md`): the rehearsal steps 1 to 7 on `test-age-confirmation`, all 24 gated routes refused and 4 exempt, P5 hashes identical, and the `AuthGate.tsx` fix judged correct and in scope.
-   - **Next: Tester half 2 on the Mac**, a fresh Tester on the same commit and branch. It runs cases S1 to S7 exactly as `test.md` "For half 2 (Mac)" lists. If the head moves, half 1 re-runs too.
-   - Then G3 and the merge, the live deploy (`tech.md` 3.3), and the Alpha run.
-   - **F1 (Low) deferred by the Lead** to the PM backlog (below), not this PR.
-   - **Lead ruling on T5:** the server can't run the simulator. The Developer smokes the API on `br-winter-poetry-baq6sbs4` and runs `expo export`. The SE screenshot moves to the Tester's simulator work, which runs on the Mac.
-   - **Lead ruling:** Alpha accepts the Tester's branch evidence for P5 (an existing learner), because live has no dev learner with progress. P6 end to end is only Blocker 7.
-2. **Server unit `exact-meaning-grading`** (started 2026-11-28 while #107 waits on the Mac; Lead ruling: independent, no stack).
-   - A typed meaning that the word lists is marked right at once, without the grader: in reviews, practice, chapter tests and skip-tests (G.4.h).
-   - **Brief done (G1)**, P1 to P8. **`tech.md` done (G2, G.4.i)**: a pure listed-meaning check inside `RecallGraderService`'s meaning case, API only, no data change. The Lead confirmed no file overlaps #107.
-   - 隣 “next (to)” accepting “next” is covered by brief 3.2 and is now on Blocker 6's sample list.
-   - **Developer started** (worktree `.claude/worktrees/exact-meaning-grading`).
-   - It must touch none of #107's files.
-   - If a Mac session runs half 2 at the same time, each session edits only its own unit's lines here.
-3. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
-4. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
+1. **`age-confirmation`, PR #107** (M.5, 18+, before any real learner). Head `4c75871`, CI green.
+   - **Tester half 1 (server): PASS** (`ops/work/age-confirmation/test.md`).
+   - **Next: Tester half 2 on the Mac**, a fresh Tester on the same commit and on `test-age-confirmation` (`br-red-mud-batele3k`). It runs S1 to S7 exactly as `test.md` "For half 2 (Mac)" lists. If the head moves, half 1 re-runs too.
+   - Then G3 and the merge, the live deploy (`tech.md` 3.3: `pnpm prisma:deploy` from the main checkout), and the Alpha run.
+   - Standing rulings: F1 is deferred to the backlog. Alpha accepts the branch evidence for P5. P6 end to end is Blocker 7 only.
+2. **Next server unit: the PM picks it.** The top candidate is the skip-test outage loophole below. It must touch none of #107's files.
+3. **Alpha run (G4)**, blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
    - Use a fresh learner and dev-stub auth.
-5. **Audio lessons (12)** once Azure exists (Blocker 2). Drafting is about $1. Use `run-wave.mjs <from> <to> <cap> --include-audio`.
-6. **B1** (lesson 120's rubric: the name pattern and one fix) needs a clean grader eval. That is realistic only after Gemini billing (Blocker 9), and it must land before any real learner.
+4. **Audio lessons (12)** once Azure exists (Blocker 2). Drafting is about $1. Use `run-wave.mjs <from> <to> <cap> --include-audio`.
+5. **B1** (lesson 120's rubric) needs a clean grader eval. That is realistic only after Gemini billing (Blocker 9), and it must land before any real learner.
 
-## Devices (2026-11-27)
+If a Mac session and the server run at the same time, each edits only its own unit's lines here.
 
-- The work moves between the OMV server (default), the Mac (needed for the simulator) and Windows. See `ops/DEVICES.md`.
-- Secrets, Claude transcripts and memory, drafts, datasets and `~/.claude` config travel through the private store `amshahed/sensei-private`, using `node ops/bin/state.mjs push|pull|status`.
-- Leave a device with `bash ops/bin/handoff.sh`. Arrive with `bash ops/bin/setup-device.sh`.
-- **Auto-resume (2026-11-28):** tmux window `sensei:auto-resume` types a resume prompt when a usage limit lifts (`ops/DEVICES.md`). After a limit, check that any cut-off agent was restarted.
-- **Sessions now run on the server** (`~/workspace/sensei` on `turingMachine`, tmux session `sensei`, Remote Control name "sensei").
-- The server is Linux. It can't run the iOS simulator, and Chrome isn't installed. Everything else works there: tests, the API, authoring, Neon and `expo export`.
-- A Tester that needs on-screen evidence (`xcrun simctl` screenshots), and the Alpha run, must run on the Mac. Hand off with `handoff.sh` on the server, then `setup-device.sh` on the Mac, and back afterwards.
-- The Mac's old worktrees are not on the server. The server has its own worktree for `feat/age-confirmation`.
+## Devices
+
+- The server `turingMachine` is the default: tmux session `sensei`, with Remote Control under the name "sensei". The Mac is needed for the simulator, the Alpha run and Testers that need on-screen proof. See `ops/DEVICES.md`.
+- Move with `bash ops/bin/handoff.sh` (leaving) and `bash ops/bin/setup-device.sh` (arriving). Secrets, transcripts and drafts travel through the private store with `state.mjs`.
+- **Auto-resume:** tmux window `sensei:auto-resume` types a resume prompt when a usage limit lifts. After one, check that any cut-off agent was restarted.
 
 ## In flight
 
 | What | Where | State |
 |---|---|---|
-| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, PR #107 at `4c75871` | Half 1 PASS; half 2 needs the Mac |
-| Tester worktree | Server `.claude/worktrees/test-age-confirmation`, detached at `4c75871`, clean | Kept for a re-run; remove after merge |
-| Old worktrees (Mac only) | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
+| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, PR #107 | Half 1 PASS; half 2 needs the Mac |
+| Tester worktree (#107) | Server `.claude/worktrees/test-age-confirmation`, detached at `4c75871` | Kept for a re-run; remove after merge |
+| Old worktrees (Mac only) | `wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
 | Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`), `test-age-confirmation` (`br-red-mud-batele3k`) | Deleting needs the founder's yes (Blocker 11) |
 
 ## PM backlog
 
-- **From `age-confirmation/test.md` F1 (Low), a small unit after #107 merges.** Two simultaneous first requests for an account with no row: the loser gets a 500 (P2002). `submitAge`, `submitIntake` and `ensureUser` share the find-then-create `upsert`. Fix all three conflict-safe. Also make the app ignore a failed `answerAge` once an answer is stored, so a stale error can't show on intake.
-- From `grading-fallback-honesty/test.md`:
-  - **F1:** model comments repeat the verdict, and on a miss the answer too (“That’s incorrect — いしゃ means doctor.”). That is the grading prompt, so bundle it with B1’s eval.
-  - **F2:** the end screen keeps 🎉 when nothing counted.
-  - **F3:** with the grader down, one meaning such as “hello” is “couldn’t grade”, because the stored answer holds several meanings. **Picked 2026-11-28 as unit `exact-meaning-grading` (G.4.h).**
-
-- From `open-check-followup/triage.md`:
-  - B3: the eval's pair rule (F3).
-  - B4: Android keyboard behaviour, before any Android build.
-- From `authoring-polish/test.md`, Low: gate gaps F1 ("spelled in hiragana"), F2 (a katakana-description prompt refused) and F3 (an English note in a reading line refused). None hits today's drafts.
-- Untaught-word warning for the drafter: its own unit, before the audio wave (`authoring-polish/brief.md`).
-- Placement still asks for 食's reading with く(う) as the answer (Tech Lead flag, outside authoring-polish).
-- Lesson 20 is live, but publish refuses to republish it until its passage drops と and の.
-- Lesson 39 doesn't require typed reading; one outline flag turns it on. Lesson 67 q8 (typed ゼロ) passes by design.
-- Tester T2 (low): a self-answering prompt with an English-lookalike answer isn't caught.
-- Exact-match before calling the grading model would cut most calls (**picked 2026-11-28, in `exact-meaning-grading`**). A rare 12-second timeout marks a right paraphrase wrong. A writing answer of about 6,000 characters causes a 500. Exact kana that differs only in punctuation is marked wrong; this is probably fixed by H.2.c (2026-11-14), so confirm before working on it.
+- **Skip-test outage loophole, before real learners** (`exact-meaning-grading/test.md` F1, already on `main`). With the grader down, unscored answers drop out of the total, so one right answer plus 19 junk ones passes a skip-test and skips the chapter (`assessments.service.ts:237`). Fix: require a minimum share of scored answers before `passed`, at least for a skip-test.
+- **After #107 merges:** `exact-meaning-grading/test.md` F2. `app.integration.spec.ts:731` no longer reaches the grader's fallback. Give its item a meaning like 'sushi; raw fish'.
+- **After #107 merges:** `age-confirmation/test.md` F1. Two simultaneous first requests for an account with no row: the loser gets a 500. Make `submitAge`, `submitIntake` and `ensureUser` conflict-safe. In the app, ignore a failed `answerAge` once an answer is stored.
+- **Before these words are taught** (`exact-meaning-grading/test.md` F3 to F7):
+  - 全然 and ちっとも “(not) at all” would accept “at all”, 決して “(not) ever” would accept “ever”, and それほど “to that degree” would accept “that degree”;
+  - 犬's nested brackets mean “dog” isn't accepted;
+  - full-width letters, and word-split collisions.
+  Each fails safe or is an accepted cost today.
+- `grading-fallback-honesty/test.md`:
+  - F1: comments repeat the verdict. That is the grading prompt, so bundle it with B1.
+  - F2: the end screen keeps 🎉 when nothing counted.
+- `open-check-followup/triage.md`: B3 (the eval's pair rule), and B4 (the Android keyboard, before any Android build).
+- `authoring-polish/test.md` gate gaps F1 to F3 (Low; none hits today's drafts). Also the untaught-word warning for the drafter, before the audio wave.
+- Placement asks for 食's reading with く(う) as the answer.
+- Lesson 20 won't republish until its passage drops と and の. Lesson 39 doesn't require typed reading (one outline flag).
+- A self-answering prompt with an English-lookalike answer isn't caught (Tester T2, Low).
+- A rare 12-second timeout marks a right paraphrase wrong. A writing answer of about 6,000 characters causes a 500. Kana differing only in punctuation is probably fixed by H.2.c, so confirm first.
 - Watch `arigato` at Alpha: long vowels are taught, so it stays wrong (H.2.a).
 
 ## Live facts
 
-- Anthropic credit: **about $10 left**. The rest of the course (12 audio lessons, a few redrafts) is about $2.
+- Anthropic credit: **about $10 left**. The rest of the course is about $2.
 - Neon default branch: migrations through `20261104230000_reminders`. 108 lessons (874 checks), 1 user, 1,625 items.
-- `skeleton.json` is gitignored. Rebuild it with `authoring:outline --force` only when the outline spec changes, then diff it against a backup.
-- Drafts, critiques, `.failed.json` and `.prev.json` files live in the main checkout's `tools/authoring/output/`. Approved lessons live in `tools/authoring/published/`. Both are gitignored, so don't delete them.
-- Testers can't tap the simulator here. They use a throwaway harness plus `xcrun simctl io screenshot` (`open-check-followup/test.md`). The Alpha User can't work that way.
-- Agent usage is heavy and has hit the founder's 5-hour limit several times. Run one agent at a time and scope re-tests to the diff.
+- `skeleton.json` is gitignored. Rebuild it only with `authoring:outline --force` when the outline spec changes, and diff it against a backup.
+- Drafts live in `tools/authoring/output/` and approved lessons in `tools/authoring/published/`, both gitignored. Don't delete them.
+- The founder is on Claude Pro. Run one agent at a time, and scope re-tests to the diff.
