@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Rating } from 'ts-fsrs';
 import { CurriculumService } from '../curriculum/curriculum.service';
 import { GradingService } from '../grading/grading.service';
 import { MasteryService } from '../mastery/mastery.service';
@@ -71,6 +72,13 @@ function curriculumState({
   };
 }
 
+/**
+ * g1 right in the learner's own words. It isn't g1's listed meaning, so it
+ * goes to the (mock) AI grader, which accepts it; 'please do' itself is right
+ * without the grader (G.4.h).
+ */
+const PARAPHRASE = 'do it, please';
+
 const aiGrade = (correct: boolean, over: Record<string, unknown> = {}) => ({
   rating: correct ? 'Good' : 'Again',
   correct,
@@ -119,7 +127,7 @@ describe('AssessmentsService', () => {
     seedInferred = jest.fn().mockResolvedValue(0);
     masteryFindMany = jest.fn().mockResolvedValue([]);
     gradeOpen = jest.fn(({ answer }: { answer: string }) =>
-      Promise.resolve(aiGrade(answer === 'please do')),
+      Promise.resolve(aiGrade(answer === PARAPHRASE)),
     );
 
     // `$transaction(fn)` runs fn against the same fake.
@@ -536,12 +544,12 @@ describe('AssessmentsService', () => {
       const res = await service.submit(
         'u1',
         'att-1',
-        answers({ ...allRight, g1: 'please do', k3: '   ' }),
+        answers({ ...allRight, g1: PARAPHRASE, k3: '   ' }),
       );
       expect(gradeOpen).toHaveBeenCalledTimes(1);
       expect(gradeOpen).toHaveBeenCalledWith({
         prompt: 'What does 「〜ください」 mean?',
-        answer: 'please do',
+        answer: PARAPHRASE,
         exemplar: 'please do',
       });
       expect(res.results.find((r) => r.itemId === 'k3')?.correct).toBe(false);
@@ -645,10 +653,33 @@ describe('AssessmentsService', () => {
         aiGrade(false, { gradedBy: 'fallback', scored: false }),
       );
       await expect(
-        service.submit('u1', 'att-1', answers({ g1: 'please do' })),
+        service.submit('u1', 'att-1', answers({ g1: PARAPHRASE })),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
       expect(attemptUpdateMany).not.toHaveBeenCalled();
     });
+
+    it.each(['SKIP', 'EXIT'])(
+      '%s: listed meanings are all scored, with the grader hanging (G.4.h)',
+      async (kind) => {
+        attemptFindUnique.mockResolvedValue(attempt({ kind }));
+        gradeOpen.mockImplementation(() => new Promise(() => {}));
+        const res = await service.submit(
+          'u1',
+          'att-1',
+          answers({ ...allRight, g1: 'Please do!' }),
+        );
+        expect(gradeOpen).not.toHaveBeenCalled();
+        expect(res.results.every((r) => r.scored && r.correct)).toBe(true);
+        expect(res).toMatchObject({ kind, correct: 4, total: 4, passed: true });
+        expect(recordCheckResult).toHaveBeenCalledWith(
+          expect.objectContaining({
+            itemId: 'g1',
+            correct: true,
+            rating: Rating.Good,
+          }),
+        );
+      },
+    );
 
     it('failed skip-test: no penalty for wrong answers; collapses only fully-tested, all-correct lessons', async () => {
       attemptFindUnique.mockResolvedValue(attempt());

@@ -520,6 +520,38 @@ describe('ChecksService', () => {
       expect(result.correct).toBe(true);
     });
 
+    it('an answer that is exactly the exemplar still goes to the grader (G.4.h is recall-only)', async () => {
+      findUnique.mockResolvedValue(openCheck);
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        feedback: 'Polite and natural.',
+        exemplar: 'おはようございます',
+        gradedBy: 'ai',
+        scored: true,
+      });
+
+      const result = await service.grade(
+        'chk-open',
+        'おはようございます',
+        'dev-user',
+      );
+
+      expect(gradeOpen).toHaveBeenCalledWith(
+        expect.objectContaining({
+          answer: 'おはようございます',
+          exemplar: 'おはようございます',
+        }),
+      );
+      expect(result).toEqual({
+        checkId: 'chk-open',
+        correct: true,
+        correctAnswer: 'おはようございます',
+        scored: true,
+        feedback: 'Polite and natural.',
+      });
+    });
+
     it('maps an AI "Again" to a wrong result and an FSRS Again', async () => {
       findUnique.mockResolvedValue(openCheck);
       gradeOpen.mockResolvedValue({

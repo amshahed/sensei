@@ -491,6 +491,36 @@ describe('PracticeService', () => {
       expect(recordCheckResult).not.toHaveBeenCalled();
     });
 
+    it('a listed meaning counts at once, even with the grader hanging (G.4.h)', async () => {
+      gradeOpen.mockImplementation(() => new Promise(() => {}));
+
+      const result = await service.answer('u1', 'ps-1', {
+        itemId: vocab.id,
+        answer: 'Sushi.',
+      });
+
+      // "Correct!" with nothing under it: no `feedback` key.
+      expect(result).toEqual({
+        itemId: vocab.id,
+        correct: true,
+        correctAnswer: 'sushi',
+        scored: true,
+        counted: true,
+        mastery: 0.6,
+      });
+      expect(gradeOpen).not.toHaveBeenCalled();
+      expect(recordCheckResult).toHaveBeenCalledWith(
+        {
+          userId: 'u1',
+          itemId: vocab.id,
+          format: 'TYPED',
+          correct: true,
+          rating: Rating.Good,
+        },
+        prisma,
+      );
+    });
+
     it('a failed FSRS write fails the claim with it (one transaction)', async () => {
       const tx = jest.fn((fn: (t: unknown) => Promise<unknown>) => fn(prisma));
       prisma.$transaction = tx;

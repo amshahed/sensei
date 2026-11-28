@@ -99,6 +99,10 @@ describe('RecallGraderService', () => {
     expect(res).not.toHaveProperty('feedback');
   });
 
+  // The whole stored string 'x; y' is not one of its listed meanings ('x',
+  // 'y'), so these still reach the grader (G.4.h).
+  const xy = q({ check: 'meaning', expected: 'x; y', accepted: ['x; y'] });
+
   it('meaning: a fallback-graded match still counts, without repeating the verdict', async () => {
     gradeOpen.mockResolvedValue({
       rating: 'Good',
@@ -107,7 +111,8 @@ describe('RecallGraderService', () => {
       scored: true,
       feedback: 'Correct.',
     });
-    const res = await grader.grade(q({ check: 'meaning' }), 'x');
+    const res = await grader.grade(xy, 'x; y');
+    expect(gradeOpen).toHaveBeenCalled();
     expect(res).toMatchObject({ correct: true, scored: true });
     expect(res).not.toHaveProperty('feedback');
   });
@@ -120,8 +125,60 @@ describe('RecallGraderService', () => {
       scored: true,
       feedback: '',
     });
-    const res = await grader.grade(q({ check: 'meaning' }), 'x');
+    const res = await grader.grade(xy, 'x; y');
+    expect(gradeOpen).toHaveBeenCalled();
     expect(res).not.toHaveProperty('feedback');
+  });
+
+  describe('meaning: a listed meaning is right without the grader (G.4.h)', () => {
+    const konnichiwa = recallQuestionFor({
+      type: 'VOCAB',
+      display: 'こんにちは',
+      reading: 'こんにちは',
+      meaning: 'hello; good day; good afternoon',
+      data: {},
+    })!;
+    const listed = { correct: true, scored: true, rating: Rating.Good };
+
+    it('is a plain right answer, with no comment and no grader call', async () => {
+      await expect(grader.grade(konnichiwa, 'Good day!')).resolves.toEqual(
+        listed,
+      );
+      expect(gradeOpen).not.toHaveBeenCalled();
+    });
+
+    it('never waits on a grader that hangs', async () => {
+      gradeOpen.mockImplementation(() => new Promise(() => {}));
+      await expect(grader.grade(konnichiwa, 'hello')).resolves.toEqual(listed);
+    });
+
+    it('is unaffected by a grader that fails', async () => {
+      gradeOpen.mockRejectedValue(new Error('503 high demand'));
+      await expect(grader.grade(konnichiwa, 'good afternoon')).resolves.toEqual(
+        listed,
+      );
+    });
+
+    it('any other answer goes to the grader as before', async () => {
+      gradeOpen.mockResolvedValue({
+        rating: 'Good',
+        correct: true,
+        gradedBy: 'ai',
+        scored: true,
+        feedback: 'Casual, but right.',
+      });
+      await expect(grader.grade(konnichiwa, 'hi')).resolves.toEqual({
+        correct: true,
+        scored: true,
+        rating: Rating.Good,
+        feedback: 'Casual, but right.',
+      });
+      expect(gradeOpen).toHaveBeenCalledWith({
+        prompt: konnichiwa.prompt,
+        answer: 'hi',
+        exemplar: 'hello; good day; good afternoon',
+      });
+    });
   });
 });
 
