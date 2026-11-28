@@ -141,18 +141,20 @@ function key() {
 
 // ── Store ────────────────────────────────────────────────────────────────────
 function ensureStore() {
+  let cloned = false;
   if (!fs.existsSync(path.join(storeDir, '.git'))) {
     if (fs.existsSync(remote) || /^(git@|https?:|file:|\/)/.test(remote)) {
       sh('git', ['clone', '-q', remote, storeDir]);
     } else {
       sh('gh', ['repo', 'clone', remote, storeDir, '--', '-q']);
     }
+    cloned = true;
   }
   const hasHead = sh('git', ['-C', storeDir, 'rev-parse', '--verify', 'HEAD'], { allowFail: true });
   if (hasHead.status !== 0) {
     // An empty store: name the first branch main, whatever git's default is.
     sh('git', ['-C', storeDir, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
-  } else {
+  } else if (!cloned) {
     const up = sh('git', ['-C', storeDir, 'rev-parse', '--abbrev-ref', '@{u}'], { allowFail: true });
     if (up.status === 0) sh('git', ['-C', storeDir, 'pull', '-q', '--ff-only']);
   }

@@ -20,7 +20,7 @@ need pnpm "pnpm --version" "corepack enable && corepack prepare pnpm@11.5.3 --ac
 need gh "gh --version" "install the GitHub CLI"
 need "gh login" "gh auth status" "gh auth login"
 need claude "claude --version" "install Claude Code: curl -fsSL https://claude.ai/install.sh | bash"
-need passphrase "test -s \"\$HOME/.config/sensei/state-passphrase\" || test -n \"\${SENSEI_STATE_PASSPHRASE:-}\"" "create ~/.config/sensei/state-passphrase in your own terminal (ops/DEVICES.md step 3)"
+need passphrase "test -s \"\$HOME/.config/sensei/state-passphrase\" || test -n \"\${SENSEI_STATE_PASSPHRASE:-}\"" "in your own terminal: bash ops/bin/set-passphrase.sh"
 if [ "$(uname)" = "Linux" ]; then need tmux "tmux -V" "sudo apt install tmux (keeps sessions alive when you disconnect)"; fi
 if [ "$ok" != 1 ]; then
   echo "setup-device: fix the missing items above, then run this again." >&2

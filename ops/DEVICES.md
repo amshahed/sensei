@@ -92,8 +92,10 @@ mkdir -p ~/workspace && gh repo clone amshahed/sensei ~/workspace/sensei && cd ~
 Do this in your own terminal, not through Claude Code's `!`. That keeps the passphrase out of every transcript.
 
 ```bash
-mkdir -p ~/.config/sensei && (umask 077; read -rsp "Sensei state passphrase: " p; echo; printf '%s' "$p" > ~/.config/sensei/state-passphrase)
+bash ops/bin/set-passphrase.sh
 ```
+
+It asks twice and shows nothing while you type, which is normal. It works in zsh, bash and WSL alike.
 
 - Use the same passphrase on every device.
 - If you lose it, the encrypted files can't be recovered. Keep a copy in your password manager.
