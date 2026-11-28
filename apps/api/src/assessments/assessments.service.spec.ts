@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   GoneException,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -107,6 +108,7 @@ describe('AssessmentsService', () => {
   let masteryFindMany: jest.Mock;
 
   beforeEach(async () => {
+    streakRecord.mockClear();
     getState = jest.fn().mockResolvedValue(curriculumState());
     lessonItemFindMany = jest.fn(
       ({ select }: { select: Record<string, unknown> }) =>
@@ -292,6 +294,16 @@ describe('AssessmentsService', () => {
         total: 4,
         skippedLessonIds: [],
       },
+    };
+    /** An undecided submit records nothing at all (I.4.d.b point 3). */
+    const expectNothingWritten = () => {
+      expect(attemptUpdateMany).not.toHaveBeenCalled();
+      expect(markUpsert).not.toHaveBeenCalled();
+      expect(userUpdateMany).not.toHaveBeenCalled();
+      expect(skipCreateMany).not.toHaveBeenCalled();
+      expect(recordCheckResult).not.toHaveBeenCalled();
+      expect(seedInferred).not.toHaveBeenCalled();
+      expect(streakRecord).not.toHaveBeenCalled();
     };
 
     it('404s for a missing attempt or another learner’s', async () => {
@@ -556,22 +568,20 @@ describe('AssessmentsService', () => {
       expect(res).toMatchObject({ correct: 3, total: 4, passed: false });
     });
 
-    it('a fallback-graded miss (grader outage) is not held against the learner', async () => {
+    it('a fallback-graded miss that could still change the outcome gives no result, and nothing is written (I.4.d.b)', async () => {
+      // 3 right and 1 ungraded of 4: 75% proven, 100% possible.
       attemptFindUnique.mockResolvedValue(attempt({ kind: 'EXIT' }));
       gradeOpen.mockResolvedValue(
         aiGrade(false, { gradedBy: 'fallback', rating: 'Again' }),
       );
-      const res = await service.submit(
-        'u1',
-        'att-1',
-        answers({ ...allRight, g1: 'please, do it' }),
-      );
-      expect(res).toMatchObject({ correct: 3, total: 3, passed: true });
-      expect(
-        (recordCheckResult.mock.calls as [{ itemId: string }][]).map(
-          ([a]) => a.itemId,
+      await expect(
+        service.submit(
+          'u1',
+          'att-1',
+          answers({ ...allRight, g1: 'please, do it' }),
         ),
-      ).not.toContain('g1');
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expectNothingWritten();
     });
 
     it('marks an ungraded answer scored: false in the results and the stored JSON (B.2.g)', async () => {
@@ -739,18 +749,15 @@ describe('AssessmentsService', () => {
       expect(skipCreateMany).not.toHaveBeenCalled();
     });
 
-    it('excludes answers the grader could not score from the total and FSRS', async () => {
+    it('an ungraded answer never helps a pass: 1 right and 1 ungraded of 2 is no result (I.4.d.b)', async () => {
       attemptFindUnique.mockResolvedValue(attempt({ itemIds: ['k1', 'g1'] }));
       gradeOpen.mockResolvedValue(
         aiGrade(false, { gradedBy: 'fallback', scored: false, exemplar: '' }),
       );
-      const res = await service.submit(
-        'u1',
-        'att-1',
-        answers({ k1: 'ka1', g1: 'something' }),
-      );
-      expect(res).toMatchObject({ correct: 1, total: 1, passed: true });
-      expect(recordCheckResult).toHaveBeenCalledTimes(1);
+      await expect(
+        service.submit('u1', 'att-1', answers({ k1: 'ka1', g1: 'something' })),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expectNothingWritten();
     });
 
     it('missing answers count as wrong', async () => {
@@ -765,6 +772,269 @@ describe('AssessmentsService', () => {
       const res = await service.submit('u1', 'att-1', answers(allRight));
       expect(res.passed).toBe(true);
       expect(markUpsert).toHaveBeenCalledTimes(1);
+    });
+
+    describe('an outage never decides a test (I.4.d.b)', () => {
+      /** Grammar item m<n>, whose one listed meaning is "sense <n>". */
+      const m = (n: number) => ({
+        id: `m${n}`,
+        type: 'GRAMMAR',
+        display: `〜m${n}`,
+        reading: null,
+        meaning: `sense ${n}`,
+        data: {},
+      });
+      const ids = (from: number, to: number) =>
+        Array.from({ length: to - from + 1 }, (_, i) => `m${from + i}`);
+      /** The 20 sampled items; m21 and m22 are chapter targets never sampled. */
+      const sampled = Array.from({ length: 20 }, (_, i) => m(i + 1));
+      /** l1 teaches m1–m4; l2 teaches m5–m22. */
+      const rows = Array.from({ length: 22 }, (_, i) => ({
+        lessonId: i < 4 ? 'l1' : 'l2',
+        item: m(i + 1),
+      }));
+      const ZZZ = 'zzz'; // not listed, so it goes to the grader
+      let graderUp: boolean;
+
+      /** One attempt over m1–m20; `vanished` items were deleted since start. */
+      const setUp = (kind: string, vanished: string[] = []) => {
+        const gone = new Set(vanished);
+        const live = rows.filter((r) => !gone.has(r.item.id));
+        lessonItemFindMany.mockImplementation(
+          ({ select }: { select: Record<string, unknown> }) =>
+            Promise.resolve(
+              'itemId' in select
+                ? live.map((r) => ({ lessonId: r.lessonId, itemId: r.item.id }))
+                : live,
+            ),
+        );
+        itemFindMany.mockResolvedValue(sampled.filter((i) => !gone.has(i.id)));
+        attemptFindUnique.mockResolvedValue(
+          attempt({ kind, itemIds: sampled.map((i) => i.id) }),
+        );
+      };
+      /**
+       * Answers in order from m1: `right` listed meanings, `wrong` blanks, then
+       * `ungraded` "zzz"s, which the grader can't judge while it is down.
+       */
+      const body = (right: number, wrong: number, ungraded: number) =>
+        answers(
+          Object.fromEntries(
+            sampled.map(({ id }, i) => [
+              id,
+              i < right
+                ? `sense ${i + 1}`
+                : i < right + wrong
+                  ? ''
+                  : i < right + wrong + ungraded
+                    ? ZZZ
+                    : '',
+            ]),
+          ),
+        );
+      const written = () =>
+        (
+          recordCheckResult.mock.calls as [
+            { itemId: string; correct: boolean },
+          ][]
+        ).map(([a]) => [a.itemId, a.correct]);
+
+      beforeEach(() => {
+        graderUp = false;
+        // A paraphrase is always judged right; "zzz" only once the grader is
+        // back (a partial outage, as on the free tier's rate limit).
+        gradeOpen.mockImplementation(({ answer }: { answer: string }) =>
+          Promise.resolve(
+            answer === PARAPHRASE || graderUp
+              ? aiGrade(true)
+              : aiGrade(false, { gradedBy: 'fallback', rating: 'Again' }),
+          ),
+        );
+      });
+
+      // P1
+      it('the F1 repro: 1 right and 19 ungraded on a skip-test is no result, and nothing is written', async () => {
+        setUp('SKIP');
+        await expect(
+          service.submit('u1', 'att-1', body(1, 0, 19)),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+        expectNothingWritten();
+      });
+
+      it('15 right, 1 wrong and 4 ungraded is no result (today it would pass at 15 of 16)', async () => {
+        setUp('SKIP');
+        await expect(
+          service.submit('u1', 'att-1', body(15, 1, 4)),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+        expectNothingWritten();
+      });
+
+      it.each(['SKIP', 'EXIT'])(
+        '%s: 16 right and 4 ungraded passes, showing 16 of 16 with the ungraded listed (P1, P4)',
+        async (kind) => {
+          setUp(kind);
+          const res = await service.submit('u1', 'att-1', body(16, 0, 4));
+          expect(res).toMatchObject({
+            kind,
+            passed: true,
+            correct: 16,
+            total: 16,
+            skippedLessonIds: [],
+          });
+          expect(markUpsert).toHaveBeenCalledTimes(1);
+          // P4: the ungraded answers, in sampled order, as today (B.2.g).
+          const ungraded = res.results.filter((r) => !r.scored);
+          expect(ungraded.map((r) => r.itemId)).toEqual(ids(17, 20));
+          expect(ungraded[0]).toEqual({
+            itemId: 'm17',
+            prompt: expect.stringContaining('〜m17') as string,
+            answer: ZZZ,
+            correct: false,
+            correctAnswer: 'sense 17',
+            scored: false,
+          });
+          const [[claim]] = attemptUpdateMany.mock.calls as [
+            [{ data: { results: { items: object[]; total: number } } }],
+          ];
+          expect(claim.data.results.total).toBe(16);
+          expect(claim.data.results.items).toHaveLength(20);
+          expect(claim.data.results.items[16]).toEqual(ungraded[0]);
+        },
+      );
+
+      // P2
+      it('SKIP: 10 right, 6 wrong and 4 ungraded fails with no penalty, and still collapses the all-right lesson', async () => {
+        setUp('SKIP');
+        const res = await service.submit('u1', 'att-1', body(10, 6, 4));
+        expect(res).toMatchObject({
+          passed: false,
+          correct: 10,
+          total: 16,
+          skippedLessonIds: ['l1'],
+        });
+        expect(written()).toEqual(ids(1, 10).map((id) => [id, true]));
+        expect(skipCreateMany).toHaveBeenCalledWith({
+          data: [{ userId: 'u1', lessonId: 'l1' }],
+          skipDuplicates: true,
+        });
+        expect(markUpsert).not.toHaveBeenCalled();
+        expect(seedInferred).not.toHaveBeenCalled();
+      });
+
+      it('EXIT: 10 right, 6 wrong and 4 ungraded fails, with 6 Agains and nothing for the ungraded', async () => {
+        setUp('EXIT');
+        const res = await service.submit('u1', 'att-1', body(10, 6, 4));
+        expect(res).toMatchObject({ passed: false, correct: 10, total: 16 });
+        expect(written().sort()).toEqual(
+          [
+            ...ids(1, 10).map((id) => [id, true]),
+            ...ids(11, 16).map((id) => [id, false]),
+          ].sort(),
+        );
+        expect(skipCreateMany).not.toHaveBeenCalled();
+        expect(markUpsert).not.toHaveBeenCalled();
+      });
+
+      it('11 right, 5 wrong and 4 ungraded fails: 15 of 20 at best', async () => {
+        setUp('SKIP');
+        const res = await service.submit('u1', 'att-1', body(11, 5, 4));
+        expect(res).toMatchObject({ passed: false, correct: 11, total: 16 });
+      });
+
+      // P3
+      it.each(['SKIP', 'EXIT'])(
+        '%s: 12 right, 4 wrong and 4 ungraded is no result, and nothing is written, not even the all-right lesson',
+        async (kind) => {
+          setUp(kind);
+          const warn = jest
+            .spyOn(Logger.prototype, 'warn')
+            .mockImplementation(() => undefined);
+          try {
+            await expect(
+              service.submit('u1', 'att-1', body(12, 4, 4)),
+            ).rejects.toBeInstanceOf(ServiceUnavailableException);
+            expectNothingWritten();
+            // One line with the counts, never the answers.
+            expect(warn).toHaveBeenCalledWith(
+              `ASSESSMENT_UNDECIDED attempt=att-1 kind=${kind} asked=20 right=12 ungraded=4`,
+            );
+          } finally {
+            warn.mockRestore();
+          }
+        },
+      );
+
+      it('the same answers submitted again once grading works get a result, from a fresh grading of every answer', async () => {
+        setUp('SKIP');
+        // 11 listed + 1 paraphrase the AI judges right, 4 wrong, 4 ungraded.
+        const sent = body(12, 4, 4);
+        sent.answers[11].answer = PARAPHRASE;
+
+        await expect(
+          service.submit('u1', 'att-1', sent),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+        expect(gradeOpen).toHaveBeenCalledTimes(5);
+        expectNothingWritten();
+
+        graderUp = true; // the attempt is still IN_PROGRESS (the mock is unchanged)
+        const res = await service.submit('u1', 'att-1', sent);
+        expect(res).toMatchObject({ passed: true, correct: 16, total: 20 });
+        expect(res.results.every((r) => r.scored)).toBe(true);
+        // The paraphrase is graded again: nothing is kept from the first submit.
+        expect(gradeOpen).toHaveBeenCalledTimes(10);
+        expect(attemptUpdateMany).toHaveBeenCalledTimes(1);
+        expect(markUpsert).toHaveBeenCalledTimes(1);
+      });
+
+      it('a question whose item vanished counts neither way: 13 right and 3 ungraded of the 16 left passes', async () => {
+        setUp('SKIP', ids(17, 20));
+        const res = await service.submit('u1', 'att-1', body(13, 0, 3));
+        expect(res).toMatchObject({ passed: true, correct: 13, total: 13 });
+        const unasked = res.results.filter((r) => r.prompt === '');
+        expect(unasked.map((r) => [r.itemId, r.scored])).toEqual(
+          ids(17, 20).map((id) => [id, false]),
+        );
+        expect(seedInferred).toHaveBeenCalledWith(
+          'u1',
+          [...ids(14, 16), 'm21', 'm22'],
+          expect.any(Date),
+        );
+      });
+
+      it('410s when no sampled question can be asked any more, and writes nothing', async () => {
+        setUp('SKIP', ids(1, 20));
+        await expect(
+          service.submit('u1', 'att-1', body(20, 0, 0)),
+        ).rejects.toBeInstanceOf(GoneException);
+        expectNothingWritten();
+      });
+
+      // P5
+      it.each(['SKIP', 'EXIT'])(
+        '%s pass: ungraded words are seeded like the untested ones, and never recorded as reviews',
+        async (kind) => {
+          setUp(kind);
+          await service.submit('u1', 'att-1', body(16, 0, 4));
+          expect(seedInferred).toHaveBeenCalledWith(
+            'u1',
+            [...ids(17, 20), 'm21', 'm22'],
+            expect.any(Date),
+          );
+          expect(written()).toEqual(ids(1, 16).map((id) => [id, true]));
+        },
+      );
+
+      // P6
+      it('every answer graded: 16 right and 4 wrong passes, 15 and 5 fails, as before', async () => {
+        setUp('SKIP');
+        expect(
+          await service.submit('u1', 'att-1', body(16, 4, 0)),
+        ).toMatchObject({ passed: true, correct: 16, total: 20 });
+        expect(
+          await service.submit('u1', 'att-1', body(15, 5, 0)),
+        ).toMatchObject({ passed: false, correct: 15, total: 20 });
+        expect(gradeOpen).not.toHaveBeenCalled();
+      });
     });
   });
 });

@@ -30,10 +30,14 @@ import {
   recallQuestionFor,
 } from '../recall/recall-question';
 import { sampleAcrossGroups } from './assessment-sample';
+import { assessmentVerdict } from './assessment-verdict';
 
 /** ~5 minutes of typed recall (decisions.md I.4.d.a). */
 export const ASSESSMENT_SAMPLE_SIZE = 20;
-/** Pass bar: ≥80% of graded answers correct (I.4.d). */
+/**
+ * Pass bar: ≥80% of all the questions asked, graded right (I.4.d, I.4.d.b).
+ * An answer the grader couldn't judge never helps a pass.
+ */
 export const ASSESSMENT_PASS_THRESHOLD = 0.8;
 /** An attempt must be submitted within this long of starting it. */
 export const ASSESSMENT_TTL_MS = 60 * 60 * 1000;
@@ -54,6 +58,12 @@ const ITEM_SELECT = {
 type GradedResult = AssessmentItemResultDto & {
   /** AI rating, when the meaning grader produced one. */
   rating?: Grade;
+  /**
+   * False when the item can no longer be asked (deleted or changed since the
+   * attempt started): the question counts neither way (I.4.d.b point 5).
+   * Internal only, never stored or sent.
+   */
+  asked: boolean;
 };
 
 /** One stored answer. Attempts submitted before B.2.g carry no `scored`. */
@@ -228,22 +238,46 @@ export class AssessmentsService {
             correct: false,
             correctAnswer: '',
             scored: false,
+            asked: false,
           };
         }
-        return { itemId, answer, ...(await this.grade(question, answer)) };
+        return {
+          itemId,
+          answer,
+          asked: true,
+          ...(await this.grade(question, answer)),
+        };
       },
     );
 
-    const scored = graded.filter((g) => g.scored);
+    const asked = graded.filter((g) => g.asked);
+    if (asked.length === 0) {
+      // Every sampled item vanished (a republish mid-attempt): nothing can
+      // decide this attempt, so don't hold it open. Starting again resamples.
+      throw new GoneException(
+        "This test's questions have changed — start a new one.",
+      );
+    }
+    const scored = asked.filter((g) => g.scored);
     const total = scored.length;
-    if (total === 0) {
-      // Nothing could be judged (grader outage) — leave the attempt open.
+    const correct = scored.filter((g) => g.correct).length;
+    const ungraded = asked.length - total;
+    const verdict = assessmentVerdict(
+      { right: correct, ungraded, asked: asked.length },
+      ASSESSMENT_PASS_THRESHOLD,
+    );
+    if (verdict === 'UNDECIDED') {
+      // The answers the grader couldn't judge (an outage) could still change
+      // the outcome (I.4.d.b). Write nothing and leave the attempt open: a
+      // resubmit grades every answer again (I.4.d.c). Never logs answers.
+      this.logger.warn(
+        `ASSESSMENT_UNDECIDED attempt=${attemptId} kind=${attempt.kind} asked=${asked.length} right=${correct} ungraded=${ungraded}`,
+      );
       throw new ServiceUnavailableException(
         'Grading is unavailable right now — please submit again shortly.',
       );
     }
-    const correct = scored.filter((g) => g.correct).length;
-    const passed = correct / total >= ASSESSMENT_PASS_THRESHOLD - 1e-9;
+    const passed = verdict === 'PASSED';
     const skippedLessonIds =
       !passed && attempt.kind === 'SKIP'
         ? await this.fullyTestedLessons(
@@ -315,10 +349,12 @@ export class AssessmentsService {
       { penalise: !skipTestFailed, now },
     );
     if (passed) {
+      // Only graded answers count as tested: an ungraded one is seeded like
+      // an item the test didn't ask about (I.4.d.b point 4).
       await this.seedUntested(
         userId,
         attempt.chapterId,
-        attempt.itemIds,
+        scored.map((g) => g.itemId),
         attempt.kind,
         now,
       );
@@ -346,7 +382,7 @@ export class AssessmentsService {
   private async grade(
     question: RecallQuestion,
     answer: string,
-  ): Promise<Omit<GradedResult, 'itemId' | 'answer'>> {
+  ): Promise<Omit<GradedResult, 'itemId' | 'answer' | 'asked'>> {
     const graded = await this.recall.grade(question, answer);
     return {
       prompt: question.prompt,
@@ -440,19 +476,21 @@ export class AssessmentsService {
   }
 
   /**
-   * Seed the passed chapter's untested items as inferred mastery (I.4.c). On a
-   * skip-test that excludes kanji, which it says nothing about (G.4.d). An Exit
+   * Seed the passed chapter's untested items as inferred mastery (I.4.c). An
+   * item is tested only if its answer was graded: one the grader couldn't
+   * judge is seeded like one the test never asked (I.4.d.b). On a skip-test
+   * that excludes kanji, which it says nothing about (G.4.d). An Exit
    * Assessment follows the chapter's lessons, so it keeps them.
    */
   private async seedUntested(
     userId: string,
     chapterId: string,
-    testedItemIds: string[],
+    gradedItemIds: string[],
     kind: AssessmentKind,
     now: Date,
   ): Promise<void> {
     try {
-      const tested = new Set(testedItemIds);
+      const tested = new Set(gradedItemIds);
       // Only items Reviews can actually quiz — a seeded non-quizzable item
       // would sit due forever with nothing to ask.
       const rows = await this.prisma.lessonItem.findMany({
