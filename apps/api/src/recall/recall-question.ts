@@ -27,8 +27,9 @@ export interface RecallableItem {
  *    accept the kana itself, which is shown in the prompt).
  *  - `reading`: kanji → a kana reading; Japanese-normalised exact match
  *    against any accepted reading, so rōmaji or katakana input counts (H.2).
- *  - `meaning`: free-text meaning, graded by the AI open-answer grader with
- *    the item's meaning as the exemplar (G.3).
+ *  - `meaning`: free-text meaning. One of the item's listed meanings is right
+ *    at once (G.4.h); anything else is graded by the AI open-answer grader
+ *    with the item's meaning as the exemplar (G.3).
  */
 export type AnswerCheck = 'romaji' | 'reading' | 'meaning';
 
@@ -41,7 +42,11 @@ export interface RecallQuestion {
   prompt: string;
   /** Shown as the correct answer afterwards. Server-only until then. */
   expected: string;
-  /** Every answer that counts as right (`romaji` / `reading`). */
+  /**
+   * Every answer that counts as right (`romaji` / `reading`). For `meaning`,
+   * the stored meaning: any one of its listed meanings is right without the
+   * grader (G.4.h).
+   */
   accepted: string[];
   check: AnswerCheck;
 }

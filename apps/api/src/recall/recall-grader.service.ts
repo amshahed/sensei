@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import type { Grade } from 'ts-fsrs';
 import { exactMatch } from '../common/normalize-answer';
 import { GradingService, modelComment } from '../grading/grading.service';
-import { ratingFromLabel } from '../mastery/fsrs';
+import { ratingFromCorrect, ratingFromLabel } from '../mastery/fsrs';
 import { WritingEvalService } from '../writing-eval/writing-eval.service';
+import { isListedMeaning } from './listed-meaning';
 import type { RecallQuestion } from './recall-question';
 
 export interface RecallGrade {
@@ -14,9 +15,15 @@ export interface RecallGrade {
    * score it or write it to FSRS — our outage isn't the learner's miss.
    */
   scored: boolean;
-  /** AI rating for meaning answers; undefined → derive from `correct`. */
+  /**
+   * The rating for a meaning answer: the AI's, or Good for a listed meaning
+   * (G.4.h). Undefined → derive from `correct`.
+   */
   rating?: Grade;
-  /** The model's own comment (meaning answers), never a fallback line (B.2.g). */
+  /**
+   * The model's own comment on a meaning answer it graded, never a fallback
+   * line (B.2.g). A listed meaning has none: "Correct!" says it all.
+   */
   feedback?: string;
 }
 
@@ -66,6 +73,15 @@ export class RecallGraderService {
           scored: true,
         };
       case 'meaning': {
+        // G.4.h: a listed meaning is decided here, like a kana or reading
+        // match, so it never waits on the grader or depends on it being up.
+        if (question.accepted.some((m) => isListedMeaning(answer, m))) {
+          return {
+            correct: true,
+            scored: true,
+            rating: ratingFromCorrect(true),
+          };
+        }
         const r = await this.grading.gradeOpen({
           prompt: question.prompt,
           answer,
