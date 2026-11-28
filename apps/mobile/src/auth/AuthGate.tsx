@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import {
   ClerkLoaded,
@@ -59,11 +60,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
  * (the under-18 screen offers it, M.5.a). Only mounts under `<SignedIn>`, so
  * the session is guaranteed present. Signing out swaps in `<SignedOut>`, and
  * the cleanup below clears the token.
+ *
+ * Children mount only once the token provider is installed. React runs a
+ * child's effects before its parent's, so otherwise the onboarding gate's
+ * first `GET /onboarding` went out with no token and got a 401.
  */
 function AuthedApp({ children }: { children: React.ReactNode }) {
   const { getToken, signOut } = useAuth();
   const materialised = useRef(false);
   const signOutOfClerk = useCallback(() => signOut(), [signOut]);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     // Install the token provider FIRST so the /me request below is
@@ -71,6 +77,7 @@ function AuthedApp({ children }: { children: React.ReactNode }) {
     // upserts the users row. A failure clears the flag so a later token
     // change retries instead of leaving the account unmaterialised.
     setAuthTokenProvider(() => getToken());
+    setReady(true);
     if (!materialised.current) {
       materialised.current = true;
       void api.me().catch(() => {
@@ -80,6 +87,7 @@ function AuthedApp({ children }: { children: React.ReactNode }) {
     return () => setAuthTokenProvider(null);
   }, [getToken]);
 
+  if (!ready) return null;
   return (
     <SignOutContext.Provider value={signOutOfClerk}>
       {children}

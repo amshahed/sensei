@@ -50,7 +50,9 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
-  if (state.ageAnswer === null) {
+  // Unanswered. A missing field (an API from before the age question) asks
+  // too, rather than telling an adult they're under 18.
+  if (!state.ageAnswer) {
     const answer = (a: AgeAnswer) => {
       setSubmitting(true);
       setSubmitError(null);
