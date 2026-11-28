@@ -2036,3 +2036,67 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** Guarding only the four grading routes (fails open for the next route). A check inside `GradingService` (no user id there; a refusal would look like an outage). Folding the check into `AuthGuard` (mixes identity and policy). Two timestamps instead of an enum (allows both to be set). A history table (no audit need yet; the journal line covers resets).
 
 **Reverse:** Revert the code and leave the columns, which old code ignores. Dropping them destroys recorded answers and is on the stop list. Once M.5 is reversed, remove `AgeGuard` and the screen.
+
+---
+
+## Brief: exact-meaning-grading
+
+### G.4.h A typed meaning that is one of the item's listed meanings is marked right at once, without the grader (amends G.4.a and G.3) (decided by Project Manager, 2026-11-28)
+
+**Decision:**
+1. In reviews, practice, chapter tests and skip-tests, a meaning answer that is one of the item's listed meanings is marked right straight away, and the AI grader is not asked. Every other meaning answer goes to the grader as before.
+2. The listed meanings are the parts of the stored meaning separated by ";". An answer matches one of them when:
+   - case, spacing and punctuation are ignored;
+   - a bracketed part is left out, or typed without its brackets;
+   - a listed verb meaning's leading "to" is left out.
+3. It shows "Correct!" with no comment under it, and it counts as a plain right answer, the rating the fallback's exact match gets today ("Good").
+4. Lesson checks, lesson 120's open check and placement are unchanged.
+
+**Why:**
+- The fallback accepts only the whole stored string, so "hello" for こんにちは and "eat" for たべる come back "couldn't grade" when the grader is down (`grading-fallback-honesty/test.md` F3). Of the 185 vocabulary words the live lessons teach, 44 list several meanings, have a bracketed part, or are verbs listed as "to …". That is new evidence against that brief's assumption that an exact answer already passes in the fallback.
+- On the free tier, 25 of 99 grading calls fell back, 9 of them on the 12-second cap. A chapter test sends up to 20 answers at once against a limit of 15 a minute. The Alpha run will be on that tier.
+- A model comment on an exact answer only repeats the verdict (F1), which B.2.g forbids.
+- H.2 already routes deterministic answers to exact match. Each rule in point 2 is a dictionary convention (JMdict's ";" senses, bracketed qualifiers, "to" for verbs), not a judgement of language.
+
+**Rejected:**
+- Fixing only the fallback: it still waits up to 12 seconds and still uses a call per answer.
+- Keeping every answer with the grader for G.3's richer rating: there is nothing to judge, and L.4.b already notes "Easy" lengthening intervals.
+- Ignoring articles ("a little" and "little" differ).
+- Typo tolerance, synonym lists and number spellings: all judgements, left to the grader.
+- "Easy" for an exact answer.
+
+**Known cost:** dropping a bracketed qualifier can drop a distinction (そこ "there", どれ "which", いただきます "thank you"). It is flagged for the native-speaker sample (Blocker 6).
+
+**Reverse:** Send every meaning answer to the grader again. There is no data to restore. Full reasoning is in `ops/work/exact-meaning-grading/brief.md`.
+
+---
+
+## Plan: exact-meaning-grading
+
+### G.4.i How G.4.h is built: a pure rule in `recall/`, checked in `RecallGraderService` before the grader (decided by Tech Lead, 2026-11-28)
+
+**Decision:**
+1. `isListedMeaning(answer, meaning)` in `apps/api/src/recall/listed-meaning.ts`.
+   - Both sides are compared as their letters and digits only, lowercased. Every other character, spaces included, is ignored.
+   - Senses split on `;`. Each `( … )` part is independently dropped or kept without its brackets, with only two variants (all dropped, all kept) above 6 parts.
+   - A leading whole word `to` may then be dropped.
+   - An empty key never matches.
+2. `RecallGraderService.grade()` checks it in the `meaning` case before calling `GradingService`. A match returns `{ correct: true, scored: true, rating: Good }` with no feedback, exactly what a fallback exact match returns today.
+3. `GradingService`, `ChecksService`, the fallback, DTOs and the app are unchanged. There is no data change.
+
+**Why:**
+- `RecallGraderService` is the one seam that reviews, practice, chapter tests and skip-tests share (G.4.a). Lesson checks, lesson 120's open check and `authoring:grader-check` call `GradingService` directly, so they stay on the model (brief P8).
+- Ignoring spacing entirely is the literal reading of G.4.h point 2. It makes "Im sorry", "10000" and "good tasting" match without special cases.
+- An explicit `Good` lets the specs pin P6 at the seam, instead of resting on the mastery default.
+- A spike over the 209 live meanings accepted every example in the brief, rejected every counter-example, and changed the outcome for the 44 words the PM counted. It also found 隣 "next (to)" accepting "next", which went to the PM with the other known costs.
+- Full plan and promise map in `ops/work/exact-meaning-grading/tech.md`.
+
+**Rejected:**
+- The rule in `GradingService` (reaches lessons and the eval tool).
+- One copy per surface service.
+- Expanding `accepted` in `recallQuestionFor` and grading as `romaji` (mixes building with grading, and `exactMatch` doesn't ignore brackets or punctuation).
+- Teaching the fallback the rule (unreachable for recall once the shortcut runs first).
+- Keeping word boundaries ("Im sorry" misses).
+- Gating the "to" rule on ingest part-of-speech data.
+
+**Reverse:** Revert the commit. Every meaning answer goes to the grader again, and rows written meanwhile are ordinary `Good` reviews.
