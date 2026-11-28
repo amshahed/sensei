@@ -768,14 +768,16 @@ describe('an answer the grader could not judge, over HTTP (B.2.g)', () => {
     const user = 'user_b5_assessment';
     const started = (await post(user, '/chapters/ch-1/assessment', {}))
       .body as AssessmentStartDto;
+    // A wrong kana and an ungraded meaning: short of 80% even if the meaning
+    // were right, so the result is decided (I.4.d.b) and lists it as ungraded.
     const res = await post(user, `/assessments/${started.attemptId}/submit`, {
       answers: [
-        { itemId: kanaA.id, answer: 'a' },
+        { itemId: kanaA.id, answer: 'x' },
         { itemId: sushi.id, answer: 'raw fish rice' },
       ],
     });
     const body = res.body as AssessmentResultDto;
-    expect(body).toMatchObject({ passed: true, correct: 1, total: 1 });
+    expect(body).toMatchObject({ passed: false, correct: 0, total: 1 });
     expect(
       Object.fromEntries(body.results.map((r) => [r.itemId, r.scored])),
     ).toEqual({ [kanaA.id]: true, [sushi.id]: false });
