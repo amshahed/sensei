@@ -1,6 +1,6 @@
 # Checkpoint
 
-Last updated: 2026-11-28 by the Lead.
+Last updated: 2026-11-28 by the Lead (server session).
 
 Resume point for any session. Overwritten, never appended. Details live in `ops/journal.md` and `ops/work/`.
 
@@ -22,8 +22,14 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 ## Next actions
 
-1. **Unit B5, "couldn't grade" in reviews and practice** (`open-check-followup/triage.md` I2). Today a grading fallback there shows "Not quite — the expected answer was…" next to "Couldn't grade". On the free Gemini tier, about 1 call in 4 falls back, so the Alpha walker will hit it. **Brief done** (`ops/work/grading-fallback-honesty/brief.md`, P1 to P6, chapter tests included). **`tech.md` done (G2, B.2.g)**, with no schema change. **PR #99 merged** (`4a2d305`, Tester PASS on `f96236d`). Ungraded answers in reviews, practice, chapter tests and skip-tests are now shown and counted honestly. Do it before Alpha.
-2. **Unit: age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. **Brief done** (`ops/work/age-confirmation/brief.md`, P1 to P6, decision M.5.a). Founder items are Blockers 12 and 13. **`tech.md` done (G2, M.5.b)**. The migration is additive (an enum and two nullable columns on `User`). The Lead created Neon branch `test-age-confirmation` (`br-red-mud-batele3k`) on 2026-11-24. **Developer stopped mid-task** when a session ended. Its work is on `feat/age-confirmation`: `2ef2b5f` (the additive migration and types) and `938b61e` (the AgeGuard and route), both pushed, plus `9aa0ed2`, a WIP integration spec saved at handoff that may not pass. There is no PR yet. **Next: start a fresh Developer** on the same branch, pointed at `dev.md` (if present) and that commit, to finish, open the PR and run the code review. Paused 2026-11-27 for the founder’s device-handoff request. Testing may also reuse `br-winter-poetry-baq6sbs4`. P6 (sign-out) is proven end to end only by Blocker 7. **Lead ruling:** Alpha accepts the Tester’s branch evidence for P5 (an existing learner), because live has no dev learner with progress. Runs after grading-fallback-honesty.
+1. **Unit age confirmation at sign-up** (M.5, beta is 18+). Before any real learner. Brief and `tech.md` done (M.5.a, M.5.b). Founder items are Blockers 12 and 13.
+   - Branch `feat/age-confirmation` (`9aa0ed2`, pushed): the migration, types, AgeGuard, `POST /onboarding/age` and the integration spec. The Lead ran the API specs on the server on 2026-11-28: all green, so the "WIP" spec passes.
+   - Server worktree: `.claude/worktrees/age-confirmation`, installed and generated.
+   - **Developer started 2026-11-28** to finish T4 (the app), T5, T6, `dev.md` and the PR. No PR yet.
+   - **Lead ruling on T5:** the server can't run the simulator. The Developer smokes the API on `br-winter-poetry-baq6sbs4` and runs `expo export`. The SE screenshot moves to the Tester's simulator work, which runs on the Mac.
+   - Then the Tester (on the Mac, for P1 to P6 on the simulator) runs on `test-age-confirmation` (`br-red-mud-batele3k`).
+   - **Lead ruling:** Alpha accepts the Tester's branch evidence for P5 (an existing learner), because live has no dev learner with progress. P6 end to end is only Blocker 7.
+2. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
 3. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
@@ -36,16 +42,18 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 - The work moves between the OMV server (default), the Mac (needed for the simulator) and Windows. See `ops/DEVICES.md`.
 - Secrets, Claude transcripts and memory, drafts, datasets and `~/.claude` config travel through the private store `amshahed/sensei-private`, using `node ops/bin/state.mjs push|pull|status`.
 - Leave a device with `bash ops/bin/handoff.sh`. Arrive with `bash ops/bin/setup-device.sh`.
+- **Auto-resume (2026-11-28):** tmux window `sensei:auto-resume` types a resume prompt when a usage limit lifts (`ops/DEVICES.md`). After a limit, check that any cut-off agent was restarted.
 - **Sessions now run on the server** (`~/workspace/sensei` on `turingMachine`, tmux session `sensei`, Remote Control name "sensei").
 - The server is Linux. It can't run the iOS simulator, and Chrome isn't installed. Everything else works there: tests, the API, authoring, Neon and `expo export`.
 - A Tester that needs on-screen evidence (`xcrun simctl` screenshots), and the Alpha run, must run on the Mac. Hand off with `handoff.sh` on the server, then `setup-device.sh` on the Mac, and back afterwards.
-- The Mac's old worktrees are not on the server. `feat/age-confirmation` is pushed (`9aa0ed2`), so create a fresh worktree from it on the server.
+- The Mac's old worktrees are not on the server. The server has its own worktree for `feat/age-confirmation`.
 
 ## In flight
 
 | What | Where | State |
 |---|---|---|
-| Old worktrees | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
+| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, pushed at `9aa0ed2` | Developer finishing; no PR yet |
+| Old worktrees (Mac only) | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
 | Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`), `test-age-confirmation` (`br-red-mud-batele3k`) | Deleting needs the founder's yes (Blocker 11) |
 
 ## PM backlog
