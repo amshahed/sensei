@@ -52,6 +52,8 @@ The server is set up: `turingMachine` (Debian 13, OMV), user `shahed`, LAN `192.
 - **From the Mac:** `ssh sensei`. The Mac's `~/.ssh/config` has `sensei` (opens the session), `turing` (a plain shell) and `turing-ts` (over Tailscale). All use the key `~/.ssh/ed_key`.
 - **From Windows:** `ssh -t shahed@192.168.0.51 .local/bin/sensei` in Windows Terminal. It asks for the server password unless you add a key.
 - **Leave it running:** `Ctrl-b`, then `d`. Claude and its agents keep working on the server.
+- **From anywhere, no SSH:** the launcher starts `claude --remote-control sensei`. Remote Control makes the server session appear as the conversation "sensei" in claude.ai/code and the Claude mobile app, with its history, on any device and away from home. If Remote Control fails to start, the launcher falls back to plain `claude`.
+- **After a server reboot** the session is gone until something starts it. Run `ssh sensei` once; the old conversations stay in `/resume`.
 
 `~/.local/bin/sensei` on the server attaches to the tmux session `sensei`. tmux is a terminal multiplexer that keeps programs running after you disconnect. If the session doesn't exist, the launcher creates it, runs `git pull` and `state.mjs pull`, and starts `claude` in the repo.
 
