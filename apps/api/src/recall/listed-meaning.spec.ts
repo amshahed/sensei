@@ -132,6 +132,16 @@ describe('isListedMeaning (G.4.h)', () => {
       },
     );
 
+    it('a ";" inside brackets is part of the qualifier, not a new sense', () => {
+      const qualified = 'water (esp. cool; or cold)';
+      expect(isListedMeaning('or cold', qualified)).toBe(false);
+      expect(isListedMeaning('water', qualified)).toBe(true);
+      expect(isListedMeaning('water esp cool or cold', qualified)).toBe(true);
+      // After an unclosed bracket, nothing splits off.
+      expect(isListedMeaning('b', 'a (x; b')).toBe(false);
+      expect(isListedMeaning('b', 'a (x); b')).toBe(true);
+    });
+
     it('a meaning with no letters or digits matches nothing', () => {
       expect(isListedMeaning('x', '(…)')).toBe(false);
       expect(isListedMeaning('…', '(…)')).toBe(false);

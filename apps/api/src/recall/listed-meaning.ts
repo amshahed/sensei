@@ -4,7 +4,8 @@
  * convention, never a judgement of English or Japanese:
  *
  *  - the listed meanings are the stored meaning's ";"-separated senses
- *    (JMdict's), never its commas or sentences;
+ *    (JMdict's), never its commas or sentences, and never a ";" inside
+ *    brackets, which is part of a qualifier;
  *  - only letters and digits are compared, lowercased: case, spacing and
  *    punctuation are ignored ("Im sorry" = "I'm sorry", "10000" = "10,000");
  *  - each bracketed part may be left out or typed without its brackets
@@ -17,7 +18,7 @@
 export function isListedMeaning(answer: string, meaning: string): boolean {
   const typed = key(answer);
   if (!typed) return false;
-  return meaning.split(';').some((sense) => senseKeys(sense).has(typed));
+  return senses(meaning).some((sense) => senseKeys(sense).has(typed));
 }
 
 /** Above this many bracketed parts, only "all dropped" and "all kept" count. */
@@ -37,6 +38,29 @@ function words(text: string): string[] {
 /** The comparison key: the words with nothing between them. */
 function key(text: string): string {
   return words(text).join('');
+}
+
+/**
+ * The meaning split on each ";" outside brackets. A ";" inside a bracket
+ * belongs to its qualifier ("water (esp. cool; or cold)" is one sense), and
+ * one after an unclosed "(" splits nothing: either way a fragment can't
+ * become a listed meaning of its own.
+ */
+function senses(meaning: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < meaning.length; i++) {
+    const c = meaning[i];
+    if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    else if (c === ';' && depth === 0) {
+      out.push(meaning.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(meaning.slice(start));
+  return out;
 }
 
 /** Every key one sense accepts, without the empty key. */
