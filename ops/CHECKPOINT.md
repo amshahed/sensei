@@ -21,7 +21,11 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
    - **Next: Tester half 2 on the Mac**, a fresh Tester on the same commit and on `test-age-confirmation` (`br-red-mud-batele3k`). It runs S1 to S7 exactly as `test.md` "For half 2 (Mac)" lists. If the head moves, half 1 re-runs too.
    - Then G3 and the merge, the live deploy (`tech.md` 3.3: `pnpm prisma:deploy` from the main checkout), and the Alpha run.
    - Standing rulings: F1 is deferred to the backlog. Alpha accepts the branch evidence for P5. P6 end to end is Blocker 7 only.
-2. **Next server unit: the PM picks it.** The top candidate is the skip-test outage loophole below. It must touch none of #107's files.
+2. **Server unit `chapter-test-outage`** (I.4.d.b): a grader outage never decides a chapter test or skip-test.
+   - A pass needs 80% of all questions graded right. A fail must hold even if every ungraded answer were right. Anything in between gives no result, and the attempt stays open for a resubmit.
+   - On a pass, ungraded words get review schedules.
+   - **Brief done (G1)**, P1 to P6. **Tech Lead started** on `tech.md`.
+   - It touches none of #107's files. The poor "no result" screen copy is out of scope, because it's in `apps/mobile`.
 3. **Alpha run (G4)**, blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
@@ -48,7 +52,7 @@ If a Mac session and the server run at the same time, each edits only its own un
 
 ## PM backlog
 
-- **Skip-test outage loophole, before real learners** (`exact-meaning-grading/test.md` F1, already on `main`). With the grader down, unscored answers drop out of the total, so one right answer plus 19 junk ones passes a skip-test and skips the chapter (`assessments.service.ts:237`). Fix: require a minimum share of scored answers before `passed`, at least for a skip-test.
+- **[PICKED 2026-11-28: unit `chapter-test-outage`, brief at `ops/work/chapter-test-outage/brief.md`, decision I.4.d.b. The brief's fix replaces the "minimum share" below.]** **Skip-test outage loophole, before real learners** (`exact-meaning-grading/test.md` F1, already on `main`). With the grader down, unscored answers drop out of the total, so one right answer plus 19 junk ones passes a skip-test and skips the chapter (`assessments.service.ts:237`). Fix: require a minimum share of scored answers before `passed`, at least for a skip-test.
 - **After #107 merges:** `exact-meaning-grading/test.md` F2. `app.integration.spec.ts:731` no longer reaches the grader's fallback. Give its item a meaning like 'sushi; raw fish'.
 - **After #107 merges:** `age-confirmation/test.md` F1. Two simultaneous first requests for an account with no row: the loser gets a 500. Make `submitAge`, `submitIntake` and `ensureUser` conflict-safe. In the app, ignore a failed `answerAge` once an answer is stored.
 - **Before these words are taught** (`exact-meaning-grading/test.md` F3 to F7):

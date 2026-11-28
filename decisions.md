@@ -2110,3 +2110,67 @@ Plan, spike and evidence in `ops/work/authoring-hardening/tech.md`.
 **Rejected:** Splitting on every `;` (G.4.i as first written). It accepts fragments of bracketed notes.
 
 **How to reverse:** Split on every `;` again in `apps/api/src/recall/listed-meaning.ts`.
+
+---
+
+## Brief: chapter-test-outage
+
+### I.4.d.b An outage never decides a chapter test or skip-test (amends I.4.d.a) (decided by Project Manager, 2026-11-28)
+
+**Decision:**
+1. A test (a chapter's exit test or its skip-test) passes only if the answers graded right are at least 80% of all its questions. An answer the grader couldn't judge never helps a pass, and it is still not a miss.
+2. A test fails only if it would still fall short of 80% with every ungraded answer counted right.
+3. Otherwise there is no result. Submit returns 503 and the attempt stays open, as I.4.d.a already does when nothing could be graded. Nothing is recorded until a submit is decided: no chapter mark, no lesson skips, no FSRS (spaced-repetition schedule) writes.
+4. On a pass, a sampled item whose answer couldn't be graded is treated as untested.
+   - It is seeded like the chapter's unsampled items: the I.4.c inferred tier, with G.4.d's kanji rule, and existing state untouched.
+   - It is still never recorded as a review. This narrows I.4.d.a's "excluded from the score and from FSRS".
+5. A question whose item can no longer be asked counts neither way, and it isn't one of "all its questions".
+6. **Unchanged:**
+   - with every answer graded, pass and fail are as before;
+   - the score shown counts only graded answers, and ungraded ones are listed on their own (B.2.g, `grading-fallback-honesty` P5).
+   - Points 1 and 2 make the shown score always agree with the verdict.
+
+**Why:**
+- With the grader off, one right answer and 19 junk ones passed a chapter 4 skip-test, on `main` and on PR #112 (`exact-meaning-grading/test.md` F1). A passed skip-test skips the chapter. A returning learner's honest guesses at grammar meanings drop out in the same way.
+- The 80% was taken of whatever got graded. Measured against all the questions, the bar is the same with or without an outage, which I.4.d's symmetric bar and D.1's "demonstrated mastery" require.
+- `seedUntested` treated every sampled item as tested. So an ungraded word on a passed skip-test got no schedule while its lesson was skipped: it was never taught and never reviewed. Reviews and practice read only mastery rows (G.4.e).
+- Free-tier grading fell back on 25 of 99 calls (Blocker 9), and the Alpha run is on that tier.
+
+**Rejected:**
+- **A minimum share of graded answers.** It is a second threshold, and 13 right, 3 wrong and 4 ungraded would still pass with only 13 of 20 shown to be right.
+- **Counting ungraded answers as misses.** It makes our outage the learner's miss.
+- **Skip-tests only.** That gives an asymmetric bar, against I.4.d.
+- **Waiting and retrying the grader before answering.**
+- **A provisional pass.**
+
+**How to reverse:** Take the pass mark over graded answers again, and seed only unsampled items. There is no data to restore: attempts and mastery rows written meanwhile are ordinary. Full reasoning is in `ops/work/chapter-test-outage/brief.md`.
+
+## Plan: chapter-test-outage
+
+### I.4.d.c How I.4.d.b is built: a pure verdict in `assessments/`, and a resubmit grades every answer again (decided by Tech Lead, 2026-11-28)
+
+**Decision:**
+1. `assessmentVerdict({ right, ungraded, asked }, threshold)` in `apps/api/src/assessments/assessment-verdict.ts` returns `PASSED`, `FAILED` or `UNDECIDED`.
+   - `asked` counts only questions whose item can still be asked at submit. It must be at least 1.
+   - PASSED if `right / asked` meets the bar. FAILED if `(right + ungraded) / asked` doesn't. Otherwise UNDECIDED.
+2. `AssessmentsService.submit()` throws the existing 503 on UNDECIDED, before the claim transaction, FSRS write-back and streak, so nothing is written and the attempt stays `IN_PROGRESS`. One log line, `ASSESSMENT_UNDECIDED`, carries the counts and never the answers.
+3. **A resubmit grades every answer again.** Nothing from an undecided submit is kept on the attempt.
+4. **If no sampled question can be asked any more, submit returns 410** ("start a new one"), not 503. Starting again resamples, and `start()` already refuses an empty skip-test and auto-passes an empty exit test.
+5. On a pass, `seedUntested` receives only the graded item IDs, so an ungraded sampled item is seeded exactly like an unsampled one.
+6. There is no schema, DTO, route or app change.
+
+**Why:**
+- The rule is all boundary arithmetic. As a pure function it can be checked exhaustively for every test size up to 20 against the brief's definition, and the existing `assessment-sample.ts` sets the pattern.
+- Regrading is what the 503 path already does. It adds no state to open attempts, and a result always comes from one grading pass over the answers actually sent.
+- A 503 for a test with nothing left to ask would hold it open until it expires, against I.4.d.b point 5.
+- Full plan, promise map and spike in `ops/work/chapter-test-outage/tech.md`.
+
+**Rejected:**
+- **Keeping the verdicts already reached on an open attempt and grading only the rest.** Retries would converge faster on the free tier, but it means status-guarded writes to `IN_PROGRESS` rows, stored ratings and invalidation when answers change.
+- **A nullable `passed` or a new attempt status.** That needs `packages/types` or `schema.prisma`, both in PR #107, and app work.
+- **Counting unaskable questions as ungraded.**
+- **Integer arithmetic tied to 0.8.**
+
+**Revisit when:** logs or the Alpha run show one attempt undecided on consecutive submits (`ASSESSMENT_UNDECIDED` next to `GRADING_DEGRADED reason=rate_limited`), or real learners arrive before the paid tier (Blocker 9). The fix then is point 3's rejected alternative.
+
+**Reverse:** Revert the PR. Open attempts expire as usual. Attempts decided meanwhile and the extra inferred-tier rows are ordinary, and need no repair.
