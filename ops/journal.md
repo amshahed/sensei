@@ -102,3 +102,12 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
   - A fix now would void half 1 and cost another Developer and Tester round on Pro usage.
   - The same race is already on `main` at two other sites.
 - Process note (P-1): the "pristine" branch `test-age-confirmation` already held `dev-age-existing`, most likely written by the first Developer on 2026-11-24 against `tech.md` T5. Harmless, because the Tester took its own baselines. Developers must not write to the Tester's rehearsal branch.
+
+## 2026-11-28: exact-meaning-grading merged (#112)
+
+- Tester PASS on `5450607`, CI green, merged as `8470662`. All of P1 to P8 held on the real API with the grader hanging, off and on, with a `main` build as the before.
+- No deploy was needed: no data change, and there is no hosted API. The next API start from `main` picks it up.
+- The Lead recorded the `;`-in-brackets deviation as G.4.j instead of starting a Tech Lead run.
+- `tech.md` 4.1 is wrong about P8 for lesson 120 (`test.md` F8). It comes back right and scored after about 12 s, on `main` and on the PR. The plan is left as written; `test.md` is the record.
+- Findings went to the PM backlog (checkpoint). The skip-test outage loophole (F1) is the important one.
+- Cleaned up: the Developer's worktree and the Tester's two worktrees (all clean, commits on `main`), plus the local branch.
