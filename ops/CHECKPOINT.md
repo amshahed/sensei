@@ -32,13 +32,20 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
    - **F1 (Low) deferred by the Lead** to the PM backlog (below), not this PR.
    - **Lead ruling on T5:** the server can't run the simulator. The Developer smokes the API on `br-winter-poetry-baq6sbs4` and runs `expo export`. The SE screenshot moves to the Tester's simulator work, which runs on the Mac.
    - **Lead ruling:** Alpha accepts the Tester's branch evidence for P5 (an existing learner), because live has no dev learner with progress. P6 end to end is only Blocker 7.
-2. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
-3. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
+2. **Server unit `exact-meaning-grading`** (started 2026-11-28 while #107 waits on the Mac; Lead ruling: independent, no stack).
+   - A typed meaning that the word lists is marked right at once, without the grader: in reviews, practice, chapter tests and skip-tests (G.4.h).
+   - **Brief done (G1)**, P1 to P8. **`tech.md` done (G2, G.4.i)**: a pure listed-meaning check inside `RecallGraderService`'s meaning case, API only, no data change. The Lead confirmed no file overlaps #107.
+   - 隣 “next (to)” accepting “next” is covered by brief 3.2 and is now on Blocker 6's sample list.
+   - **Developer started** (worktree `.claude/worktrees/exact-meaning-grading`).
+   - It must touch none of #107's files.
+   - If a Mac session runs half 2 at the same time, each session edits only its own unit's lines here.
+3. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
+4. **Alpha run (G4)** for the live course. It is blocked on **Blocker 10**: a session that can tap and type in the simulator.
    - Device `Sensei 22a SE3` (UDID `D7C64108-6D56-4043-8801-6B8A84A790B1`) has Expo Go.
    - Start with `expo start --offline`, then `open_url exp://127.0.0.1:8081`.
    - Use a fresh learner and dev-stub auth.
-4. **Audio lessons (12)** once Azure exists (Blocker 2). Drafting is about $1. Use `run-wave.mjs <from> <to> <cap> --include-audio`.
-5. **B1** (lesson 120's rubric: the name pattern and one fix) needs a clean grader eval. That is realistic only after Gemini billing (Blocker 9), and it must land before any real learner.
+5. **Audio lessons (12)** once Azure exists (Blocker 2). Drafting is about $1. Use `run-wave.mjs <from> <to> <cap> --include-audio`.
+6. **B1** (lesson 120's rubric: the name pattern and one fix) needs a clean grader eval. That is realistic only after Gemini billing (Blocker 9), and it must land before any real learner.
 
 ## Devices (2026-11-27)
 
@@ -66,7 +73,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 - From `grading-fallback-honesty/test.md`:
   - **F1:** model comments repeat the verdict, and on a miss the answer too (“That’s incorrect — いしゃ means doctor.”). That is the grading prompt, so bundle it with B1’s eval.
   - **F2:** the end screen keeps 🎉 when nothing counted.
-  - **F3:** with the grader down, one meaning such as “hello” is “couldn’t grade”, because the stored answer holds several meanings.
+  - **F3:** with the grader down, one meaning such as “hello” is “couldn’t grade”, because the stored answer holds several meanings. **Picked 2026-11-28 as unit `exact-meaning-grading` (G.4.h).**
 
 - From `open-check-followup/triage.md`:
   - B3: the eval's pair rule (F3).
@@ -77,7 +84,7 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 - Lesson 20 is live, but publish refuses to republish it until its passage drops と and の.
 - Lesson 39 doesn't require typed reading; one outline flag turns it on. Lesson 67 q8 (typed ゼロ) passes by design.
 - Tester T2 (low): a self-answering prompt with an English-lookalike answer isn't caught.
-- Exact-match before calling the grading model would cut most calls. A rare 12-second timeout marks a right paraphrase wrong. A writing answer of about 6,000 characters causes a 500. Exact kana that differs only in punctuation is marked wrong.
+- Exact-match before calling the grading model would cut most calls (**picked 2026-11-28, in `exact-meaning-grading`**). A rare 12-second timeout marks a right paraphrase wrong. A writing answer of about 6,000 characters causes a 500. Exact kana that differs only in punctuation is marked wrong; this is probably fixed by H.2.c (2026-11-14), so confirm before working on it.
 - Watch `arigato` at Alpha: long vowels are taught, so it stays wrong (H.2.a).
 
 ## Live facts
