@@ -33,3 +33,14 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - Apply: `ingest:items kanji` upserted 103, and a second dry run shows 0 rows to change.
 - Verify (SQL on live): 校 = "school"; all eight verb kanji have `word_reading`; no other meaning changed. That matches the PM's 41-kanji audit (brief 4.1: only 校 differed).
 - Rollback: re-run the ingest with the supplement emptied, or a nine-row `UPDATE` from the backup. The Tester proved both on `test-open-check-followup`.
+
+## 2026-11-28: device handoff set up (founder request)
+
+- The private store `amshahed/sensei-private` was created and first pushed from the Mac: 1,036 files, 91 MB.
+- Verified with a fresh clone from GitHub into a throwaway home:
+  - every restored file is byte-identical to the Mac's: both `.env` files, drafts, published lessons, datasets, memory, all 326 transcript files, the global `CLAUDE.md`, settings, templates and skills;
+  - 0 readable secrets in the store.
+  - The test copy was deleted afterwards.
+- Fixed along the way:
+  - The passphrase one-liner was bash-only and wrote an empty file in zsh. It is replaced by `ops/bin/set-passphrase.sh`.
+  - `state.mjs` no longer pulls straight after a fresh clone.
