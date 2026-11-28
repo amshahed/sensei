@@ -90,3 +90,15 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - Drift-check gotcha: `prisma migrate diff` always shows `ReferenceDoc_embedding_hnsw_idx`, which Prisma can't model. It predates this unit.
 - `9aa0ed2` keeps its "wip" subject. Rewording it would rewrite pushed history.
 - Lead ruling: the Tester runs in two halves, server then Mac (checkpoint). Two cold starts cost more usage, but it moves overnight while the founder is away from the Mac.
+
+## 2026-11-28: age-confirmation Tester half 1 (server) PASS
+
+- PASS on `4c75871`, for the server scope (`test.md`).
+- Three code mutations each made the specs fail: no `AgeGuard`, the guards in the wrong order, and no compare-and-set.
+- Rehearsal steps 1 to 7 on `br-red-mud-batele3k`: the migration is additive, row hashes are identical, and rolling back to the pre-PR code is safe. The default branch is untouched.
+- The gate adds about 16 ms per gated request, so no cache yet (O2).
+- **F1 ruling (Lead):** the concurrent first-answer 500 stays out of #107 and goes to the PM backlog as one follow-up unit covering all three `upsert` sites.
+  - The data is always correct, and it needs two requests in flight, which the UI prevents.
+  - A fix now would void half 1 and cost another Developer and Tester round on Pro usage.
+  - The same race is already on `main` at two other sites.
+- Process note (P-1): the "pristine" branch `test-age-confirmation` already held `dev-age-existing`, most likely written by the first Developer on 2026-11-24 against `tech.md` T5. Harmless, because the Tester took its own baselines. Developers must not write to the Tester's rehearsal branch.

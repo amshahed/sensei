@@ -26,10 +26,10 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
    - Branch `feat/age-confirmation` (`9aa0ed2`, pushed): the migration, types, AgeGuard, `POST /onboarding/age` and the integration spec. The Lead ran the API specs on the server on 2026-11-28: all green, so the "WIP" spec passes.
    - Server worktree: `.claude/worktrees/age-confirmation`, installed and generated.
    - **PR #107 open**, head `4c75871`: CI green, mergeable, `dev.md` written. Developer done. `/code-review high` found five things: two fixed, three argued against in `dev.md`. One fix touches `AuthGate.tsx` (the first signed-in request had no token), which the Tester must judge.
-   - **Lead ruling 2026-11-28: the Tester runs in two halves**, because the founder wasn't at the Mac and nothing else is unblocked.
-     - Half 1 runs on the server, now: the `tech.md` 3.2 rehearsal on `test-age-confirmation`, Tester-API, Jest, the review, and a diff read.
-     - Half 2 is a fresh Tester on the Mac for the Tester-sim cases, on the same branch.
-     - G3 needs both halves. Half 1 alone is never PASS.
+   - **Tester half 1 (server): PASS on `4c75871`** (`test.md`): the rehearsal steps 1 to 7 on `test-age-confirmation`, all 24 gated routes refused and 4 exempt, P5 hashes identical, and the `AuthGate.tsx` fix judged correct and in scope.
+   - **Next: Tester half 2 on the Mac**, a fresh Tester on the same commit and branch. It runs cases S1 to S7 exactly as `test.md` "For half 2 (Mac)" lists. If the head moves, half 1 re-runs too.
+   - Then G3 and the merge, the live deploy (`tech.md` 3.3), and the Alpha run.
+   - **F1 (Low) deferred by the Lead** to the PM backlog (below), not this PR.
    - **Lead ruling on T5:** the server can't run the simulator. The Developer smokes the API on `br-winter-poetry-baq6sbs4` and runs `expo export`. The SE screenshot moves to the Tester's simulator work, which runs on the Mac.
    - **Lead ruling:** Alpha accepts the Tester's branch evidence for P5 (an existing learner), because live has no dev learner with progress. P6 end to end is only Blocker 7.
 2. **Done 2026-11-27: unit B5** (`grading-fallback-honesty`), PR #99 merged (`4a2d305`, Tester PASS on `f96236d`).
@@ -55,12 +55,14 @@ Get the beta slice ([#22](https://github.com/amshahed/sensei/issues/22)) into th
 
 | What | Where | State |
 |---|---|---|
-| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, PR #107 at `4c75871` | Tester half 1 (server) running; half 2 needs the Mac |
+| `feat/age-confirmation` | Server worktree `.claude/worktrees/age-confirmation`, PR #107 at `4c75871` | Half 1 PASS; half 2 needs the Mac |
+| Tester worktree | Server `.claude/worktrees/test-age-confirmation`, detached at `4c75871`, clean | Kept for a re-run; remove after merge |
 | Old worktrees (Mac only) | `.claude/worktrees/wt-14`, `wt-grading`, `wt-22a`, `wt-22b`, `test-66` to `test-78`, `authoring-hardening` | Merged work; safe to clean up |
 | Throwaway Neon branches | `test-78-check-explanation` (`br-red-forest-baxm7pzr`), `test-open-check-followup` (`br-winter-poetry-baq6sbs4`), `test-age-confirmation` (`br-red-mud-batele3k`) | Deleting needs the founder's yes (Blocker 11) |
 
 ## PM backlog
 
+- **From `age-confirmation/test.md` F1 (Low), a small unit after #107 merges.** Two simultaneous first requests for an account with no row: the loser gets a 500 (P2002). `submitAge`, `submitIntake` and `ensureUser` share the find-then-create `upsert`. Fix all three conflict-safe. Also make the app ignore a failed `answerAge` once an answer is stored, so a stale error can't show on intake.
 - From `grading-fallback-honesty/test.md`:
   - **F1:** model comments repeat the verdict, and on a miss the answer too (“That’s incorrect — いしゃ means doctor.”). That is the grading prompt, so bundle it with B1’s eval.
   - **F2:** the end screen keeps 🎉 when nothing counted.
