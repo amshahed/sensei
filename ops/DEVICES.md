@@ -47,18 +47,20 @@ On an already-set-up device, `git pull && node ops/bin/state.mjs pull` is enough
 
 ## Best setup: run sessions on the server, attach from anywhere
 
-Keep one Claude Code session alive on the server inside `tmux` (a terminal multiplexer that keeps programs running after you disconnect). Attach to it from the Mac or Windows:
+The server is set up: `turingMachine` (Debian 13, OMV), user `shahed`, LAN `192.168.0.51` (DHCP, not reserved), Tailscale `turingmachine` / `100.127.177.30`. Its repo is `~/workspace/sensei`.
 
-```bash
-ssh <you>@<server>
-cd ~/workspace/sensei && tmux new -A -s sensei   # attaches if it exists, else creates it
-claude                                            # first time; afterwards it is still running
-```
+- **From the Mac:** `ssh sensei`. The Mac's `~/.ssh/config` has `sensei` (opens the session), `turing` (a plain shell) and `turing-ts` (over Tailscale). All use the key `~/.ssh/ed_key`.
+- **From Windows:** `ssh -t shahed@192.168.0.51 .local/bin/sensei` in Windows Terminal. It asks for the server password unless you add a key.
+- **Leave it running:** `Ctrl-b`, then `d`. Claude and its agents keep working on the server.
 
-- Detach with `Ctrl-b d`. The session keeps working, and agents keep running.
-- From Windows, use the built-in `ssh` in PowerShell or Windows Terminal. Nothing else needs installing there.
-- If you use Happy (happy.engineering) on your phone, run `happy` instead of `claude` inside that tmux session on the server.
-- Use `handoff.sh` and `setup-device.sh` only when the work itself moves machines, for example to the Mac for simulator work.
+`~/.local/bin/sensei` on the server attaches to the tmux session `sensei`. tmux is a terminal multiplexer that keeps programs running after you disconnect. If the session doesn't exist, the launcher creates it, runs `git pull` and `state.mjs pull`, and starts `claude` in the repo.
+
+- A fresh `claude` reads `ops/CHECKPOINT.md` and carries on.
+- `/resume` inside Claude lists the old conversations, including the Mac's.
+
+**Machine-specific rules.** The shared `~/.claude/CLAUDE.md` (synced) ends with `@~/.claude/MACHINE.md`. Each machine keeps its own `MACHINE.md`, which is never synced. The server's holds the NAS hard rules (never touch the photo HDD, ask before installs, OMV owns `/etc`). The Mac's says it is the simulator machine.
+
+Use `handoff.sh` and `setup-device.sh` only when the work itself moves machines, for example to the Mac for simulator work.
 
 ## First-time setup per device
 

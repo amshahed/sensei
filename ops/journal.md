@@ -44,3 +44,25 @@ Evidence gathered from GitHub, the live database, session transcripts and the co
 - Fixed along the way:
   - The passphrase one-liner was bash-only and wrote an empty file in zsh. It is replaced by `ops/bin/set-passphrase.sh`.
   - `state.mjs` no longer pulls straight after a fresh clone.
+
+## 2026-11-28: server `turingMachine` set up for sensei
+
+- Server: Debian 13 (OMV 8), user `shahed`, `192.168.0.51`, Tailscale `100.127.177.30`. Done from the Mac over SSH, with `ed_key` added by the founder using `ssh-copy-id`.
+- Installed in the user's home only, with nothing system-wide:
+  - nvm with Node 22.23.5;
+  - pnpm 11.5.3 through corepack;
+  - gh 2.106.0 in `~/.local/bin`, logged in with the Mac's gh token piped over SSH;
+  - the plugins `code-review` and `frontend-design`.
+- Claude Code was already installed and logged in.
+- The passphrase file was copied with scp (600). The repo is cloned to `~/workspace/sensei`. `state.mjs pull` restored 837 files and backed up 26 server files to `~/.sensei-state-backups/`.
+- Claude config on the server:
+  - the server's own global `CLAUDE.md` (NAS rules) moved to `~/.claude/MACHINE.md`, which the shared `CLAUDE.md` now imports;
+  - the server's theme is merged into the synced `settings.json`.
+- Verified on the server:
+  - `pnpm install`, the types build and `prisma generate`;
+  - `prisma migrate status`: up to date, so live Neon is reachable;
+  - `pnpm typecheck`;
+  - `pnpm test`: 64 suites, 1,582 tests, all passing.
+- Launcher `~/.local/bin/sensei` (tmux session `sensei`), and Mac ssh aliases `sensei`, `turing`, `turing-ts`.
+- tmux needs the founder's sudo password: `sudo apt-get install -y tmux`.
+- Both machines use pnpm's isolated layout. pnpm 11 ignores `.npmrc`'s `node-linker=hoisted`, so that comment is stale. No change is needed, because the Mac already runs this way.
